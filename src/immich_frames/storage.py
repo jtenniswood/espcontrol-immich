@@ -26,7 +26,7 @@ class Storage:
             "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
             "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id,
             "order_field": frame.order_field, "order_direction": frame.order_direction,
-            "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit,
+            "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation,
         }
         self.db.execute("INSERT OR REPLACE INTO frames(id,name,config) VALUES(?,?,?)", (frame.frame_id, frame.name, json.dumps(data)))
         self.db.commit()

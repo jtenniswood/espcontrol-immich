@@ -93,6 +93,7 @@ class FrameConfig:
     output_width: int = 1920
     output_height: int = 1080
     fit: Literal["cover", "contain"] = "cover"
+    orientation: Literal["any", "portrait", "landscape", "square"] = "any"
 
 
 @dataclass(slots=True, frozen=True)

@@ -51,3 +51,16 @@ async def test_memory_candidates_are_deduplicated() -> None:
     frame = FrameConfig("f", "Memories", source="memories", memory_window_days=1)
     result = await select_candidates(Client(), frame, today="2026-09-17")
     assert [item.id for item in result] == ["a"]
+
+
+async def test_orientation_is_applied_after_metadata_search() -> None:
+    class Client:
+        async def search(self, filter, size=100, random=False, order_field="fileCreatedAt", order_direction="desc"):
+            return [
+                Photo("portrait", 100, 200, None, None, "portrait.jpg"),
+                Photo("landscape", 200, 100, None, None, "landscape.jpg"),
+            ]
+
+    frame = FrameConfig("f", "Portraits", orientation="portrait")
+    result = await select_candidates(Client(), frame)
+    assert [item.id for item in result] == ["portrait"]

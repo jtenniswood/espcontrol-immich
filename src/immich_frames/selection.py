@@ -54,6 +54,8 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
         # Memory records are intentionally lightweight and may not contain EXIF,
         # people, or tags. Re-query the IDs through metadata search so the frame's
         # ordinary filter and the same metadata contract apply to every source.
-        return await client.search({**query, "id": {"in": asset_ids[:1000]}}, size=size, order_field=frame.order_field, order_direction=frame.order_direction if frame.order_direction != "random" else "desc")
+        photos = await client.search({**query, "id": {"in": asset_ids[:1000]}}, size=size, order_field=frame.order_field, order_direction=frame.order_direction if frame.order_direction != "random" else "desc")
+        return [photo for photo in photos if frame.orientation == "any" or photo.orientation == frame.orientation]
     random_order = frame.order_direction == "random"
-    return await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")
+    photos = await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")
+    return [photo for photo in photos if frame.orientation == "any" or photo.orientation == frame.orientation]

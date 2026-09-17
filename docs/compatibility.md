@@ -11,6 +11,7 @@ Implemented sources and search features:
 - On This Day memory windows and optional fallback to the configured ordinary filter.
 - Explicit image, non-trashed, non-locked safety constraints.
 - Single-image and capture-date matching-pair output.
+- Local orientation selection (`any`, portrait, landscape, or square) applied after Immich metadata retrieval.
 
 The app does not modify Immich assets. Uploading, editing, tagging, rating changes, library administration, and video playback are outside the read-only frame scope.
 

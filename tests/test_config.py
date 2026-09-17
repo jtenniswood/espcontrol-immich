@@ -26,6 +26,11 @@ def test_frame_body_requires_name() -> None:
         FrameApp._frame_from_body({"name": "  "})
 
 
+def test_frame_body_supports_orientation() -> None:
+    frame = FrameApp._frame_from_body({"name": "Portraits", "orientation": "portrait"})
+    assert frame.orientation == "portrait"
+
+
 def test_app_can_start_before_immich_is_configured(tmp_path) -> None:
     app = FrameApp({}, tmp_path)
     assert app.client is None
