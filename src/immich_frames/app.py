@@ -26,9 +26,12 @@ class FrameApp:
     def __init__(self, config: dict, data_dir: Path) -> None:
         self.config = config
         self.storage = Storage(data_dir)
+        if not self.storage.get_connection("default") and config.get("immich_url") and config.get("immich_api_key"):
+            self.storage.save_connection("default", "Default Immich", config["immich_url"], config["immich_api_key"])
         self.generation: dict[str, int] = {}
         self.slides: dict[str, Any] = {}
-        self.client = ImmichClient(config["immich_url"], config["immich_api_key"])
+        self.clients: dict[str, ImmichClient] = {}
+        self.client = self._client_for("default")
         self.publisher: MqttPublisher | None = None
         try:
             if config.get("mqtt_host"):
@@ -45,6 +48,16 @@ class FrameApp:
         self.cache_dir = data_dir / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_limit_bytes = max(16, int(config.get("cache_limit_mb", 256))) * 1024 * 1024
+
+    def _client_for(self, connection_id: str) -> ImmichClient:
+        if connection_id in self.clients:
+            return self.clients[connection_id]
+        connection = self.storage.get_connection(connection_id)
+        if connection is None:
+            raise ValueError(f"Unknown Immich connection: {connection_id}")
+        client = ImmichClient(connection[1], connection[2])
+        self.clients[connection_id] = client
+        return client
 
     def _handle_command(self, frame_id: str, command: str) -> None:
         if self.loop is None:
@@ -83,7 +96,7 @@ class FrameApp:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
             except ValueError:
                 return
-            updated = self._frame_from_body({"name": frame.name, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit}, frame.frame_id)
+            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit}, frame.frame_id)
             self.storage.save_frame(updated)
             if self.publisher:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
@@ -92,14 +105,15 @@ class FrameApp:
         try:
             if frame.frame_id in self.paused and not force:
                 return
-            candidates = await select_candidates(self.client, frame, size=1000)
+            client = self._client_for(frame.connection_id)
+            candidates = await select_candidates(client, frame, size=1000)
             if not candidates and frame.source == "memories" and frame.fallback_to_all:
                 fallback = FrameConfig(
-                    frame_id=frame.frame_id, name=frame.name, mode=frame.mode, pair_window_days=frame.pair_window_days,
+                    frame_id=frame.frame_id, name=frame.name, connection_id=frame.connection_id, mode=frame.mode, pair_window_days=frame.pair_window_days,
                     pairs_only=frame.pairs_only, slideshow_interval=frame.slideshow_interval, filter=frame.filter,
                     output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit,
                 )
-                candidates = await select_candidates(self.client, fallback, size=1000)
+                candidates = await select_candidates(client, fallback, size=1000)
             if not candidates:
                 LOG.warning("Frame %s has no matching photos", frame.name)
                 return
@@ -114,7 +128,7 @@ class FrameApp:
                 elif frame.pairs_only:
                     LOG.info("Frame %s has no complete pair", frame.name)
                     return
-            payloads = tuple(await self.client.thumbnail(photo.id) for photo in photos)
+            payloads = tuple(await client.thumbnail(photo.id) for photo in photos)
             generation = self.generation.get(frame.frame_id, 0) + 1
             slide = render_slide(frame.frame_id, generation, photos, payloads, frame.output_width, frame.output_height, frame.fit)
             self.generation[frame.frame_id] = generation
@@ -154,6 +168,10 @@ class FrameApp:
             frame = self._frame_from_body(body)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError, FilterValidationError) as exc:
             raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
+        try:
+            self._client_for(frame.connection_id)
+        except ValueError as exc:
+            raise web.HTTPBadRequest(text=str(exc)) from exc
         self.storage.save_frame(frame)
         self.start_frame(frame)
         return web.json_response({"frame_id": frame.frame_id}, status=201)
@@ -178,7 +196,7 @@ class FrameApp:
         if order_direction not in ("asc", "desc", "random"):
             raise ValueError("order_direction must be asc, desc, or random")
         return FrameConfig(
-            frame_id=frame_id or str(uuid.uuid4()), name=str(body["name"]).strip(), mode=mode,
+            frame_id=frame_id or str(uuid.uuid4()), name=str(body["name"]).strip(), connection_id=str(body.get("connection_id", "default")), mode=mode,
             pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
             slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
             source=source, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
@@ -197,7 +215,26 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
 </script>""", content_type="text/html")
 
     async def list_frames(self, _: web.Request) -> web.Response:
-        return web.json_response([{"frame_id": f.frame_id, "name": f.name, "mode": f.mode} for f in self.storage.list_frames()])
+        return web.json_response([{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode} for f in self.storage.list_frames()])
+
+    async def list_connections(self, _: web.Request) -> web.Response:
+        return web.json_response(self.storage.list_connections())
+
+    async def create_connection(self, request: web.Request) -> web.Response:
+        body = await request.json()
+        connection_id = str(body.get("id") or uuid.uuid4())
+        name, url, api_key = str(body["name"]), str(body["url"]), str(body["api_key"])
+        if not url or not api_key:
+            raise web.HTTPBadRequest(text="url and api_key are required")
+        async with ImmichClient(url, api_key) as test_client:
+            version = await test_client.version()
+        self.storage.save_connection(connection_id, name, url, api_key)
+        client = ImmichClient(url, api_key)
+        self.clients[connection_id] = client
+        return web.json_response({"id": connection_id, "name": name, "url": url, "version": version}, status=201)
+
+    async def export_config(self, _: web.Request) -> web.Response:
+        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "pairs_only": f.pairs_only, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit} for f in self.storage.list_frames()]})
 
     async def refresh(self, request: web.Request) -> web.Response:
         frame = next((item for item in self.storage.list_frames() if item.frame_id == request.match_info["frame_id"]), None)
@@ -213,7 +250,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         body = await request.json()
         try:
             updated = self._frame_from_body({
-                "name": body.get("name", frame.name), "mode": body.get("mode", frame.mode),
+                "name": body.get("name", frame.name), "connection_id": body.get("connection_id", frame.connection_id), "mode": body.get("mode", frame.mode),
                 "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
                 "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
                 "source": body.get("source", frame.source), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
@@ -223,6 +260,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
             }, frame.frame_id)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
+        self._client_for(updated.connection_id)
         self.storage.save_frame(updated)
         self.start_frame(updated)
         return web.json_response({"frame_id": updated.frame_id})
@@ -241,23 +279,25 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
     async def health(self, _: web.Request) -> web.Response:
         return web.json_response({"status": "ok", "version": "0.1.0"})
 
-    async def capabilities(self, _: web.Request) -> web.Response:
+    async def capabilities(self, request: web.Request) -> web.Response:
         try:
-            return web.json_response(await self.client.capabilities())
+            connection_id = request.query.get("connection_id", "default")
+            return web.json_response(await self._client_for(connection_id).capabilities())
         except Exception:
             return web.json_response({"version": "unavailable", "structured_search": False, "memories": False, "smart_search": False, "ocr": False}, status=503)
 
     async def catalog(self, request: web.Request) -> web.Response:
         kind = request.match_info["kind"]
+        connection_id = request.query.get("connection_id", "default")
         try:
-            values = {"albums": self.client.albums, "people": self.client.people, "tags": self.client.tags, "memories": self.client.memories}[kind]
+            values = {"albums": self._client_for(connection_id).albums, "people": self._client_for(connection_id).people, "tags": self._client_for(connection_id).tags, "memories": self._client_for(connection_id).memories}[kind]
         except KeyError as exc:
             raise web.HTTPNotFound() from exc
         return web.json_response(await values())
 
     def application(self) -> web.Application:
         app = web.Application()
-        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/connections", self.list_connections), web.post("/api/connections", self.create_connection), web.get("/api/export", self.export_config), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
         return app
 
     async def start_existing(self) -> None:

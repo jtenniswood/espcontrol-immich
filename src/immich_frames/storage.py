@@ -12,6 +12,7 @@ class Storage:
         root.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(root / "frames.db")
         self.db.execute("CREATE TABLE IF NOT EXISTS frames (id TEXT PRIMARY KEY, name TEXT NOT NULL, config TEXT NOT NULL)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS connections (id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, api_key TEXT NOT NULL)")
         self.db.commit()
 
     def list_frames(self) -> list[FrameConfig]:
@@ -20,7 +21,7 @@ class Storage:
 
     def save_frame(self, frame: FrameConfig) -> None:
         data = {
-            "frame_id": frame.frame_id, "name": frame.name, "mode": frame.mode, "pair_window_days": frame.pair_window_days,
+            "frame_id": frame.frame_id, "name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days,
             "pairs_only": frame.pairs_only, "slideshow_interval": frame.slideshow_interval, "filter": frame.filter,
             "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
             "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id,
@@ -33,3 +34,13 @@ class Storage:
     def delete_frame(self, frame_id: str) -> None:
         self.db.execute("DELETE FROM frames WHERE id=?", (frame_id,))
         self.db.commit()
+
+    def save_connection(self, connection_id: str, name: str, url: str, api_key: str) -> None:
+        self.db.execute("INSERT OR REPLACE INTO connections(id,name,url,api_key) VALUES(?,?,?,?)", (connection_id, name, url.rstrip("/"), api_key))
+        self.db.commit()
+
+    def get_connection(self, connection_id: str) -> tuple[str, str, str] | None:
+        return self.db.execute("SELECT id,url,api_key FROM connections WHERE id=?", (connection_id,)).fetchone()
+
+    def list_connections(self) -> list[dict[str, str]]:
+        return [{"id": row[0], "name": row[1], "url": row[2]} for row in self.db.execute("SELECT id,name,url FROM connections ORDER BY name")]

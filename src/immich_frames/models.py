@@ -77,6 +77,7 @@ class Photo:
 class FrameConfig:
     frame_id: str
     name: str
+    connection_id: str = "default"
     mode: Mode = "single"
     pair_window_days: int = 0
     pairs_only: bool = False
