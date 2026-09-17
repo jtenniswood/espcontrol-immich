@@ -16,6 +16,6 @@ Enter the Immich server URL and a read-only API key with these permissions:
 
 The integration checks `/api/server/version` for Immich 3.2 or later, then performs an authenticated metadata search to verify the API key and its `asset.read` permission before continuing. An empty library can pass this connection check. TLS verification remains enabled by default; using an `http://` URL is an explicit local-network choice.
 
-The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available and the Immich connected sensor turns off.
+The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available.
 
 For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **EspControl Immich Companion**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.

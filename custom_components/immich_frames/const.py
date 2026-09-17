@@ -18,4 +18,4 @@ CONF_INTERVAL = "interval"
 CONF_MEMORY_WINDOW = "memory_window_days"
 CONF_FALLBACK = "fallback_to_all"
 DEFAULT_INTERVAL = 30
-PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.SWITCH, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]

@@ -10,6 +10,7 @@ from custom_components.immich_frames.const import DOMAIN
 RETIRED = (
     ("sensor", "photo_latitude"), ("sensor", "photo_longitude"),
     ("sensor", "slide"), ("sensor", "status"), ("binary_sensor", "using_cache"),
+    ("sensor", "matching_assets"), ("binary_sensor", "immich_connected"),
 )
 
 
@@ -55,5 +56,6 @@ async def test_upgrade_removes_only_this_frames_retired_sensors(hass, asset, jpe
             retired_keys = {(domain, f"{entry.entry_id}_{key}") for domain, key in RETIRED}
             assert not any((e.domain, e.unique_id) in retired_keys
                            for e in er.async_entries_for_config_entry(registry, entry.entry_id))
-            assert hass.states.get("binary_sensor.frame_immich_connected").state == "on"
+            assert hass.states.get("binary_sensor.frame_immich_connected") is None
+            assert hass.states.get("sensor.frame_matching_assets") is None
             assert await hass.config_entries.async_unload(entry.entry_id)
