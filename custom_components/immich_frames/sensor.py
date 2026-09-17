@@ -15,7 +15,6 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         ("photo_tags", "Photo tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
         ("photo_rating", "Photo rating", lambda p, d: p.get("rating")),
         ("photo_camera", "Photo camera", lambda p, d: p.get("exif", {}).get("model")),
-        ("matching_assets", "Matching assets", lambda p, d: d.matching_assets if d else None),
     )])
 
 
