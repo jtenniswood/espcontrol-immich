@@ -14,3 +14,5 @@ pytest
 ```
 
 The app reads Home Assistant options from `/data/options.json`. API keys are never published to MQTT or included in image URLs.
+
+See [installation](docs/installation.md), the [entity contract](docs/entity-contract.md), and the [compatibility matrix](docs/compatibility.md).
