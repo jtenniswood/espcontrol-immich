@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add an Immich frame",
+        "title": "Add an EspControl Immich Companion frame",
         "description": "Enter your Immich server and choose what this Home Assistant device should display.",
         "data": {
           "url": "Immich URL",

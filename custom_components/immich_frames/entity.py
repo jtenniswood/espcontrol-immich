@@ -20,8 +20,8 @@ class ImmichFrameEntity(CoordinatorEntity[FrameCoordinator]):
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name=self.coordinator.entry.title,
-            manufacturer="Immich Frames",
-            model="Immich photo frame",
+            manufacturer="EspControl",
+            model="Immich Companion photo frame",
         )
 
     @property

@@ -28,7 +28,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         super().__init__(
             hass,
             logger=__import__("logging").getLogger(DOMAIN),
-            name=f"Immich frame {entry.title}",
+            name=f"EspControl Immich Companion {entry.title}",
             update_interval=timedelta(seconds=int(self.options.get(CONF_INTERVAL, 30))),
             config_entry=entry,
         )

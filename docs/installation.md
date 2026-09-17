@@ -18,4 +18,4 @@ The integration verifies the server against `/api/server/version` before creatin
 
 The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available and the device reports its cached and connection state.
 
-For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **Immich Frames**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.
+For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **EspControl Immich Companion**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.

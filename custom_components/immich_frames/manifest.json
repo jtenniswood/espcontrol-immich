@@ -1,6 +1,6 @@
 {
   "domain": "immich_frames",
-  "name": "Immich Frames",
+  "name": "EspControl Immich Companion",
   "codeowners": ["@jtenniswood"],
   "config_flow": true,
   "documentation": "https://github.com/jtenniswood/espcontrol-immich",
