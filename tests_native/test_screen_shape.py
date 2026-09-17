@@ -1,4 +1,5 @@
 """Screen shape affects rendering independently of photo selection."""
+import json
 from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
@@ -10,9 +11,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
 
-SHAPES = [("landscape", "Landscape (16:9)", (1920, 1080)),
-          ("portrait", "Portrait (9:16)", (1080, 1920)),
-          ("square", "Square (1:1)", (1080, 1080))]
+SHAPES = [("landscape", "Landscape (16:10, 1280 × 800)", (1280, 800)),
+          ("portrait", "Portrait (10:16, 800 × 1280)", (800, 1280)),
+          ("square", "Square (1:1, 720 × 720)", (720, 720))]
 
 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
@@ -76,7 +77,7 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert result["data_schema"]({})["screen_shape"] == ("Landscape (16:9)" if route == "setup" else label)
+    assert result["data_schema"]({})["screen_shape"] == ("Landscape (16:10, 1280 × 800)" if route == "setup" else label)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
         await hass.async_block_till_done()
@@ -103,17 +104,49 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
         # A failing server must not bring back the old landscape cache after saving portrait.
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (9:16)"})
+            await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (10:16, 800 × 1280)"})
             await hass.async_block_till_done()
             assert entry.entry_id not in hass.data[DOMAIN]
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1080, 1920)
+        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (800, 1280)
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         snapshot = hass.data[DOMAIN][entry.entry_id].data
         assert snapshot.using_cache
-        assert Image.open(BytesIO(snapshot.image)).size == (1080, 1920)
+        assert Image.open(BytesIO(snapshot.image)).size == (800, 1280)
         assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize("old_size", [None, [1920, 1080]])
+async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg, old_size):
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
+        "url": "http://immich.test", "api_key": "key", "source": "all",
+    })
+    entry.add_to_hass(hass)
+
+    async def request(_api, method, path, **kwargs):
+        return [asset] if path == "/api/search/random" else jpeg
+
+    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        state_path = coordinator.cache_path.with_suffix(".json")
+        state = json.loads(state_path.read_text())
+        assert state["output_size"] == [1280, 800]
+        assert await hass.config_entries.async_unload(entry.entry_id)
+
+    # Simulate a cache written by an older integration with the same shape name.
+    if old_size is None:
+        state.pop("output_size")
+    else:
+        state["output_size"] = old_size
+    state_path.write_text(json.dumps(state))
+    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        assert entry.entry_id not in hass.data[DOMAIN]

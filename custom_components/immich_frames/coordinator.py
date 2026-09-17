@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError
-from .const import CONF_INTERVAL, CONF_ORIGINAL_ASPECT_RATIO, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN
+from .const import CONF_INTERVAL, CONF_ORIGINAL_ASPECT_RATIO, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +53,9 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
                 return
             if state.get(CONF_ORIGINAL_ASPECT_RATIO, False) != self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False):
                 return
+            size = SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
+            if state.get("output_size") != list(size):
+                return
             photos = tuple(state["photos"])
             if not photos or any(not isinstance(photo, dict) or not photo.get("id") for photo in photos):
                 return
@@ -88,6 +91,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         state = {
             "generation": snapshot.generation, "layout": snapshot.layout,
+            "output_size": SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE]),
             CONF_SCREEN_SHAPE: self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
             CONF_ORIGINAL_ASPECT_RATIO: self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
             "created_at": snapshot.created_at.isoformat(), "matching_assets": snapshot.matching_assets,

@@ -255,8 +255,9 @@ class ImmichApi:
             images.append(image)
         if len(images) == 1:
             if original_aspect_ratio:
-                # Send the oriented preview itself, without a fixed-size background.
+                # Keep the photo proportions without padding, within the output limits.
                 canvas = images[0]
+                canvas.thumbnail(canvas_size, Image.Resampling.LANCZOS)
             else:
                 canvas = Image.new("RGB", canvas_size, "black")
                 images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)

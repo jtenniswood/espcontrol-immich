@@ -17,7 +17,7 @@ from .const import (
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Album", "memories": "On This Day memories", "smart": "Smart Search"}
-SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:9)", "portrait": "Portrait (9:16)", "square": "Square (1:1)"}
+SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:10, 1280 × 800)", "portrait": "Portrait (10:16, 800 × 1280)", "square": "Square (1:1, 720 × 720)"}
 MODE_LABELS = {"single": "Single image", "pairs": "Matching portrait pairs"}
 ORIENTATION_LABELS = {"any": "Any orientation", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
 SOURCE_FIELDS = {

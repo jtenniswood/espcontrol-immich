@@ -1,4 +1,4 @@
-"""Unpadded single images keep the oriented Immich preview dimensions."""
+"""Unpadded single images keep their proportions within the output limits."""
 from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
@@ -43,7 +43,7 @@ def test_original_ratio_respects_exif_rotation():
 @pytest.mark.parametrize("mode,companion,size,layout", [
     ("single", False, (200, 400), "single"),
     ("pairs", False, (200, 400), "single"),
-    ("pairs", True, (1080, 1080), "side_by_side"),
+    ("pairs", True, (720, 720), "side_by_side"),
 ])
 async def test_snapshot_passes_option_to_renderer_without_changing_pairs(asset, mode, companion, size, layout):
     api = ImmichApi("http://immich.test", "key")
@@ -103,7 +103,7 @@ async def test_toggle_rejects_padded_cache_then_restores_unpadded_cache(hass, as
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1920, 1080)
+        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1280, 800)
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
@@ -122,3 +122,18 @@ async def test_toggle_rejects_padded_cache_then_restores_unpadded_cache(hass, as
         assert snapshot.using_cache
         assert Image.open(BytesIO(snapshot.image)).size == (200, 400)
         assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.parametrize("shape,expected", [
+    ("landscape", (1280, 640)),
+    ("portrait", (800, 400)),
+    ("square", (720, 360)),
+])
+@pytest.mark.parametrize("rotated", [False, True])
+def test_large_original_ratio_photo_fits_output_limit_without_padding(shape, expected, rotated):
+    size = (2000, 4000) if rotated else (4000, 2000)
+    output, layout = ImmichApi._render([], [preview(size, orientation=6 if rotated else None)], shape, True)
+    with Image.open(BytesIO(output)) as image:
+        assert image.size == expected
+        assert image.getextrema()[0][0] > 240
+    assert layout == "single"
