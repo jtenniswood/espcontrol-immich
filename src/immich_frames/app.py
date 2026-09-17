@@ -44,6 +44,7 @@ class FrameApp:
         self.history: dict[str, list[Any]] = {}
         self.cache_dir = data_dir / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_limit_bytes = max(16, int(config.get("cache_limit_mb", 256))) * 1024 * 1024
 
     def _handle_command(self, frame_id: str, command: str) -> None:
         if self.loop is None:
@@ -68,6 +69,8 @@ class FrameApp:
         elif command == "clear_cache":
             for item in self.cache_dir.glob(f"{frame_id}.*"):
                 item.unlink(missing_ok=True)
+            if self.publisher:
+                self.publisher.publish_cache_size(frame, self.cache_size())
         elif command in {"primary", "secondary"}:
             self.metadata_role[frame_id] = command
             if self.publisher:
@@ -126,8 +129,9 @@ class FrameApp:
             state_temporary = state_path.with_suffix(".tmp")
             state_temporary.write_text(json.dumps(slide.state()))
             state_temporary.replace(state_path)
+            cache_size = self.enforce_cache_limit()
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates), role=self.metadata_role.get(frame.frame_id, "primary"))
+                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates), role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=cache_size)
         except Exception as exc:
             LOG.exception("Unable to refresh frame %s", frame.name)
             if self.publisher:
@@ -278,9 +282,23 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
             self.slides[frame.frame_id] = slide
             self.history[frame.frame_id] = [slide]
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached", role=self.metadata_role.get(frame.frame_id, "primary"))
+                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached", role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=self.cache_size())
         except (OSError, KeyError, ValueError, TypeError):
             LOG.warning("Ignoring incomplete cache for frame %s", frame.name)
+
+    def cache_size(self) -> int:
+        return sum(path.stat().st_size for path in self.cache_dir.iterdir() if path.is_file())
+
+    def enforce_cache_limit(self) -> int:
+        files = sorted((path for path in self.cache_dir.iterdir() if path.is_file()), key=lambda path: path.stat().st_mtime)
+        total = self.cache_size()
+        for path in files:
+            if total <= self.cache_limit_bytes:
+                break
+            size = path.stat().st_size
+            path.unlink(missing_ok=True)
+            total -= size
+        return total
 
 
 def main() -> None:

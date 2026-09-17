@@ -26,6 +26,7 @@ options:
   mqtt_port: 1883
   mqtt_username: ""
   mqtt_password: ""
+  cache_limit_mb: 256
 schema:
   immich_url: url
   immich_api_key: password
@@ -33,4 +34,4 @@ schema:
   mqtt_port: port
   mqtt_username: str?
   mqtt_password: password?
-
+  cache_limit_mb: int
