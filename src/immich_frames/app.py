@@ -89,21 +89,23 @@ class FrameApp:
         try:
             if frame.frame_id in self.paused and not force:
                 return
-            candidates = await select_candidates(self.client, frame, size=100)
+            candidates = await select_candidates(self.client, frame, size=1000)
             if not candidates and frame.source == "memories" and frame.fallback_to_all:
                 fallback = FrameConfig(
                     frame_id=frame.frame_id, name=frame.name, mode=frame.mode, pair_window_days=frame.pair_window_days,
                     pairs_only=frame.pairs_only, slideshow_interval=frame.slideshow_interval, filter=frame.filter,
                     output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit,
                 )
-                candidates = await select_candidates(self.client, fallback, size=100)
+                candidates = await select_candidates(self.client, fallback, size=1000)
             if not candidates:
                 LOG.warning("Frame %s has no matching photos", frame.name)
                 return
-            primary = candidates[0]
+            recent_ids = {photo.id for old_slide in self.history.get(frame.frame_id, [])[-10:] for photo in old_slide.photos}
+            primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
             photos: tuple[Photo, ...] = (primary,)
             if frame.mode == "pairs":
-                companion = choose_companion(primary, candidates[1:], frame.pair_window_days)
+                pair_orientation = "portrait" if frame.output_width >= frame.output_height else "landscape"
+                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days, pair_orientation)
                 if companion:
                     photos = (primary, companion)
                 elif frame.pairs_only:

@@ -25,3 +25,8 @@ def test_non_portrait_has_no_companion() -> None:
     primary = Photo("primary", 1500, 1000, datetime(2026, 9, 17, tzinfo=timezone.utc), datetime(2026, 9, 17, tzinfo=timezone.utc), "x.jpg")
     assert choose_companion(primary, [photo("other", 17)], 0) is None
 
+
+def test_landscape_pairing_can_be_used_for_portrait_output() -> None:
+    primary = Photo("primary", 1500, 1000, datetime(2026, 9, 17, tzinfo=timezone.utc), datetime(2026, 9, 17, tzinfo=timezone.utc), "x.jpg")
+    companion = Photo("other", 1600, 1000, datetime(2026, 9, 17, 1, tzinfo=timezone.utc), datetime(2026, 9, 17, 1, tzinfo=timezone.utc), "y.jpg")
+    assert choose_companion(primary, [companion], 0, "landscape").id == "other"
