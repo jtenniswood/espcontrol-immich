@@ -11,9 +11,16 @@ from .coordinator import FrameCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Remove retired sensors even when Immich is offline during this upgrade.
     registry = er.async_get(hass)
-    retired_ids = {f"{entry.entry_id}_photo_{axis}" for axis in ("latitude", "longitude")}
+    retired_ids = {
+        (domain, f"{entry.entry_id}_{key}")
+        for domain, keys in {
+            "sensor": ("photo_latitude", "photo_longitude", "slide", "status"),
+            "binary_sensor": ("using_cache",),
+        }.items()
+        for key in keys
+    }
     for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if entity.domain == "sensor" and entity.platform == DOMAIN and entity.unique_id in retired_ids:
+        if entity.platform == DOMAIN and (entity.domain, entity.unique_id) in retired_ids:
             registry.async_remove(entity.entity_id)
     coordinator = FrameCoordinator(hass, entry)
     try:

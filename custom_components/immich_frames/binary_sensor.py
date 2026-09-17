@@ -7,7 +7,7 @@ from .entity import ImmichFrameEntity
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data["immich_frames"][entry.entry_id]
-    async_add_entities([ConnectionSensor(coordinator), CacheSensor(coordinator)])
+    async_add_entities([ConnectionSensor(coordinator)])
 
 
 class ConnectionSensor(ImmichFrameEntity, BinarySensorEntity):
@@ -20,14 +20,3 @@ class ConnectionSensor(ImmichFrameEntity, BinarySensorEntity):
     @property
     def is_on(self):
         return bool(self.coordinator.data and self.coordinator.data.connected)
-
-
-class CacheSensor(ImmichFrameEntity, BinarySensorEntity):
-    _attr_name = "Using cached image"
-
-    def __init__(self, coordinator) -> None:
-        ImmichFrameEntity.__init__(self, coordinator, "using_cache")
-
-    @property
-    def is_on(self):
-        return bool(self.coordinator.data and self.coordinator.data.using_cache)
