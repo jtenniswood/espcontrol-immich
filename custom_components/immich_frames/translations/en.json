@@ -127,5 +127,99 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit frame settings",
+        "description": "Choose what to change. Your current settings are filled in. Changes take effect only after you select Save frame on the display screen and press Submit.",
+        "menu_options": {
+          "source": "Change photo source",
+          "album": "Change album selection",
+          "smart": "Change Smart Search text",
+          "memories": "Change memory settings",
+          "display": "Change photo display settings"
+        }
+      },
+      "source": {
+        "title": "Choose a photo source",
+        "description": "Choose how this frame should select photos. Your other settings are kept when you change the source.",
+        "data": {
+          "source": "Photo source"
+        }
+      },
+      "album": {
+        "title": "Choose an Immich album",
+        "description": "Choose an album from your Immich server. Only photos in this album will be shown.",
+        "data": {
+          "album_id": "Album",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "album_id": "Search by album name. Albums with the same name also show their ID so you can tell them apart.",
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+        }
+      },
+      "memories": {
+        "title": "Configure On This Day memories",
+        "description": "Set the date range used to find memories around today.",
+        "data": {
+          "memory_window_days": "Memory window (days)",
+          "fallback_to_all": "Fall back to All photos when memories are empty",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "memory_window_days": "How many days before and after today to check when using On This Day memories.",
+          "fallback_to_all": "Use the All photos source if Immich has no matching memories.",
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+        }
+      },
+      "smart": {
+        "title": "Configure Smart Search",
+        "description": "Describe what Immich Smart Search should find.",
+        "data": {
+          "smart_query": "Smart Search text",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "smart_query": "Enter a description such as “beach at sunset”.",
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+        }
+      },
+      "display": {
+        "title": "Configure the display",
+        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings.",
+        "data": {
+          "frame_name": "Frame name",
+          "mode": "Display mode",
+          "orientation": "Photo orientation filter",
+          "pair_window_days": "Pair window (days)",
+          "pairs_only": "Require complete pairs",
+          "interval": "Slideshow interval (seconds)",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
+          "orientation": "Only photos with the selected orientation are eligible. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
+          "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
+          "pairs_only": "Skip a slide unless a matching portrait companion is available.",
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+        }
+      }
+    },
+    "error": {
+      "connection_unavailable": "That saved connection is no longer available. Choose another connection or enter the server details again.",
+      "invalid_auth": "Check the API key and its asset.read permission in Immich.",
+      "cannot_connect": "Could not connect to Immich.",
+      "invalid_url": "Check the Immich URL.",
+      "smart_query_required": "Enter a Smart Search description.",
+      "album_access_denied": "Could not access albums. Check that your Immich API key is valid and has album.read permission, then choose Album to retry.",
+      "albums_unavailable": "Could not load albums from Immich. Choose Album to retry, or select another photo source.",
+      "no_albums": "No albums are available to this Immich account. Create or share an album in Immich, then choose Album to retry, or select All photos.",
+      "album_unavailable": "That album is no longer available. Choose another album from the updated list.",
+      "album_required": "Choose an album to continue, or select Back to photo source.",
+      "name_required": "Enter a name for this frame.",
+      "name_in_use": "Another frame on this server already uses this name. Choose a different name."
+    }
   }
 }
