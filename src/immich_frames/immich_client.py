@@ -44,9 +44,11 @@ class ImmichClient:
         value = await self._request("GET", "/api/server/version")
         return value if isinstance(value, str) else value.get("version", "unknown")
 
-    async def search(self, filter: dict[str, Any], size: int = 100, random: bool = False) -> list[Photo]:
+    async def search(self, filter: dict[str, Any], size: int = 100, random: bool = False, order_field: str = "fileCreatedAt", order_direction: str = "desc") -> list[Photo]:
         endpoint = "/api/search/random" if random else "/api/search/metadata"
         body: dict[str, Any] = {"filter": filter, "size": min(size, 1000), "withExif": True, "withPeople": True, "withStacked": False}
+        if not random:
+            body["orderBy"] = {"field": order_field, "direction": order_direction}
         photos: list[Photo] = []
         cursor: str | None = None
         while len(photos) < size:

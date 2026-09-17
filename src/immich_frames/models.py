@@ -63,6 +63,15 @@ class Photo:
             return "square"
         return "landscape" if self.width > self.height else "portrait"
 
+    @classmethod
+    def from_cache(cls, value: dict[str, Any]) -> "Photo":
+        return cls(
+            id=value.get("asset_id", "unknown"), width=(value.get("dimensions") or {}).get("width"), height=(value.get("dimensions") or {}).get("height"),
+            file_created_at=parse_datetime(value.get("taken_at")), local_date_time=parse_datetime(value.get("taken_at")),
+            original_file_name=value.get("filename", "unknown"), exif={"city": value.get("city"), "state": value.get("state"), "country": value.get("country"), "description": value.get("description"), "rating": value.get("rating"), **(value.get("camera") or {})},
+            people=tuple(value.get("people") or ()), tags=tuple(value.get("tags") or ()), is_favorite=bool(value.get("favorite")),
+        )
+
 
 @dataclass(slots=True, frozen=True)
 class FrameConfig:

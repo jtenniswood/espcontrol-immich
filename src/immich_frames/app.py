@@ -11,7 +11,7 @@ from typing import Any
 from aiohttp import web
 
 from .immich_client import ImmichClient
-from .models import FrameConfig, Photo
+from .models import FrameConfig, Photo, Slide
 from .mqtt import MqttPublisher
 from .pairing import choose_companion
 from .rendering import render_slide
@@ -39,16 +39,48 @@ class FrameApp:
             self.publisher.set_command_handler(self._handle_command)
         self.tasks: dict[str, asyncio.Task[None]] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
+        self.paused: set[str] = set()
+        self.history: dict[str, list[Any]] = {}
+        self.cache_dir = data_dir / "cache"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _handle_command(self, frame_id: str, command: str) -> None:
-        if command not in {"next", "refresh"} or self.loop is None:
+        if self.loop is None:
             return
         frame = next((item for item in self.storage.list_frames() if item.frame_id == frame_id), None)
-        if frame:
-            asyncio.run_coroutine_threadsafe(self.refresh_frame(frame), self.loop)
+        if not frame:
+            return
+        if command == "pause":
+            self.paused.add(frame_id)
+            if self.publisher:
+                self.publisher.publish_controls(frame, True)
+        elif command == "resume":
+            self.paused.discard(frame_id)
+            if self.publisher:
+                self.publisher.publish_controls(frame, False)
+        elif command in {"next", "refresh"}:
+            asyncio.run_coroutine_threadsafe(self.refresh_frame(frame, force=True), self.loop)
+        elif command == "previous" and self.history.get(frame_id):
+            slide = self.history[frame_id][-2] if len(self.history[frame_id]) > 1 else self.history[frame_id][-1]
+            if self.publisher:
+                self.publisher.publish_frame(frame, slide, paused=frame_id in self.paused)
+        elif command == "clear_cache":
+            for item in self.cache_dir.glob(f"{frame_id}.*"):
+                item.unlink(missing_ok=True)
+        elif command.startswith("interval:"):
+            try:
+                interval = max(10, min(86400, int(command.split(":", 1)[1])))
+            except ValueError:
+                return
+            updated = self._frame_from_body({"name": frame.name, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit}, frame.frame_id)
+            self.storage.save_frame(updated)
+            if self.publisher:
+                self.publisher.publish_controls(updated, frame_id in self.paused)
 
-    async def refresh_frame(self, frame: FrameConfig) -> None:
+    async def refresh_frame(self, frame: FrameConfig, force: bool = False) -> None:
         try:
+            if frame.frame_id in self.paused and not force:
+                return
             candidates = await select_candidates(self.client, frame, size=100)
             if not candidates and frame.source == "memories" and frame.fallback_to_all:
                 fallback = FrameConfig(
@@ -74,10 +106,22 @@ class FrameApp:
             slide = render_slide(frame.frame_id, generation, photos, payloads, frame.output_width, frame.output_height, frame.fit)
             self.generation[frame.frame_id] = generation
             self.slides[frame.frame_id] = slide
+            self.history.setdefault(frame.frame_id, []).append(slide)
+            self.history[frame.frame_id] = self.history[frame.frame_id][-20:]
+            cache_path = self.cache_dir / f"{frame.frame_id}.jpg"
+            temporary = cache_path.with_suffix(".tmp")
+            temporary.write_bytes(slide.jpeg)
+            temporary.replace(cache_path)
+            state_path = self.cache_dir / f"{frame.frame_id}.json"
+            state_temporary = state_path.with_suffix(".tmp")
+            state_temporary.write_text(json.dumps(slide.state()))
+            state_temporary.replace(state_path)
             if self.publisher:
-                self.publisher.publish_frame(frame, slide)
-        except Exception:
+                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates))
+        except Exception as exc:
             LOG.exception("Unable to refresh frame %s", frame.name)
+            if self.publisher:
+                self.publisher.publish_error(frame, "error")
 
     async def frame_loop(self, frame: FrameConfig) -> None:
         while True:
@@ -191,7 +235,27 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
     async def start_existing(self) -> None:
         self.loop = asyncio.get_running_loop()
         for frame in self.storage.list_frames():
+            self.restore_cached(frame)
             self.start_frame(frame)
+
+    def restore_cached(self, frame: FrameConfig) -> None:
+        image_path = self.cache_dir / f"{frame.frame_id}.jpg"
+        state_path = self.cache_dir / f"{frame.frame_id}.json"
+        if not image_path.exists() or not state_path.exists():
+            return
+        try:
+            state = json.loads(state_path.read_text())
+            photos = [Photo.from_cache(state["primary"])]
+            if state.get("secondary", {}).get("available"):
+                photos.append(Photo.from_cache(state["secondary"]))
+            slide = Slide(frame.frame_id, int(state.get("generation", 0)), tuple(photos), image_path.read_bytes(), state.get("layout", "single"))
+            self.generation[frame.frame_id] = slide.generation
+            self.slides[frame.frame_id] = slide
+            self.history[frame.frame_id] = [slide]
+            if self.publisher:
+                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached")
+        except (OSError, KeyError, ValueError, TypeError):
+            LOG.warning("Ignoring incomplete cache for frame %s", frame.name)
 
 
 def main() -> None:

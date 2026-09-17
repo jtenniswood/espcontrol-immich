@@ -13,3 +13,10 @@ def test_missing_secondary_is_explicit() -> None:
     slide = Slide("frame", 1, (photo,), b"jpeg", "single")
     assert slide.metadata("secondary")["available"] is False
 
+
+def test_slide_state_contains_both_roles() -> None:
+    primary = Photo("a", 100, 100, None, None, "a.jpg")
+    secondary = Photo("b", 100, 100, None, None, "b.jpg")
+    state = Slide("frame", 2, (primary, secondary), b"jpeg", "side_by_side").state()
+    assert state["asset_ids"] == ["a", "b"]
+    assert state["secondary"]["available"] is True

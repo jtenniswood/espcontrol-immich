@@ -49,4 +49,5 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
                 unique_assets.append(asset)
         assets = unique_assets
         return [Photo.from_api(asset) for asset in assets if asset.get("type", "IMAGE") == "IMAGE"][:size]
-    return await client.search(query, size=size, random=frame.order_field == "fileCreatedAt" and frame.order_direction == "random")
+    random_order = frame.order_direction == "random"
+    return await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")
