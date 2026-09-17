@@ -18,27 +18,82 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
+        if user_input is None and self._saved_connections():
+            return await self.async_step_connection()
+        return await self._async_connection_form("user", user_input)
+
+    def _saved_connections(self) -> dict[str, config_entries.ConfigEntry]:
+        """Offer each server/key combination once, using entry IDs as form values."""
+        connections = {}
+        seen = set()
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            url = entry.data.get(CONF_URL)
+            api_key = entry.data.get(CONF_API_KEY)
+            if not isinstance(url, str) or not isinstance(api_key, str) or not url.strip() or not api_key.strip():
+                continue
+            identity = (url.strip().rstrip("/"), api_key)
+            if identity not in seen:
+                connections[entry.entry_id] = entry
+                seen.add(identity)
+        return connections
+
+    async def async_step_connection(self, user_input: dict[str, Any] | None = None):
+        connections = self._saved_connections()
         errors: dict[str, str] = {}
-        if user_input:
-            try:
-                url = str(user_input[CONF_URL]).strip()
-                if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
-                    raise ValueError("invalid_url")
-                api = ImmichApi(url, str(user_input[CONF_API_KEY]))
-                try:
-                    await api.validate_connection()
-                finally:
-                    await api.close()
-            except ValueError:
-                errors["base"] = "invalid_url"
-            except ImmichApiError as exc:
-                errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-            except OSError:
-                errors["base"] = "cannot_connect"
+        if user_input is not None:
+            selected = user_input["connection_id"]
+            if selected == "new":
+                return await self.async_step_new_connection()
+            entry = connections.get(selected)
+            if entry is None:
+                errors["base"] = "connection_unavailable"
             else:
-                self._data = {CONF_URL: url, CONF_API_KEY: str(user_input[CONF_API_KEY])}
+                errors = await self._async_check_connection(entry.data)
+                if not errors:
+                    return await self.async_step_source()
+        # Credentials stay on the server; the form only contains entry IDs and labels.
+        options = {
+            entry_id: f"{entry.data[CONF_URL]} ({entry.title})"
+            for entry_id, entry in connections.items()
+        }
+        options["new"] = "Connect to another Immich server"
+        return self.async_show_form(step_id="connection", data_schema=vol.Schema({
+            vol.Required("connection_id", default=next(iter(options))): vol.In(options),
+        }), errors=errors)
+
+    async def async_step_new_connection(self, user_input: dict[str, Any] | None = None):
+        return await self._async_connection_form("new_connection", user_input)
+
+    async def _async_check_connection(self, data) -> dict[str, str]:
+        """Verify credentials and copy only connection details into the new frame."""
+        errors: dict[str, str] = {}
+        try:
+            url = str(data[CONF_URL]).strip()
+            if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
+                raise ValueError("invalid_url")
+            api_key = str(data[CONF_API_KEY])
+            api = ImmichApi(url, api_key)
+            try:
+                await api.validate_connection()
+            finally:
+                await api.close()
+        except ValueError:
+            errors["base"] = "invalid_url"
+        except ImmichApiError as exc:
+            errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
+        except OSError:
+            errors["base"] = "cannot_connect"
+        else:
+            self._data = {CONF_URL: url, CONF_API_KEY: api_key}
+        return errors
+
+    async def _async_connection_form(self, step_id, user_input):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = await self._async_check_connection(user_input)
+            if not errors:
                 return await self.async_step_source()
-        return self.async_show_form(step_id="user", data_schema=vol.Schema({
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({
             vol.Required(CONF_URL): str,
             vol.Required(CONF_API_KEY): str,
         }), errors=errors)
@@ -113,8 +168,17 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(f"{self._data[CONF_URL]}|{self._data[CONF_FRAME_NAME].strip()}")
             self._abort_if_unique_id_configured()
             return self.async_create_entry(title=self._data[CONF_FRAME_NAME].strip(), data=self._data)
+        names = {
+            entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
+            if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
+        }
+        name = "Immich Frame"
+        suffix = 2
+        while name in names:
+            name = f"Immich Frame {suffix}"
+            suffix += 1
         return self.async_show_form(step_id="display", data_schema=vol.Schema({
-            vol.Required(CONF_FRAME_NAME, default="Immich Frame"): str,
+            vol.Required(CONF_FRAME_NAME, default=name): str,
             vol.Required(CONF_MODE, default="Single image"): vol.In(["Single image", "Matching portrait pairs"]),
             vol.Required(CONF_ORIENTATION, default="Any orientation"): vol.In(["Any orientation", "Portrait photos only", "Landscape photos only", "Square photos only"]),
             vol.Required(CONF_PAIR_WINDOW, default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),

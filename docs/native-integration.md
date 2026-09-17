@@ -8,4 +8,6 @@ Setup is progressive. First enter the Immich URL and read-only API key; Home Ass
 
 The created device includes the rendered image, photo metadata sensors, connection and cache binary sensors, slideshow pause/resume, next/previous/refresh/clear-cache buttons, metadata-role selection, and the interval control.
 
+When adding another frame, setup offers existing Immich connections by server URL and frame name. Select one to reuse its URL and API key, or choose **Connect to another Immich server** to enter different details. Saved connections are verified again before continuing. Each frame has its own source and display settings, and keeps a copy of the connection details so deleting the original frame does not disconnect the others. Updating a key in one frame does not update other existing frames.
+
 For HACS, add this repository as a custom repository of type **Integration**, then install EspControl Immich Companion and restart Home Assistant. Manual copying is also supported for development branches.
