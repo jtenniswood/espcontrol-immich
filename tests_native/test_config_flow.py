@@ -33,9 +33,9 @@ async def test_connection_checks_authenticated_search(hass, status):
     else:
         assert result["step_id"] == "source"
         with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "album-id", "albumName": "Holidays"}]):
-            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Albums"})
             assert result["step_id"] == "album"
-            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"album_id": "album-id"})
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"album_ids": ["album-id"]})
         assert result["step_id"] == "display"
         with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {
@@ -45,4 +45,4 @@ async def test_connection_checks_authenticated_search(hass, status):
             await hass.async_block_till_done()
         assert result["type"] == "create_entry"
         assert result["data"]["source"] == "album"
-        assert result["data"]["album_id"] == "album-id"
+        assert result["data"]["album_ids"] == ["album-id"]

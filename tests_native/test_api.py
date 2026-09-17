@@ -96,3 +96,25 @@ async def test_unsupported_server_stops_before_search():
     with pytest.raises(ImmichApiError, match="3.2 or later"):
         await api.validate_connection()
     api._request.assert_awaited_once()
+
+
+async def test_multiple_albums_share_one_photo_pool(asset, jpeg):
+    api = ImmichApi("http://immich.test", "test-key")
+    companion = {**asset, "id": "photo-from-second-album"}
+    api._request = AsyncMock(side_effect=[[asset, companion], jpeg, jpeg])
+    snapshot = await api.snapshot({
+        "source": "album", "album_ids": ["a", "b", "a"], "album_id": "old",
+        "mode": "pairs", "pairs_only": True,
+    }, 1, set())
+    query = api._request.call_args_list[0].kwargs["json"]["filter"]
+    assert query["albumIds"] == {"any": ["a", "b"]}
+    assert [photo["id"] for photo in snapshot.photos] == [asset["id"], companion["id"]]
+
+
+@pytest.mark.parametrize("options", [{}, {"album_id": None}, {"album_ids": []}, {"album_ids": [], "album_id": "old"}])
+async def test_empty_album_selection_never_falls_back_to_all_photos(options):
+    api = ImmichApi("http://immich.test", "test-key")
+    api._request = AsyncMock()
+    with pytest.raises(ImmichApiError, match="Choose at least one album"):
+        await api.snapshot({"source": "album", **options}, 1, set())
+    api._request.assert_not_awaited()

@@ -15,3 +15,21 @@ def test_connection_secrets_are_not_listed(tmp_path: Path) -> None:
     storage.save_connection("home", "Home Immich", "https://photos.example", "secret")
     assert storage.list_connections() == [{"id": "home", "name": "Home Immich", "url": "https://photos.example"}]
     assert storage.get_connection("home") == ("home", "https://photos.example", "secret")
+
+
+def test_multiple_albums_survive_restart(tmp_path: Path) -> None:
+    frame = FrameConfig("frame", "Albums", source="album", album_ids=["a", "b"])
+    Storage(tmp_path).save_frame(frame)
+    assert Storage(tmp_path).list_frames()[0] == frame
+
+
+def test_legacy_album_survives_restart(tmp_path: Path) -> None:
+    import json
+    storage = Storage(tmp_path)
+    storage.db.execute("INSERT INTO frames VALUES (?, ?, ?)", ("frame", "Album", json.dumps({
+        "frame_id": "frame", "name": "Album", "source": "album", "album_id": "old",
+    })))
+    storage.db.commit()
+    frame = Storage(tmp_path).list_frames()[0]
+    assert frame.album_id == "old"
+    assert frame.album_ids is None
