@@ -73,6 +73,13 @@ class FrameConfig:
     pairs_only: bool = False
     slideshow_interval: int = 30
     filter: dict[str, Any] = field(default_factory=dict)
+    source: Literal["filter", "memories", "smart"] = "filter"
+    memory_window_days: int = 2
+    fallback_to_all: bool = False
+    smart_query: str | None = None
+    smart_reference_asset_id: str | None = None
+    order_field: Literal["fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"] = "fileCreatedAt"
+    order_direction: Literal["asc", "desc"] = "desc"
     output_width: int = 1920
     output_height: int = 1080
     fit: Literal["cover", "contain"] = "cover"
@@ -108,4 +115,15 @@ class Slide:
             "state": photo.exif.get("state"), "country": photo.exif.get("country"),
             "description": photo.exif.get("description"), "people": list(photo.people), "tags": list(photo.tags),
             "camera": {k: photo.exif.get(k) for k in ("make", "model", "lensModel", "fNumber", "focalLength", "iso") if photo.exif.get(k) is not None},
+            "dimensions": {"width": photo.width, "height": photo.height},
+            "latitude": photo.exif.get("latitude"), "longitude": photo.exif.get("longitude"),
+        }
+
+    def state(self) -> dict[str, Any]:
+        primary = self.metadata("primary")
+        secondary = self.metadata("secondary")
+        return {
+            "slide_id": primary["slide_id"], "generation": self.generation, "layout": self.layout,
+            "asset_ids": [photo.id for photo in self.photos], "primary": primary, "secondary": secondary,
+            "created_at": self.created_at.isoformat(),
         }

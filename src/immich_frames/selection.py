@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
+from datetime import date, timedelta
+
+from .models import FrameConfig, Photo
 
 
 ALLOWED_VISIBILITY = ["timeline", "archive", "hidden"]
@@ -23,3 +26,27 @@ def safe_filter(user_filter: dict[str, Any]) -> dict[str, Any]:
             result["visibility"] = {"eq": "timeline"}
     return result
 
+
+async def select_candidates(client: Any, frame: FrameConfig, today: str | None = None, size: int = 100) -> list[Photo]:
+    """Resolve the configured source into authorized photo candidates."""
+    query = safe_filter(frame.filter)
+    if frame.source == "smart":
+        if not frame.smart_query and not frame.smart_reference_asset_id:
+            return []
+        return await client.smart_search(frame.smart_query or "", query, size=size, reference_asset_id=frame.smart_reference_asset_id)
+    if frame.source == "memories":
+        anchor = date.fromisoformat(today) if today else date.today()
+        memories: list[dict[str, Any]] = []
+        for offset in range(-frame.memory_window_days, frame.memory_window_days + 1):
+            memories.extend(await client.memories(for_date=(anchor + timedelta(days=offset)).isoformat(), size=size))
+        assets = [asset for memory in memories for asset in memory.get("assets", [])]
+        seen: set[str] = set()
+        unique_assets: list[dict[str, Any]] = []
+        for asset in assets:
+            asset_id = asset.get("id")
+            if asset_id and asset_id not in seen:
+                seen.add(asset_id)
+                unique_assets.append(asset)
+        assets = unique_assets
+        return [Photo.from_api(asset) for asset in assets if asset.get("type", "IMAGE") == "IMAGE"][:size]
+    return await client.search(query, size=size, random=frame.order_field == "fileCreatedAt" and frame.order_direction == "random")

@@ -15,7 +15,8 @@ from .models import FrameConfig, Photo
 from .mqtt import MqttPublisher
 from .pairing import choose_companion
 from .rendering import render_slide
-from .selection import safe_filter
+from .filtering import FilterValidationError, compile_filter
+from .selection import select_candidates
 from .storage import Storage
 
 LOG = logging.getLogger("immich_frames")
@@ -48,8 +49,14 @@ class FrameApp:
 
     async def refresh_frame(self, frame: FrameConfig) -> None:
         try:
-            query = safe_filter(frame.filter)
-            candidates = await self.client.search(query, size=100, random=True)
+            candidates = await select_candidates(self.client, frame, size=100)
+            if not candidates and frame.source == "memories" and frame.fallback_to_all:
+                fallback = FrameConfig(
+                    frame_id=frame.frame_id, name=frame.name, mode=frame.mode, pair_window_days=frame.pair_window_days,
+                    pairs_only=frame.pairs_only, slideshow_interval=frame.slideshow_interval, filter=frame.filter,
+                    output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit,
+                )
+                candidates = await select_candidates(self.client, fallback, size=100)
             if not candidates:
                 LOG.warning("Frame %s has no matching photos", frame.name)
                 return
@@ -87,7 +94,7 @@ class FrameApp:
         body = await request.json()
         try:
             frame = self._frame_from_body(body)
-        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError, FilterValidationError) as exc:
             raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
         self.storage.save_frame(frame)
         self.start_frame(frame)
@@ -106,10 +113,19 @@ class FrameApp:
         fit = body.get("fit", "cover")
         if fit not in ("cover", "contain"):
             raise ValueError("fit must be cover or contain")
+        source = body.get("source", "filter")
+        if source not in ("filter", "memories", "smart"):
+            raise ValueError("source must be filter, memories, or smart")
+        order_direction = body.get("order_direction", "desc")
+        if order_direction not in ("asc", "desc", "random"):
+            raise ValueError("order_direction must be asc, desc, or random")
         return FrameConfig(
             frame_id=frame_id or str(uuid.uuid4()), name=str(body["name"]).strip(), mode=mode,
             pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
-            slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=raw_filter,
+            slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
+            source=source, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
+            fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
+            smart_reference_asset_id=body.get("smart_reference_asset_id"), order_field=body.get("order_field", "fileCreatedAt"), order_direction=order_direction,
             output_width=max(320, min(4096, int(body.get("output_width", 1920)))), output_height=max(240, min(4096, int(body.get("output_height", 1080)))), fit=fit,
         )
 
@@ -142,6 +158,9 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
                 "name": body.get("name", frame.name), "mode": body.get("mode", frame.mode),
                 "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
                 "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
+                "source": body.get("source", frame.source), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
+                "smart_query": body.get("smart_query", frame.smart_query), "smart_reference_asset_id": body.get("smart_reference_asset_id", frame.smart_reference_asset_id),
+                "order_field": body.get("order_field", frame.order_field), "order_direction": body.get("order_direction", frame.order_direction),
                 "output_width": body.get("output_width", frame.output_width), "output_height": body.get("output_height", frame.output_height), "fit": body.get("fit", frame.fit),
             }, frame.frame_id)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:

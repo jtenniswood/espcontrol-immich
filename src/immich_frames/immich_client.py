@@ -59,5 +59,37 @@ class ImmichClient:
                 break
         return photos[:size]
 
+    async def statistics(self, filter: dict[str, Any]) -> int:
+        result = await self._request("POST", "/api/search/statistics", json={"filter": filter})
+        return int(result.get("total", 0))
+
+    async def smart_search(self, query: str, filter: dict[str, Any], size: int = 100, reference_asset_id: str | None = None) -> list[Photo]:
+        body: dict[str, Any] = {"query": query, "filter": filter, "size": min(size, 1000), "withExif": True}
+        if reference_asset_id:
+            body["queryAssetId"] = reference_asset_id
+        result = await self._request("POST", "/api/search/smart", json=body)
+        return [Photo.from_api(item) for item in result.get("assets", {}).get("items", [])]
+
+    async def albums(self) -> list[dict[str, Any]]:
+        result = await self._request("GET", "/api/albums")
+        return result if isinstance(result, list) else result.get("albums", [])
+
+    async def people(self, size: int = 500) -> list[dict[str, Any]]:
+        result = await self._request("GET", "/api/people", params={"size": min(size, 1000), "withHidden": False})
+        return result if isinstance(result, list) else result.get("people", [])
+
+    async def tags(self) -> list[dict[str, Any]]:
+        result = await self._request("GET", "/api/tags")
+        return result if isinstance(result, list) else result.get("tags", [])
+
+    async def memories(self, for_date: str | None = None, is_saved: bool | None = None, size: int = 100) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"size": min(size, 1000)}
+        if for_date:
+            params["for"] = for_date
+        if is_saved is not None:
+            params["isSaved"] = str(is_saved).lower()
+        result = await self._request("GET", "/api/memories", params=params)
+        return result if isinstance(result, list) else result.get("memories", [])
+
     async def thumbnail(self, asset_id: str, size: str = "preview") -> bytes:
         return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": size})
