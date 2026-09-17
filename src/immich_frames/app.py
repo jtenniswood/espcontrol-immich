@@ -75,18 +75,41 @@ class FrameApp:
 
     async def create_frame(self, request: web.Request) -> web.Response:
         body = await request.json()
-        frame = FrameConfig(frame_id=str(uuid.uuid4()), name=body["name"], mode=body.get("mode", "single"), pair_window_days=int(body.get("pair_window_days", 0)), pairs_only=bool(body.get("pairs_only", False)), slideshow_interval=int(body.get("slideshow_interval", 30)), filter=body.get("filter", {}), output_width=int(body.get("output_width", 1920)), output_height=int(body.get("output_height", 1080)), fit=body.get("fit", "cover"))
+        try:
+            frame = self._frame_from_body(body)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
         self.storage.save_frame(frame)
         self.start_frame(frame)
         return web.json_response({"frame_id": frame.frame_id}, status=201)
 
+    @staticmethod
+    def _frame_from_body(body: dict[str, Any], frame_id: str | None = None) -> FrameConfig:
+        raw_filter = body.get("filter", {})
+        if isinstance(raw_filter, str):
+            raw_filter = json.loads(raw_filter)
+        if not isinstance(raw_filter, dict):
+            raise ValueError("filter must be an object")
+        mode = body.get("mode", "single")
+        if mode not in ("single", "pairs"):
+            raise ValueError("mode must be single or pairs")
+        fit = body.get("fit", "cover")
+        if fit not in ("cover", "contain"):
+            raise ValueError("fit must be cover or contain")
+        return FrameConfig(
+            frame_id=frame_id or str(uuid.uuid4()), name=str(body["name"]).strip(), mode=mode,
+            pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
+            slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=raw_filter,
+            output_width=max(320, min(4096, int(body.get("output_width", 1920)))), output_height=max(240, min(4096, int(body.get("output_height", 1080)))), fit=fit,
+        )
+
     async def home(self, _: web.Request) -> web.Response:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
-<form id=f><label>Name <input name=name required></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching pairs</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Pairs only</label><label>Immich filter JSON <textarea name=filter>{}</textarea></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
 const out=document.querySelector('#frames'); async function load(){out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2)}
-document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});e.target.reset();load()};load();
+document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));data.filter=JSON.parse(data.filter||'{}');data.pairs_only=e.target.pairs_only.checked;const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});if(!response.ok) alert(await response.text());e.target.reset();load()};load();
 </script>""", content_type="text/html")
 
     async def list_frames(self, _: web.Request) -> web.Response:
@@ -98,6 +121,24 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
             raise web.HTTPNotFound()
         await self.refresh_frame(frame)
         return web.json_response({"frame_id": frame.frame_id, "generation": self.generation.get(frame.frame_id, 0)})
+
+    async def update_frame(self, request: web.Request) -> web.Response:
+        frame = next((item for item in self.storage.list_frames() if item.frame_id == request.match_info["frame_id"]), None)
+        if frame is None:
+            raise web.HTTPNotFound()
+        body = await request.json()
+        try:
+            updated = self._frame_from_body({
+                "name": body.get("name", frame.name), "mode": body.get("mode", frame.mode),
+                "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
+                "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
+                "output_width": body.get("output_width", frame.output_width), "output_height": body.get("output_height", frame.output_height), "fit": body.get("fit", frame.fit),
+            }, frame.frame_id)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
+        self.storage.save_frame(updated)
+        self.start_frame(updated)
+        return web.json_response({"frame_id": updated.frame_id})
 
     async def delete_frame(self, request: web.Request) -> web.Response:
         frame_id = request.match_info["frame_id"]
@@ -115,7 +156,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
 
     def application(self) -> web.Application:
         app = web.Application()
-        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
         return app
 
     async def start_existing(self) -> None:
