@@ -12,7 +12,7 @@ import aiohttp
 from PIL import Image, ImageOps
 
 from .const import (
-    CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
+    CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
@@ -22,6 +22,14 @@ class ImmichApiError(RuntimeError):
     def __init__(self, message: str, status: int | None = None) -> None:
         super().__init__(message)
         self.status = status
+
+
+def selected_album_ids(options: dict[str, Any]) -> list[str]:
+    """Read multiple selections, falling back to existing single-album frames."""
+    values = options.get(CONF_ALBUM_IDS, [options.get(CONF_ALBUM_ID)])
+    if not isinstance(values, list):
+        return []
+    return list(dict.fromkeys(value.strip() for value in values if isinstance(value, str) and value.strip()))
 
 
 def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
@@ -191,10 +199,10 @@ class ImmichApi:
         filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
         if source == "album":
-            album_id = str(options.get(CONF_ALBUM_ID, "")).strip()
-            if not album_id:
-                raise ImmichApiError("Album ID is required")
-            candidates = await self.search({**filter_value, "albumIds": {"any": [album_id]}}, random=True)
+            album_ids = selected_album_ids(options)
+            if not album_ids:
+                raise ImmichApiError("Choose at least one album")
+            candidates = await self.search({**filter_value, "albumIds": {"any": album_ids}}, random=True)
         elif source == "smart":
             candidates = await self.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value)
         elif source == "memories":

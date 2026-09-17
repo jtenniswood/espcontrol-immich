@@ -95,6 +95,7 @@ class FrameConfig:
     output_height: int = 1080
     fit: Literal["cover", "contain"] = "cover"
     orientation: Literal["any", "portrait", "landscape", "square"] = "any"
+    album_ids: list[str] | None = None
 
 
 @dataclass(slots=True, frozen=True)

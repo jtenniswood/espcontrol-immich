@@ -43,9 +43,10 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
     """Resolve the configured source into authorized photo candidates."""
     query = safe_filter(frame.filter)
     if frame.source == "album":
-        if not frame.album_id:
+        album_ids = frame.album_ids if frame.album_ids is not None else ([frame.album_id] if frame.album_id else [])
+        if not album_ids:
             return []
-        query["albumIds"] = {"any": [frame.album_id]}
+        query["albumIds"] = {"any": list(dict.fromkeys(album_ids))}
         random_order = frame.order_direction == "random"
         photos = await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")
         return [photo for photo in photos if frame.orientation == "any" or photo.orientation == frame.orientation]
