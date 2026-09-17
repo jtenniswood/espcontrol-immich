@@ -5,7 +5,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Entity | Type | Purpose |
 |---|---|---|
 | Frame | Image | Final rendered single image or pair |
-| Photo date/location/filename/people/tags/rating/camera/latitude/longitude | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
+| Photo date/location/filename/people/tags/rating/camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
 | Status, slide, matching assets | Sensors | Runtime and selection diagnostics |
 | Immich connected, using cached image | Binary sensors | Upstream and cache state |
 | Slideshow | Switch | Pause or resume automatic advancement |

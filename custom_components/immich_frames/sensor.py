@@ -15,8 +15,6 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         ("photo_tags", "Photo tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
         ("photo_rating", "Photo rating", lambda p, d: p.get("rating")),
         ("photo_camera", "Photo camera", lambda p, d: p.get("exif", {}).get("model")),
-        ("photo_latitude", "Photo latitude", lambda p, d: p.get("exif", {}).get("latitude")),
-        ("photo_longitude", "Photo longitude", lambda p, d: p.get("exif", {}).get("longitude")),
         ("status", "Status", lambda p, d: d.status if d else None),
         ("slide", "Slide", lambda p, d: d.generation if d else None),
         ("matching_assets", "Matching assets", lambda p, d: d.matching_assets if d else None),
