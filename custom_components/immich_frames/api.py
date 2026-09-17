@@ -14,6 +14,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+    CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
 
 
@@ -228,7 +229,7 @@ class ImmichApi:
                 raise ImmichApiError("No matching pair is available")
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
-            output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data)
+            output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data, options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE))
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
         return FrameSnapshot(output, generation, tuple(photos), layout, datetime.now(timezone.utc), len(candidates))
@@ -242,8 +243,8 @@ class ImmichApi:
         return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 
     @staticmethod
-    def _render(photos: list[dict[str, Any]], payloads: list[bytes]) -> tuple[bytes, str]:
-        canvas_size = (1920, 1080)
+    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE) -> tuple[bytes, str]:
+        canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
         images: list[Image.Image] = []
         for payload in payloads:
             image = ImageOps.exif_transpose(Image.open(BytesIO(payload))).convert("RGB")
