@@ -16,6 +16,24 @@
           "source": "Photo source"
         }
       },
+      "connection": {
+        "title": "Choose an Immich connection",
+        "description": "Reuse a saved server and API key, or connect to another server. The connection will be checked before continuing.",
+        "data": {
+          "connection_id": "Immich connection"
+        },
+        "data_description": {
+          "connection_id": "Saved connections show the server URL and the name of a frame that uses it."
+        }
+      },
+      "new_connection": {
+        "title": "Connect to another Immich server",
+        "description": "Enter the server URL and API key. These details will be available when you add more frames.",
+        "data": {
+          "url": "Immich URL",
+          "api_key": "Read-only API key"
+        }
+      },
       "album": {
         "title": "Choose an Immich album",
         "description": "Enter the album ID to show photos from that album only.",
@@ -68,6 +86,7 @@
       }
     },
     "error": {
+      "connection_unavailable": "That saved connection is no longer available. Choose another connection or enter the server details again.",
       "invalid_auth": "Check the API key and its asset.read permission in Immich.",
       "cannot_connect": "Could not connect to Immich.",
       "invalid_url": "Check the Immich URL.",
