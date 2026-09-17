@@ -1,7 +1,21 @@
+import pytest
+
 from immich_frames.selection import safe_filter
 from immich_frames.filtering import FilterValidationError, compile_filter
 from immich_frames.models import FrameConfig, Photo
 from immich_frames.selection import select_candidates
+
+
+@pytest.mark.parametrize("field", ["id", "libraryId"])
+@pytest.mark.parametrize("condition", [{"in": ["a"]}, {"notIn": ["a"]}, {}])
+def test_id_filters_reject_unsupported_list_operators(field, condition):
+    with pytest.raises(FilterValidationError):
+        compile_filter({field: condition})
+
+
+@pytest.mark.parametrize("field", ["id", "libraryId"])
+def test_id_filters_accept_scalar_comparisons(field):
+    assert compile_filter({field: {"eq": "a", "ne": "b"}})[field] == {"eq": "a", "ne": "b"}
 
 
 def test_selection_defaults_to_timeline_images() -> None:
@@ -45,7 +59,7 @@ async def test_memory_candidates_are_deduplicated() -> None:
             return [{"assets": [{"id": "a", "width": 100, "height": 100, "originalFileName": "a.jpg"}]}]
 
         async def search(self, filter, size=100, order_field="fileCreatedAt", order_direction="desc"):
-            assert filter["id"] == {"in": ["a"]}
+            assert filter["or"] == [{"id": {"eq": "a"}}]
             return [Photo.from_api({"id": "a", "width": 100, "height": 100, "originalFileName": "a.jpg"})]
 
     frame = FrameConfig("f", "Memories", source="memories", memory_window_days=1)

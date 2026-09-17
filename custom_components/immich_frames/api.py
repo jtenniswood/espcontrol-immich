@@ -36,6 +36,19 @@ def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
     return items
 
 
+def _with_memory_ids(query: dict[str, Any], asset_ids: list[str]) -> dict[str, Any] | None:
+    """Intersect a filter with memory IDs using Immich's scalar ID operators."""
+    result = dict(query)
+    branches = []
+    # Distribute existing alternatives so memory IDs never replace user rules.
+    for branch in result.pop("or", [{}]):
+        condition = branch.get("id", {})
+        for asset_id in asset_ids:
+            if condition.get("eq", asset_id) == asset_id and condition.get("ne") != asset_id:
+                branches.append({**branch, "id": {"eq": asset_id}})
+    return {**result, "or": branches} if branches else None
+
+
 @dataclass(frozen=True, slots=True)
 class FrameSnapshot:
     image: bytes
@@ -189,7 +202,8 @@ class ImmichApi:
             for offset in range(-int(options.get(CONF_MEMORY_WINDOW, 2)), int(options.get(CONF_MEMORY_WINDOW, 2)) + 1):
                 assets.extend(await self.memories((anchor + timedelta(days=offset)).isoformat()))
             ids = list(dict.fromkeys(asset.get("id") for memory in assets for asset in memory.get("assets", []) if asset.get("id")))
-            candidates = await self.search({**filter_value, "id": {"in": ids[:1000]}}) if ids else []
+            memory_filter = _with_memory_ids(filter_value, ids[:1000])
+            candidates = await self.search(memory_filter) if memory_filter else []
             if not candidates and options.get(CONF_FALLBACK):
                 candidates = await self.search(filter_value, random=True)
         else:

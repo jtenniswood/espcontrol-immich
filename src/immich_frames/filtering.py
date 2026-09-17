@@ -39,6 +39,10 @@ def validate_filter(value: Any, path: str = "filter") -> dict[str, Any]:
         operators = COMMON_OPERATORS
         if field in ID_FIELDS:
             operators = {"any", "all", "none"}
+        elif field in {"id", "libraryId"}:
+            operators = {"eq", "ne"}
+            if not condition:
+                raise FilterValidationError(f"{path}.{field} requires eq or ne")
         elif field in BOOL_FIELDS:
             operators = {"eq"}
         elif field in DATE_FIELDS:

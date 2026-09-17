@@ -27,6 +27,18 @@ def safe_filter(user_filter: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _with_memory_ids(query: dict[str, Any], asset_ids: list[str]) -> dict[str, Any] | None:
+    """Intersect a filter with memory IDs using Immich's scalar ID operators."""
+    result = dict(query)
+    branches = []
+    for branch in result.pop("or", [{}]):
+        condition = branch.get("id", {})
+        for asset_id in asset_ids:
+            if condition.get("eq", asset_id) == asset_id and condition.get("ne") != asset_id:
+                branches.append({**branch, "id": {"eq": asset_id}})
+    return {**result, "or": branches} if branches else None
+
+
 async def select_candidates(client: Any, frame: FrameConfig, today: str | None = None, size: int = 100) -> list[Photo]:
     """Resolve the configured source into authorized photo candidates."""
     query = safe_filter(frame.filter)
@@ -61,7 +73,10 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
         # Memory records are intentionally lightweight and may not contain EXIF,
         # people, or tags. Re-query the IDs through metadata search so the frame's
         # ordinary filter and the same metadata contract apply to every source.
-        photos = await client.search({**query, "id": {"in": asset_ids[:1000]}}, size=size, order_field=frame.order_field, order_direction=frame.order_direction if frame.order_direction != "random" else "desc")
+        memory_filter = _with_memory_ids(query, asset_ids[:1000])
+        if memory_filter is None:
+            return []
+        photos = await client.search(memory_filter, size=size, order_field=frame.order_field, order_direction=frame.order_direction if frame.order_direction != "random" else "desc")
         return [photo for photo in photos if frame.orientation == "any" or photo.orientation == frame.orientation]
     random_order = frame.order_direction == "random"
     photos = await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")
