@@ -48,6 +48,12 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
                 seen.add(asset_id)
                 unique_assets.append(asset)
         assets = unique_assets
-        return [Photo.from_api(asset) for asset in assets if asset.get("type", "IMAGE") == "IMAGE"][:size]
+        asset_ids = [asset["id"] for asset in assets if asset.get("id") and asset.get("type", "IMAGE") == "IMAGE"]
+        if not asset_ids:
+            return []
+        # Memory records are intentionally lightweight and may not contain EXIF,
+        # people, or tags. Re-query the IDs through metadata search so the frame's
+        # ordinary filter and the same metadata contract apply to every source.
+        return await client.search({**query, "id": {"in": asset_ids[:1000]}}, size=size, order_field=frame.order_field, order_direction=frame.order_direction if frame.order_direction != "random" else "desc")
     random_order = frame.order_direction == "random"
     return await client.search(query, size=size, random=random_order, order_field=frame.order_field, order_direction=frame.order_direction if not random_order else "desc")

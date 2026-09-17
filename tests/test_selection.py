@@ -1,6 +1,6 @@
 from immich_frames.selection import safe_filter
 from immich_frames.filtering import FilterValidationError, compile_filter
-from immich_frames.models import FrameConfig
+from immich_frames.models import FrameConfig, Photo
 from immich_frames.selection import select_candidates
 
 
@@ -43,6 +43,10 @@ async def test_memory_candidates_are_deduplicated() -> None:
     class Client:
         async def memories(self, for_date=None, size=100):
             return [{"assets": [{"id": "a", "width": 100, "height": 100, "originalFileName": "a.jpg"}]}]
+
+        async def search(self, filter, size=100, order_field="fileCreatedAt", order_direction="desc"):
+            assert filter["id"] == {"in": ["a"]}
+            return [Photo.from_api({"id": "a", "width": 100, "height": 100, "originalFileName": "a.jpg"})]
 
     frame = FrameConfig("f", "Memories", source="memories", memory_window_days=1)
     result = await select_candidates(Client(), frame, today="2026-09-17")
