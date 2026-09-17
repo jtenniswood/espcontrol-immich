@@ -27,7 +27,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         self.metadata_role = "primary"
         self.generation = 0
         self.history: list[FrameSnapshot] = []
-        self.cache_path = Path(hass.config.path(".storage", f"immich_frames_{entry.entry_id}"))
+        self.cache_path = Path(hass.config.path(".storage", f"{DOMAIN}_{entry.entry_id}"))
         super().__init__(
             hass,
             logger=LOGGER,

@@ -2,7 +2,7 @@
 
 The native integration is the simplest way to use EspControl Immich Companion. It creates one Home Assistant device for each config entry and does not require MQTT, a broker, or a separate app container.
 
-Copy `custom_components/immich_frames` into the Home Assistant configuration directory as `custom_components/immich_frames`, restart Home Assistant, then choose **Settings → Devices & services → Add integration → EspControl Immich Companion**.
+Copy `custom_components/espcontrol_immich` into the Home Assistant configuration directory as `custom_components/espcontrol_immich`, restart Home Assistant, then choose **Settings → Devices & services → Add integration → EspControl Immich Companion**.
 
 Setup is progressive. First enter the Immich URL and read-only API key; Home Assistant verifies the server before continuing. Next choose **All photos**, **Album**, **On This Day memories**, or **Smart Search**. Album mode loads a searchable list of albums available to the connected account, including shared albums, and lets you select by name. The API key needs `album.read` permission in addition to the photo permissions. If the list is empty or cannot be loaded, setup explains the problem and lets you retry or choose another source. Existing frames retain their saved album IDs without any migration. Finally configure the frame name and display behavior. Add one integration entry for each frame. The integration polls Immich, renders the selected image or pair locally, and keeps the last complete image in Home Assistant's `.storage` directory for temporary upstream outages.
 
@@ -21,3 +21,15 @@ Choose **Device screen shape** on the display settings screen to match the targe
 To supply single photos without added black bars, open **Configure → Change photo display settings**, enable **Keep original aspect ratio for single photos**, and save. The output uses the Immich preview’s own dimensions after correcting its orientation, with no added padding, cropping or stretching. It still supplies a JPEG preview, not the original full-resolution file. The output dimensions may change from photo to photo. This overrides **Device screen shape** whenever the slide contains one photo, including when pair mode cannot find a companion. Two-photo pairs continue to use the selected screen shape. The option defaults to off, preserving existing behavior. Changing it invalidates previously cached output, so Immich needs to be reachable for the first new image. A dashboard card or display may still add its own padding when fitting the supplied image to a fixed screen.
 
 The **Photo date** sensor displays dates as **14 May, 2007** (day, full month name, year). It uses the date recorded with the photo, without changing it to Home Assistant’s timezone. The full timestamp remains in the internal photo metadata for pairing and caching. Missing or invalid dates appear as unknown.
+
+## Upgrading from immich_frames
+
+Version 0.3.0 changes the integration folder and Home Assistant domain from `immich_frames` to `espcontrol_immich`. Home Assistant treats these as different integrations. Renaming the folder alone will not transfer existing frames, and this version does not automatically migrate them.
+
+1. Before removing anything, record each frame’s name, source, album or search settings, display settings and entity IDs. Have your Immich server URL and API key available. A Home Assistant backup lets you restore the previous setup if needed.
+2. In **Settings → Devices & services → EspControl Immich Companion**, delete the old frame entries. This removes their Home Assistant devices and entities; it does not delete any Immich photos or albums.
+3. Remove `/config/custom_components/immich_frames` and copy the new `espcontrol_immich` folder into `/config/custom_components/`, giving `/config/custom_components/espcontrol_immich/manifest.json`.
+4. Restart Home Assistant, then use **Add integration → EspControl Immich Companion** to recreate each frame with its saved settings. You can reuse the server connection after adding the first frame.
+5. Check dashboard cards and automations. Newly created devices have new device IDs; update device-based automations. Entity IDs may also change, so update references or rename the new entities to the recorded IDs where available.
+
+New installations need only the `espcontrol_immich` folder. The separate optional renderer app and its Python package still use the name `immich_frames`; they are not part of this folder rename. Old `.storage/immich_frames_*` image caches are not imported; the new integration fetches fresh images into its own cache.

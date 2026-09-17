@@ -1,11 +1,13 @@
 {
-  "domain": "immich_frames",
+  "domain": "espcontrol_immich",
   "name": "EspControl Immich Companion",
-  "codeowners": ["@jtenniswood"],
+  "codeowners": [
+    "@jtenniswood"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/jtenniswood/espcontrol-immich",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jtenniswood/espcontrol-immich/issues",
   "requirements": [],
-  "version": "0.2.13"
+  "version": "0.3.0"
 }

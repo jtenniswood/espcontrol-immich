@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
 
+from .const import DOMAIN
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    async_add_entities([SlideshowSwitch(hass.data["immich_frames"][entry.entry_id])])
+    async_add_entities([SlideshowSwitch(hass.data[DOMAIN][entry.entry_id])])
 
 
 class SlideshowSwitch(ImmichFrameEntity, SwitchEntity):

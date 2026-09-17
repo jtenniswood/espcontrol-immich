@@ -4,6 +4,7 @@ from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
 
+from .const import DOMAIN
 from .entity import ImmichFrameEntity
 
 
@@ -19,7 +20,7 @@ def _friendly_date(value: str | None) -> str | None:
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data["immich_frames"][entry.entry_id]
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([PhotoSensor(coordinator, key, name, value) for key, name, value in (
         ("photo_date", "Photo date", lambda p, d: _friendly_date(p.get("captured"))),
         ("photo_location", "Photo location", lambda p, d: ", ".join(x for x in (p.get("exif", {}).get("city"), p.get("exif", {}).get("state"), p.get("exif", {}).get("country")) if x) or None),

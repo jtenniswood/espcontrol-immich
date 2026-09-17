@@ -1,6 +1,8 @@
 # Installation
 
-The recommended installation is the native Home Assistant integration in `custom_components/immich_frames`. It works on Home Assistant OS, Supervised, Container, and Core; MQTT is not required. The repository also contains an optional supervised renderer app for deployments that specifically want an app container.
+The recommended installation is the native Home Assistant integration in `custom_components/espcontrol_immich`. It works on Home Assistant OS, Supervised, Container, and Core; MQTT is not required. The repository also contains an optional supervised renderer app for deployments that specifically want an app container.
+
+For upgrades from the old `immich_frames` folder, follow the [one-time rename upgrade steps](native-integration.md#upgrading-from-immich_frames). Existing frames must be recreated under the new domain.
 
 Enter the Immich server URL and a read-only API key with these permissions:
 

@@ -5,8 +5,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_translate_state
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.const import DOMAIN
-from custom_components.immich_frames.api import ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApiError
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -22,18 +22,20 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         "url": "http://immich.test", "api_key": "test-key", "source": "all",
     })
     entry.add_to_hass(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         coordinator = hass.data[DOMAIN][entry.entry_id]
         assert coordinator.data.primary["id"] == asset["id"]
         assert coordinator.cache_path.with_suffix(".jpg").is_file()
+        assert coordinator.cache_path.name == f"espcontrol_immich_{entry.entry_id}"
+        assert er.async_get(hass).async_get("image.immich_frame_frame").platform == "espcontrol_immich"
         assert hass.states.get("image.immich_frame_frame") is not None
         assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
         assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
-    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
@@ -46,8 +48,8 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
 async def test_failed_setup_closes_api(hass):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "test-key"})
     entry.add_to_hass(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", side_effect=ImmichApiError("Offline")), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         assert not await hass.config_entries.async_setup(entry.entry_id)
         close.assert_awaited_once()
@@ -71,7 +73,7 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         "select", DOMAIN, f"{entry.entry_id}_metadata_role", config_entry=entry,
         suggested_object_id="immich_frame_metadata_photo", original_name="Metadata photo",
     )
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         select_entry = registry.async_get("select.immich_frame_metadata_photo")
@@ -100,8 +102,8 @@ async def test_cache_write_failure_does_not_fail_setup(hass, asset, jpeg):
 
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "test-key"})
     entry.add_to_hass(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.coordinator.FrameCoordinator._write_cache", side_effect=OSError("Disk full")
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request), patch(
+        "custom_components.espcontrol_immich.coordinator.FrameCoordinator._write_cache", side_effect=OSError("Disk full")
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
