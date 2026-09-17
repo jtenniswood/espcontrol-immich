@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 import voluptuous as vol
 from homeassistant import config_entries
 
-from .api import ImmichApi, ImmichApiError, parse_filter
+from .api import ImmichApi, ImmichApiError
 from .const import (
-    CONF_API_KEY, CONF_FALLBACK, CONF_FILTER, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
+    CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
     CONF_MODE, CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DOMAIN,
 )
@@ -23,7 +23,6 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 user_input[CONF_SOURCE] = {
                     "All photos": "all",
-                    "Structured filter": "filter",
                     "On This Day memories": "memories",
                     "Smart Search": "smart",
                 }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
@@ -40,12 +39,11 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 url = str(user_input[CONF_URL]).strip()
                 if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
                     raise ValueError("invalid_url")
-                user_input[CONF_FILTER] = parse_filter(user_input.get(CONF_FILTER, "{}"))
                 api = ImmichApi(url, str(user_input[CONF_API_KEY]))
                 await api.version()
                 await api.close()
             except ValueError:
-                errors["base"] = "invalid_filter_or_url"
+                errors["base"] = "invalid_url"
             except (ImmichApiError, OSError):
                 errors["base"] = "cannot_connect"
             else:
@@ -56,7 +54,7 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_URL): str,
             vol.Required(CONF_API_KEY): str,
             vol.Required(CONF_FRAME_NAME, default="Immich Frame"): str,
-            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Structured filter", "On This Day memories", "Smart Search"]),
+            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "On This Day memories", "Smart Search"]),
             vol.Optional(CONF_SMART_QUERY, default=""): str,
             vol.Required(CONF_MODE, default="Single image"): vol.In(["Single image", "Matching portrait pairs"]),
             vol.Required(CONF_ORIENTATION, default="Any orientation"): vol.In(["Any orientation", "Portrait photos only", "Landscape photos only", "Square photos only"]),
@@ -65,5 +63,4 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_MEMORY_WINDOW, default=2): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_FALLBACK, default=False): bool,
             vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-            vol.Required(CONF_FILTER, default="{}"): str,
         }), errors=errors)

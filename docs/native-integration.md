@@ -4,7 +4,7 @@ The native integration is the simplest way to use EspControl Immich Companion. I
 
 Copy `custom_components/immich_frames` into the Home Assistant configuration directory as `custom_components/immich_frames`, restart Home Assistant, then choose **Settings → Devices & services → Add integration → EspControl Immich Companion**.
 
-The setup form asks for the Immich URL, a read-only API key, a frame name, the photo source, and display mode. The source picker includes **All photos**, **Structured filter**, **On This Day memories**, and **Smart Search**. Add one integration entry for each frame. The integration polls Immich, renders the selected image or pair locally, and keeps the last complete image in Home Assistant's `.storage` directory for temporary upstream outages.
+The setup form asks for the Immich URL, a read-only API key, a frame name, the photo source, and display mode. The source picker includes **All photos**, **On This Day memories**, and **Smart Search**. Add one integration entry for each frame. The integration polls Immich, renders the selected image or pair locally, and keeps the last complete image in Home Assistant's `.storage` directory for temporary upstream outages.
 
 The created device includes the rendered image, photo metadata sensors, connection and cache binary sensors, slideshow pause/resume, next/previous/refresh/clear-cache buttons, metadata-role selection, and the interval control.
 

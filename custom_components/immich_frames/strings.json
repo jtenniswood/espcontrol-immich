@@ -16,8 +16,7 @@
           "pairs_only": "Require complete pairs",
           "memory_window_days": "Memory window (days)",
           "fallback_to_all": "Fall back when memories are empty",
-          "interval": "Slideshow interval (seconds)",
-          "filter": "Immich filter JSON"
+          "interval": "Slideshow interval (seconds)"
         },
         "data_description": {
           "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
@@ -30,7 +29,7 @@
     },
     "error": {
       "cannot_connect": "Could not connect to Immich.",
-      "invalid_filter_or_url": "Check the URL and filter JSON."
+      "invalid_url": "Check the Immich URL."
     },
     "abort": {
       "already_configured": "A frame with this name is already configured."
