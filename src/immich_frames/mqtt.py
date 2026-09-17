@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Callable
 
 import paho.mqtt.client as mqtt
 
@@ -11,10 +11,25 @@ from .models import FrameConfig, Slide
 class MqttPublisher:
     def __init__(self, host: str, port: int, username: str | None = None, password: str | None = None) -> None:
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="immich-frames")
+        self.command_handler: Callable[[str, str], None] | None = None
+        self.client.on_connect = self._on_connect
+        self.client.on_message = self._on_message
         if username:
             self.client.username_pw_set(username, password)
         self.client.connect(host, port, keepalive=60)
         self.client.loop_start()
+
+    def _on_connect(self, client: mqtt.Client, _userdata: Any, _flags: Any, _reason_code: Any, _properties: Any = None) -> None:
+        client.subscribe("immich_frames/+/command")
+
+    def _on_message(self, _client: mqtt.Client, _userdata: Any, message: mqtt.MQTTMessage) -> None:
+        if self.command_handler:
+            parts = message.topic.split("/")
+            if len(parts) == 3:
+                self.command_handler(parts[1], message.payload.decode("utf-8", "replace"))
+
+    def set_command_handler(self, handler: Callable[[str, str], None]) -> None:
+        self.command_handler = handler
 
     def close(self) -> None:
         self.client.loop_stop()

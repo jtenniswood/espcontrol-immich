@@ -34,7 +34,17 @@ class FrameApp:
                 self.publisher = MqttPublisher(config["mqtt_host"], int(config.get("mqtt_port", 1883)), config.get("mqtt_username"), config.get("mqtt_password"))
         except Exception as exc:
             LOG.warning("MQTT is unavailable; frames will remain locally managed: %s", exc)
+        if self.publisher:
+            self.publisher.set_command_handler(self._handle_command)
         self.tasks: dict[str, asyncio.Task[None]] = {}
+        self.loop: asyncio.AbstractEventLoop | None = None
+
+    def _handle_command(self, frame_id: str, command: str) -> None:
+        if command not in {"next", "refresh"} or self.loop is None:
+            return
+        frame = next((item for item in self.storage.list_frames() if item.frame_id == frame_id), None)
+        if frame:
+            asyncio.run_coroutine_threadsafe(self.refresh_frame(frame), self.loop)
 
     async def refresh_frame(self, frame: FrameConfig) -> None:
         try:
@@ -160,6 +170,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         return app
 
     async def start_existing(self) -> None:
+        self.loop = asyncio.get_running_loop()
         for frame in self.storage.list_frames():
             self.start_frame(frame)
 
