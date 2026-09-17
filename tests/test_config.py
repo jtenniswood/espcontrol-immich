@@ -14,3 +14,8 @@ def test_frame_body_supports_sources_and_pair_options() -> None:
 def test_frame_body_rejects_invalid_source() -> None:
     with pytest.raises(ValueError, match="source"):
         FrameApp._frame_from_body({"name": "Hall", "source": "unknown"})
+
+
+def test_app_can_start_before_immich_is_configured(tmp_path) -> None:
+    app = FrameApp({}, tmp_path)
+    assert app.client is None

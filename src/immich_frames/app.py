@@ -31,7 +31,7 @@ class FrameApp:
         self.generation: dict[str, int] = {}
         self.slides: dict[str, Any] = {}
         self.clients: dict[str, ImmichClient] = {}
-        self.client = self._client_for("default")
+        self.client = self._client_for("default") if self.storage.get_connection("default") else None
         self.publisher: MqttPublisher | None = None
         try:
             if config.get("mqtt_host"):
