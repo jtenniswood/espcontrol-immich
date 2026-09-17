@@ -89,3 +89,19 @@ async def test_album_candidates_use_album_id_filter() -> None:
     frame = FrameConfig("f", "Album", source="album", album_id="album-123")
     result = await select_candidates(Client(), frame)
     assert [item.id for item in result] == ["album-photo"]
+
+
+async def test_multiple_albums_are_searched_together() -> None:
+    class Client:
+        async def search(self, filter, **kwargs):
+            assert filter["albumIds"] == {"any": ["a", "b"]}
+            return [Photo("photo-a", 100, 100, None, None, "a.jpg"), Photo("photo-b", 100, 100, None, None, "b.jpg")]
+
+    frame = FrameConfig("f", "Albums", source="album", album_ids=["a", "b", "a"], album_id="old")
+    photos = await select_candidates(Client(), frame)
+    assert [photo.id for photo in photos] == ["photo-a", "photo-b"]
+
+
+async def test_empty_multiple_selection_does_not_use_legacy_album() -> None:
+    frame = FrameConfig("f", "Albums", source="album", album_ids=[], album_id="old")
+    assert await select_candidates(None, frame) == []

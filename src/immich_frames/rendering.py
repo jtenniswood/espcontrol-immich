@@ -14,25 +14,24 @@ def _fit(image: Image.Image, size: tuple[int, int], mode: str) -> Image.Image:
 
 
 def render_slide(frame_id: str, generation: int, photos: tuple[Photo, ...], payloads: tuple[bytes, ...], width: int, height: int, fit: str = "cover") -> Slide:
-    canvas = Image.new("RGB", (width, height), "black")
     if len(photos) == 2:
-        if width >= height:
-            tile_size = (width // 2, height)
-            positions = ((0, 0), (width // 2, 0))
-        else:
-            tile_size = (width, height // 2)
-            positions = ((0, 0), (0, height // 2))
-        for position, raw in zip(positions, payloads):
+        width, height = 1280, 800
+        canvas = Image.new("RGB", (width, height), "black")
+        divider = width // 2
+        tiles = ((0, divider), (divider + 1, width - divider - 1))
+        for (left, tile_width), raw in zip(tiles, payloads):
             with Image.open(BytesIO(raw)) as source:
                 image = ImageOps.exif_transpose(source).convert("RGB")
-                canvas.paste(_fit(image, tile_size, fit), position)
-        layout = "side_by_side" if width >= height else "stacked"
+                canvas.paste(_fit(image, (tile_width, height), "cover"), (left, 0))
+        layout = "side_by_side"
     else:
+        canvas = Image.new("RGB", (width, height), "black")
         with Image.open(BytesIO(payloads[0])) as source:
             image = ImageOps.exif_transpose(source).convert("RGB")
             canvas.paste(_fit(image, (width, height), fit), (0, 0))
         layout = "single"
     output = BytesIO()
-    canvas.save(output, format="JPEG", quality=85, optimize=True)
+    canvas.save(output, format="JPEG", quality=95 if len(photos) == 2 else 85,
+                subsampling=0 if len(photos) == 2 else -1, optimize=True)
     return Slide(frame_id, generation, photos, output.getvalue(), layout)
 
