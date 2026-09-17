@@ -1,0 +1,36 @@
+name: Immich Frames
+version: "0.1.0"
+slug: immich_frames
+description: Create Home Assistant photo-frame devices backed by Immich 3.2+
+url: https://github.com/jtenniswood/immich-frames
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  - armhf
+  - i386
+startup: services
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:image-multiple
+homeassistant_api: true
+services:
+  - mqtt:need
+map:
+  - addon_config:rw
+options:
+  immich_url: ""
+  immich_api_key: ""
+  mqtt_host: "core-mosquitto"
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+schema:
+  immich_url: url
+  immich_api_key: password
+  mqtt_host: str
+  mqtt_port: port
+  mqtt_username: str?
+  mqtt_password: password?
+

@@ -1,0 +1,35 @@
+name: Immich Frames
+url: https://github.com/jtenniswood/immich-frames
+maintainer: jtenniswood
+\n*** Add File: README.md
+# Immich Frames for Home Assistant
+
+Immich Frames is an original Home Assistant app that turns an Immich 3.2+ library into virtual photo-frame devices. It publishes image, metadata, and slideshow controls through MQTT discovery.
+
+The current foundation implements a persistent frame registry, single-image selection, capture-date matching pairs, cached rendered JPEGs, and MQTT discovery/state publishing. The settings API is intentionally small while the selection and snapshot contracts are being stabilised.
+
+## Development
+
+```sh
+python -m venv .venv
+. .venv/bin/activate
+pip install -e '.[test]'
+pytest
+python -m immich_frames --config /tmp/immich-frames
+```
+
+Configure the app with environment variables or a JSON file in `/data/config.json`:
+
+```json
+{
+  "immich_url": "http://immich:2283",
+  "immich_api_key": "read-only-key",
+  "mqtt_host": "core-mosquitto",
+  "mqtt_port": 1883,
+  "mqtt_username": "homeassistant",
+  "mqtt_password": "password"
+}
+```
+
+Never put API keys in MQTT messages, logs, exports, or image URLs.
+
