@@ -16,6 +16,7 @@ from .const import (
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
+from .rendering import background_colour
 
 
 class ImmichApiError(RuntimeError):
@@ -258,8 +259,8 @@ class ImmichApi:
                 # Send the oriented preview itself, without a fixed-size background.
                 canvas = images[0]
             else:
-                canvas = Image.new("RGB", canvas_size, "black")
                 images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
+                canvas = Image.new("RGB", canvas_size, background_colour(images[0]))
                 canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
