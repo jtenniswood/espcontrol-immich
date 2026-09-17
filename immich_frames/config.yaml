@@ -6,9 +6,6 @@ url: https://github.com/jtenniswood/espcontrol-immich
 arch:
   - amd64
   - aarch64
-  - armv7
-  - armhf
-  - i386
 startup: services
 init: false
 ingress: true

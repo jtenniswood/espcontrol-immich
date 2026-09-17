@@ -35,15 +35,6 @@ jobs:
           - name: arm64
             platform: linux/arm64
             base: ghcr.io/home-assistant/aarch64-base:latest
-          - name: armv7
-            platform: linux/arm/v7
-            base: ghcr.io/home-assistant/armv7-base:latest
-          - name: armhf
-            platform: linux/arm/v6
-            base: ghcr.io/home-assistant/armhf-base:latest
-          - name: i386
-            platform: linux/386
-            base: ghcr.io/home-assistant/i386-base:latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
