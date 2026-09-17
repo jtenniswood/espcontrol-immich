@@ -14,7 +14,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
-    CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
+    CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
 
 
@@ -229,7 +229,11 @@ class ImmichApi:
                 raise ImmichApiError("No matching pair is available")
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
-            output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data, options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE))
+            output, layout = await asyncio.get_running_loop().run_in_executor(
+                None, self._render, photos, image_data,
+                options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
+                options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
+            )
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
         return FrameSnapshot(output, generation, tuple(photos), layout, datetime.now(timezone.utc), len(candidates))
@@ -243,16 +247,20 @@ class ImmichApi:
         return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 
     @staticmethod
-    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE) -> tuple[bytes, str]:
+    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, original_aspect_ratio: bool = False) -> tuple[bytes, str]:
         canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
         images: list[Image.Image] = []
         for payload in payloads:
             image = ImageOps.exif_transpose(Image.open(BytesIO(payload))).convert("RGB")
             images.append(image)
         if len(images) == 1:
-            canvas = Image.new("RGB", canvas_size, "black")
-            images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
-            canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
+            if original_aspect_ratio:
+                # Send the oriented preview itself, without a fixed-size background.
+                canvas = images[0]
+            else:
+                canvas = Image.new("RGB", canvas_size, "black")
+                images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
+                canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
             canvas = Image.new("RGB", canvas_size, "black")

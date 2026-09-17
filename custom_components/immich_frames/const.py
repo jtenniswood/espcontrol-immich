@@ -15,6 +15,7 @@ CONF_PAIR_WINDOW = "pair_window_days"
 CONF_PAIRS_ONLY = "pairs_only"
 CONF_ORIENTATION = "orientation"
 CONF_SCREEN_SHAPE = "screen_shape"
+CONF_ORIGINAL_ASPECT_RATIO = "original_aspect_ratio"
 DEFAULT_SCREEN_SHAPE = "landscape"
 SCREEN_SIZES = {"landscape": (1920, 1080), "portrait": (1080, 1920), "square": (1080, 1080)}
 CONF_INTERVAL = "interval"

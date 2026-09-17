@@ -83,7 +83,8 @@
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
           "navigation": "Next action",
-          "screen_shape": "Device screen shape"
+          "screen_shape": "Device screen shape",
+          "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
           "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
@@ -91,7 +92,8 @@
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
           "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
-          "screen_shape": "Match the screen displaying this frame: Landscape (16:9), Portrait (9:16), or Square (1:1). Photos keep their proportions with black padding where needed. This changes the output shape, not which photos are selected. Portrait pairs remain side by side."
+          "screen_shape": "Match the screen displaying this frame: Landscape (16:9), Portrait (9:16), or Square (1:1). Photos keep their proportions with black padding where needed. Enable Keep original aspect ratio for single photos to remove this padding for single images. Portrait pairs remain side by side.",
+          "original_aspect_ratio": "On: supply each single photo without added black bars, cropping or stretching. Device screen shape is ignored for single photos; image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected device screen shape."
         }
       }
     },
@@ -199,7 +201,8 @@
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
           "navigation": "Next action",
-          "screen_shape": "Device screen shape"
+          "screen_shape": "Device screen shape",
+          "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
           "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
@@ -207,7 +210,8 @@
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
           "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
-          "screen_shape": "Match the screen displaying this frame: Landscape (16:9), Portrait (9:16), or Square (1:1). Photos keep their proportions with black padding where needed. This changes the output shape, not which photos are selected. Portrait pairs remain side by side."
+          "screen_shape": "Match the screen displaying this frame: Landscape (16:9), Portrait (9:16), or Square (1:1). Photos keep their proportions with black padding where needed. Enable Keep original aspect ratio for single photos to remove this padding for single images. Portrait pairs remain side by side.",
+          "original_aspect_ratio": "On: supply each single photo without added black bars, cropping or stretching. Device screen shape is ignored for single photos; image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected device screen shape."
         }
       }
     },
