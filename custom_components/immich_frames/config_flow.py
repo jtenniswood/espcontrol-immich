@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .api import ImmichApi, ImmichApiError
@@ -32,99 +33,11 @@ def _navigation(back_label: str, *, display: bool = False, change_source: bool =
     return {vol.Optional("navigation", default="continue"): vol.In(options)}
 
 
-class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
-
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
-        """Edit a copy; the running frame changes only when the user saves."""
-        entry = self._get_reconfigure_entry()
-        self._data = dict(entry.data)
-        self._data.setdefault(CONF_FRAME_NAME, entry.title)
-        return await self.async_step_source()
+class FrameSettingsFlow:
+    """Shared source and display forms for setup and later edits."""
 
     def _remember(self, user_input: dict[str, Any]) -> None:
         self._data.update({key: value for key, value in user_input.items() if key != "navigation"})
-
-    async def async_step_user(self, user_input: dict[str, Any] | None = None):
-        if user_input is None and self._saved_connections():
-            return await self.async_step_connection()
-        return await self._async_connection_form("user", user_input)
-
-    def _saved_connections(self) -> dict[str, config_entries.ConfigEntry]:
-        """Offer each server/key combination once, using entry IDs as form values."""
-        connections = {}
-        seen = set()
-        for entry in self.hass.config_entries.async_entries(DOMAIN):
-            url = entry.data.get(CONF_URL)
-            api_key = entry.data.get(CONF_API_KEY)
-            if not isinstance(url, str) or not isinstance(api_key, str) or not url.strip() or not api_key.strip():
-                continue
-            identity = (url.strip().rstrip("/"), api_key)
-            if identity not in seen:
-                connections[entry.entry_id] = entry
-                seen.add(identity)
-        return connections
-
-    async def async_step_connection(self, user_input: dict[str, Any] | None = None):
-        connections = self._saved_connections()
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            selected = user_input["connection_id"]
-            if selected == "new":
-                return await self.async_step_new_connection()
-            entry = connections.get(selected)
-            if entry is None:
-                errors["base"] = "connection_unavailable"
-            else:
-                errors = await self._async_check_connection(entry.data)
-                if not errors:
-                    return await self.async_step_source()
-        # Credentials stay on the server; the form only contains entry IDs and labels.
-        options = {
-            entry_id: f"{entry.data[CONF_URL]} ({entry.title})"
-            for entry_id, entry in connections.items()
-        }
-        options["new"] = "Connect to another Immich server"
-        return self.async_show_form(step_id="connection", data_schema=vol.Schema({
-            vol.Required("connection_id", default=next(iter(options))): vol.In(options),
-        }), errors=errors)
-
-    async def async_step_new_connection(self, user_input: dict[str, Any] | None = None):
-        return await self._async_connection_form("new_connection", user_input)
-
-    async def _async_check_connection(self, data) -> dict[str, str]:
-        """Verify credentials and copy only connection details into the new frame."""
-        errors: dict[str, str] = {}
-        try:
-            url = str(data[CONF_URL]).strip()
-            if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
-                raise ValueError("invalid_url")
-            api_key = str(data[CONF_API_KEY])
-            api = ImmichApi(url, api_key)
-            try:
-                await api.validate_connection()
-            finally:
-                await api.close()
-        except ValueError:
-            errors["base"] = "invalid_url"
-        except ImmichApiError as exc:
-            errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-        except OSError:
-            errors["base"] = "cannot_connect"
-        else:
-            self._data = {CONF_URL: url, CONF_API_KEY: api_key}
-        return errors
-
-    async def _async_connection_form(self, step_id, user_input):
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            errors = await self._async_check_connection(user_input)
-            if not errors:
-                return await self.async_step_source()
-        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({
-            vol.Required(CONF_URL): str,
-            vol.Required(CONF_API_KEY): str,
-        }), errors=errors)
 
     async def async_step_source(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         if user_input:
@@ -238,10 +151,10 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_source()
             name = self._data[CONF_FRAME_NAME].strip()
             unique_id = f"{self._data[CONF_URL]}|{name}"
-            entry = self._get_reconfigure_entry() if self.source == config_entries.SOURCE_RECONFIGURE else None
+            entry = self._settings_entry
             if not name:
                 errors[CONF_FRAME_NAME] = "name_required"
-            elif any(other.unique_id == unique_id and other is not entry for other in self._async_current_entries()):
+            elif any(other.unique_id == unique_id and other is not entry for other in self.hass.config_entries.async_entries(DOMAIN)):
                 errors[CONF_FRAME_NAME] = "name_in_use"
             else:
                 data = dict(self._data)
@@ -252,11 +165,7 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         for field in fields:
                             data.pop(field, None)
                 data.pop("filter", None)
-                if entry is not None:
-                    return self.async_update_reload_and_abort(entry, title=name, unique_id=unique_id, data=data)
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=name, data=data)
+                return await self._async_save_settings(data, name, unique_id)
         names = {
             entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
             if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
@@ -275,3 +184,138 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
             **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Smart Search"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), display=True, change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
         }), errors=errors)
+
+
+class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN):
+    VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        return ImmichFramesOptionsFlow()
+
+    @property
+    def _settings_entry(self):
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            return self._get_reconfigure_entry()
+        return None
+
+    async def _async_save_settings(self, data, name, unique_id):
+        if (entry := self._settings_entry) is not None:
+            return self.async_update_reload_and_abort(entry, title=name, unique_id=unique_id, data=data)
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title=name, data=data)
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        """Edit a copy; the running frame changes only when the user saves."""
+        entry = self._get_reconfigure_entry()
+        self._data = dict(entry.data)
+        self._data.setdefault(CONF_FRAME_NAME, entry.title)
+        return await self.async_step_source()
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None):
+        if user_input is None and self._saved_connections():
+            return await self.async_step_connection()
+        return await self._async_connection_form("user", user_input)
+
+    def _saved_connections(self) -> dict[str, config_entries.ConfigEntry]:
+        """Offer each server/key combination once, using entry IDs as form values."""
+        connections = {}
+        seen = set()
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            url = entry.data.get(CONF_URL)
+            api_key = entry.data.get(CONF_API_KEY)
+            if not isinstance(url, str) or not isinstance(api_key, str) or not url.strip() or not api_key.strip():
+                continue
+            identity = (url.strip().rstrip("/"), api_key)
+            if identity not in seen:
+                connections[entry.entry_id] = entry
+                seen.add(identity)
+        return connections
+
+    async def async_step_connection(self, user_input: dict[str, Any] | None = None):
+        connections = self._saved_connections()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            selected = user_input["connection_id"]
+            if selected == "new":
+                return await self.async_step_new_connection()
+            entry = connections.get(selected)
+            if entry is None:
+                errors["base"] = "connection_unavailable"
+            else:
+                errors = await self._async_check_connection(entry.data)
+                if not errors:
+                    return await self.async_step_source()
+        # Credentials stay on the server; the form only contains entry IDs and labels.
+        options = {
+            entry_id: f"{entry.data[CONF_URL]} ({entry.title})"
+            for entry_id, entry in connections.items()
+        }
+        options["new"] = "Connect to another Immich server"
+        return self.async_show_form(step_id="connection", data_schema=vol.Schema({
+            vol.Required("connection_id", default=next(iter(options))): vol.In(options),
+        }), errors=errors)
+
+    async def async_step_new_connection(self, user_input: dict[str, Any] | None = None):
+        return await self._async_connection_form("new_connection", user_input)
+
+    async def _async_check_connection(self, data) -> dict[str, str]:
+        """Verify credentials and copy only connection details into the new frame."""
+        errors: dict[str, str] = {}
+        try:
+            url = str(data[CONF_URL]).strip()
+            if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
+                raise ValueError("invalid_url")
+            api_key = str(data[CONF_API_KEY])
+            api = ImmichApi(url, api_key)
+            try:
+                await api.validate_connection()
+            finally:
+                await api.close()
+        except ValueError:
+            errors["base"] = "invalid_url"
+        except ImmichApiError as exc:
+            errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
+        except OSError:
+            errors["base"] = "cannot_connect"
+        else:
+            self._data = {CONF_URL: url, CONF_API_KEY: api_key}
+        return errors
+
+    async def _async_connection_form(self, step_id, user_input):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = await self._async_check_connection(user_input)
+            if not errors:
+                return await self.async_step_source()
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({
+            vol.Required(CONF_URL): str,
+            vol.Required(CONF_API_KEY): str,
+        }), errors=errors)
+
+
+class ImmichFramesOptionsFlow(FrameSettingsFlow, config_entries.OptionsFlow):
+    """Edit an existing frame through Home Assistant's Configure button."""
+
+    @property
+    def _settings_entry(self):
+        return self.config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        self._data = dict(self.config_entry.data)
+        self._data.setdefault(CONF_FRAME_NAME, self.config_entry.title)
+        steps = ["source"]
+        if (source := self._data.get(CONF_SOURCE)) in SOURCE_FIELDS:
+            steps.append(source)
+        steps.append("display")
+        return self.async_show_menu(step_id="init", menu_options=steps)
+
+    async def _async_save_settings(self, data, name, unique_id):
+        # Runtime controls and existing installations store settings in entry.data.
+        # Keep that single source of truth; only apply the draft on Save frame.
+        entry = self.config_entry
+        if self.hass.config_entries.async_update_entry(entry, title=name, unique_id=unique_id, data=data):
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return self.async_create_entry(title="", data=dict(entry.options))
