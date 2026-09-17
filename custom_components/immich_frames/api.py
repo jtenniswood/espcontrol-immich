@@ -136,6 +136,8 @@ class ImmichApi:
                 assets.extend(await self.memories((anchor + timedelta(days=offset)).isoformat()))
             ids = list(dict.fromkeys(asset.get("id") for memory in assets for asset in memory.get("assets", []) if asset.get("id")))
             candidates = await self.search({**filter_value, "id": {"in": ids[:1000]}}) if ids else []
+            if not candidates and options.get("fallback_to_all"):
+                candidates = await self.search(filter_value, random=True)
         else:
             candidates = await self.search(filter_value, random=True)
         orientation = options.get(CONF_ORIENTATION, "any")
