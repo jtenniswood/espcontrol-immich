@@ -111,5 +111,21 @@
       "already_configured": "A frame with this name is already configured.",
       "reconfigure_successful": "Frame settings updated."
     }
+  },
+  "entity": {
+    "select": {
+      "metadata_role": {
+        "name": "Show photo details for",
+        "state": {
+          "primary": "Single photo or left photo in a pair",
+          "secondary": "Right photo in a pair"
+        },
+        "state_attributes": {
+          "description": {
+            "name": "How this works"
+          }
+        }
+      }
+    }
   }
 }
