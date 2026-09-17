@@ -4,12 +4,12 @@ from datetime import timedelta
 
 from homeassistant.components.number import NumberEntity, NumberMode
 
-from .const import CONF_INTERVAL
+from .const import CONF_INTERVAL, DOMAIN
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    async_add_entities([IntervalNumber(hass.data["immich_frames"][entry.entry_id])])
+    async_add_entities([IntervalNumber(hass.data[DOMAIN][entry.entry_id])])
 
 
 class IntervalNumber(ImmichFrameEntity, NumberEntity):

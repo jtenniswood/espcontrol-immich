@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.api import ImmichApi, ImmichApiError
-from custom_components.immich_frames.api import _with_memory_ids as native_memory_filter
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApi, ImmichApiError
+from custom_components.espcontrol_immich.api import _with_memory_ids as native_memory_filter
+from custom_components.espcontrol_immich.const import DOMAIN
 from immich_frames.selection import _with_memory_ids as renderer_memory_filter
 
 A = "11111111-1111-4111-8111-111111111111"

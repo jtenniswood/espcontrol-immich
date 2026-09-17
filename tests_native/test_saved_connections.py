@@ -4,8 +4,8 @@ import pytest
 from homeassistant import config_entries
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.api import ImmichApiError
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -46,8 +46,8 @@ async def test_saved_connection_creates_independent_second_frame(hass):
     async def validate(api):
         used.append((api.base_url, api.api_key))
 
-    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection", validate), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection", validate), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"connection_id": original.entry_id})
         close.assert_awaited_once()
@@ -57,7 +57,7 @@ async def test_saved_connection_creates_independent_second_frame(hass):
     assert result["step_id"] == "display"
     defaults = result["data_schema"]({})
     assert defaults["frame_name"] == "Immich Frame 2"
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+    with patch("custom_components.espcontrol_immich.async_setup_entry", return_value=True):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], defaults)
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
@@ -97,7 +97,7 @@ async def test_choose_new_connection_does_not_prefill_saved_key(hass):
     async def validate(api):
         used.append((api.base_url, api.api_key))
 
-    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection", validate):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection", validate):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {
             "url": "http://another.test", "api_key": "new-secret",
         })
@@ -109,8 +109,8 @@ async def test_choose_new_connection_does_not_prefill_saved_key(hass):
 async def test_saved_connection_failure_stays_in_picker(hass, status, error):
     original = saved_frame(hass)
     result = await start(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection", side_effect=ImmichApiError("Error", status)), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection", side_effect=ImmichApiError("Error", status)), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"connection_id": original.entry_id})
         close.assert_awaited_once()

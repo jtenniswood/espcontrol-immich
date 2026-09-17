@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from homeassistant.const import Platform
 
-DOMAIN = "immich_frames"
+DOMAIN = "espcontrol_immich"
 CONF_URL = "url"
 CONF_API_KEY = "api_key"
 CONF_FRAME_NAME = "frame_name"

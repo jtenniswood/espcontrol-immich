@@ -4,8 +4,8 @@ import pytest
 from homeassistant import config_entries
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.api import ImmichApi, ImmichApiError
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApi, ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -16,7 +16,7 @@ async def source_step(hass, *, reuse=False):
             "url": "http://immich.test", "api_key": "test-key",
         })
         entry.add_to_hass(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection"):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
         data = {"connection_id": entry.entry_id} if reuse else {"url": "http://immich.test", "api_key": "test-key"}
         return await hass.config_entries.flow.async_configure(result["flow_id"], data)
@@ -36,8 +36,8 @@ async def test_album_picker_uses_connected_account_and_stores_id(hass, reuse):
         return [{"id": "shared-id", "albumName": "Weekend", "shared": True},
                 {"id": "owned-id", "albumName": "Family"}]
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
         assert result["step_id"] == "album"
@@ -46,7 +46,7 @@ async def test_album_picker_uses_connected_account_and_stores_id(hass, reuse):
         assert result["step_id"] == "display"
         assert close.await_count == 2
     assert calls == [("http://immich.test", "test-key", "GET", "/api/albums", {})] * 2
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+    with patch("custom_components.espcontrol_immich.async_setup_entry", return_value=True):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], result["data_schema"]({}))
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
@@ -56,7 +56,7 @@ async def test_album_picker_uses_connected_account_and_stores_id(hass, reuse):
 
 async def test_duplicate_and_unnamed_albums(hass):
     result = await source_step(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=[
         {"id": "b", "albumName": "Trips"}, {"id": "a", "albumName": "Trips"}, {"id": "empty", "albumName": ""},
     ]):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
@@ -74,21 +74,21 @@ async def test_duplicate_and_unnamed_albums(hass):
 ])
 async def test_album_failures_allow_retry_and_other_sources(hass, response, error):
     result = await source_step(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=[response]), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", side_effect=[response]), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
         close.assert_awaited_once()
     assert result["step_id"] == "source"
     assert result["errors"] == {"base": error}
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "new", "albumName": "New album"}]):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=[{"id": "new", "albumName": "New album"}]):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
     assert result["step_id"] == "album"
 
 
 async def test_no_albums_can_switch_to_all_photos(hass):
     result = await source_step(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[]) as albums:
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=[]) as albums:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "All photos"})
         albums.assert_awaited_once()
@@ -97,7 +97,7 @@ async def test_no_albums_can_switch_to_all_photos(hass):
 
 async def test_deleted_album_refreshes_picker(hass):
     result = await source_step(hass)
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", side_effect=[
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", side_effect=[
         [{"id": "old", "albumName": "Old"}], [{"id": "new", "albumName": "New"}],
     ]):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})

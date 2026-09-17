@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
 
+from .const import DOMAIN
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data["immich_frames"][entry.entry_id]
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([FrameButton(coordinator, key, name, action) for key, name, action in (
         ("next", "Next", coordinator.async_next),
         ("previous", "Previous", coordinator.async_previous),

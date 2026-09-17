@@ -4,8 +4,8 @@ import pytest
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.api import ImmichApiError
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
 
 RETIRED = (
     ("sensor", "photo_latitude"), ("sensor", "photo_longitude"),
@@ -41,7 +41,7 @@ async def test_upgrade_removes_only_this_frames_retired_sensors(hass, asset, jpe
             raise ImmichApiError("Offline")
         return [asset] if path == "/api/search/random" else jpeg
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id) is online
         await hass.async_block_till_done()
         assert all(registry.async_get(entity_id) is None for entity_id in retired)

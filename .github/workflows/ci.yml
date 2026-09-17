@@ -23,7 +23,7 @@ jobs:
       - run: python -m pip install -e '.[test]'
       - run: pytest -q
       - run: python -m compileall -q custom_components
-      - run: python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('custom_components/immich_frames').glob('*.json')]"
+      - run: python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('custom_components/espcontrol_immich').glob('*.json')]"
 
   native-integration:
     runs-on: ubuntu-latest

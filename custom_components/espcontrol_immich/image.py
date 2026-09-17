@@ -6,11 +6,12 @@ from homeassistant.components.image import ImageEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import FrameCoordinator
+from .const import DOMAIN
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    async_add_entities([FrameImage(hass, hass.data["immich_frames"][entry.entry_id])])
+    async_add_entities([FrameImage(hass, hass.data[DOMAIN][entry.entry_id])])
 
 
 class FrameImage(ImmichFrameEntity, ImageEntity):

@@ -5,7 +5,7 @@ from homeassistant import config_entries
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 ALBUMS = [{"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"}]
@@ -13,12 +13,12 @@ ALBUMS = [{"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"}]
 
 @pytest.fixture(autouse=True)
 def mock_albums():
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=ALBUMS) as albums:
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=ALBUMS) as albums:
         yield albums
 
 
 async def start(hass):
-    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection"):
         return await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER}, data={
             "url": "http://immich.test", "api_key": "test-key",
         })
@@ -29,7 +29,7 @@ async def submit(hass, result, **values):
 
 
 async def save(hass, result):
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+    with patch("custom_components.espcontrol_immich.async_setup_entry", return_value=True):
         result = await submit(hass, result, **result["data_schema"]({}))
         await hass.async_block_till_done()
     return result
@@ -166,7 +166,7 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
             return [asset]
         return jpeg
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         entity_ids = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}

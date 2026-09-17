@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from PIL import Image
 
-from custom_components.immich_frames.api import ImmichApi, ImmichApiError
+from custom_components.espcontrol_immich.api import ImmichApi, ImmichApiError
 
 
 @pytest.mark.parametrize("source", ["all", "album", "filter"])

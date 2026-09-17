@@ -5,7 +5,7 @@ import pytest
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.const import DOMAIN
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -46,8 +46,8 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
             return [asset]
         return jpeg
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.api.ImmichApi.albums", side_effect=AssertionError("Display edits must not fetch albums")
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.albums", side_effect=AssertionError("Display edits must not fetch albums")
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -79,7 +79,7 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
 ])
 async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
     entry = frame(hass, source, **old)
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[
+    with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=[
         {"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"},
     ]):
         result = await open_settings(hass, entry, source)

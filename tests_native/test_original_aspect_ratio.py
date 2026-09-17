@@ -7,8 +7,8 @@ from homeassistant import config_entries
 from PIL import Image
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.immich_frames.api import ImmichApi, ImmichApiError
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApi, ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
 
 
 def preview(size, *, orientation=None):
@@ -60,7 +60,7 @@ async def test_snapshot_passes_option_to_renderer_without_changing_pairs(asset, 
 async def test_option_saves_and_can_be_disabled_on_all_routes(hass, route):
     if route == "setup":
         manager = hass.config_entries.flow
-        with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
+        with patch("custom_components.espcontrol_immich.api.ImmichApi.validate_connection"):
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER}, data={
                 "url": "http://immich.test", "api_key": "key",
             })
@@ -83,7 +83,7 @@ async def test_option_saves_and_can_be_disabled_on_all_routes(hass, route):
     result = await manager.async_configure(result["flow_id"], {"original_aspect_ratio": route == "setup", "navigation": "back"})
     result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     assert result["data_schema"]({})["original_aspect_ratio"] is (route == "setup")
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
+    with patch("custom_components.espcontrol_immich.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {})
         await hass.async_block_till_done()
     saved = result["data"] if route == "setup" else entry.data
@@ -100,14 +100,14 @@ async def test_toggle_rejects_padded_cache_then_restores_unpadded_cache(hass, as
     async def request(_api, method, path, **kwargs):
         return [asset] if path == "/api/search/random" else preview((200, 400))
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1920, 1080)
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-        with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+        with patch("custom_components.espcontrol_immich.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
             await manager.async_configure(result["flow_id"], {"original_aspect_ratio": True})
             await hass.async_block_till_done()
             assert entry.entry_id not in hass.data[DOMAIN]
@@ -115,7 +115,7 @@ async def test_toggle_rejects_padded_cache_then_restores_unpadded_cache(hass, as
         await hass.async_block_till_done()
         assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (200, 400)
         assert await hass.config_entries.async_unload(entry.entry_id)
-    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         snapshot = hass.data[DOMAIN][entry.entry_id].data

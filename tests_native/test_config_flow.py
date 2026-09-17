@@ -3,8 +3,8 @@ from unittest.mock import patch
 import pytest
 from homeassistant import config_entries
 
-from custom_components.immich_frames.api import ImmichApiError
-from custom_components.immich_frames.const import DOMAIN
+from custom_components.espcontrol_immich.api import ImmichApiError
+from custom_components.espcontrol_immich.const import DOMAIN
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -19,8 +19,8 @@ async def test_connection_checks_authenticated_search(hass, status):
             raise ImmichApiError("Access denied", status)
         return {"assets": {"items": []}}
 
-    with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.api.ImmichApi.close"
+    with patch("custom_components.espcontrol_immich.api.ImmichApi._request", request), patch(
+        "custom_components.espcontrol_immich.api.ImmichApi.close"
     ) as close:
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER},
@@ -32,12 +32,12 @@ async def test_connection_checks_authenticated_search(hass, status):
         assert result["errors"] == {"base": "invalid_auth"}
     else:
         assert result["step_id"] == "source"
-        with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "album-id", "albumName": "Holidays"}]):
+        with patch("custom_components.espcontrol_immich.api.ImmichApi.albums", return_value=[{"id": "album-id", "albumName": "Holidays"}]):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
             assert result["step_id"] == "album"
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {"album_id": "album-id"})
         assert result["step_id"] == "display"
-        with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+        with patch("custom_components.espcontrol_immich.async_setup_entry", return_value=True):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {
                 "frame_name": "Test Frame", "mode": "Single image", "orientation": "Any orientation",
                 "pair_window_days": 0, "pairs_only": False, "interval": 30,
