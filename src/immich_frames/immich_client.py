@@ -44,6 +44,12 @@ class ImmichClient:
         value = await self._request("GET", "/api/server/version")
         return value if isinstance(value, str) else value.get("version", "unknown")
 
+    async def capabilities(self) -> dict[str, Any]:
+        version = await self.version()
+        parts = version.lstrip("v").split(".")
+        major, minor = (int(parts[0]), int(parts[1])) if len(parts) > 1 and parts[0].isdigit() and parts[1].isdigit() else (0, 0)
+        return {"version": version, "structured_search": (major, minor) >= (3, 2), "memories": (major, minor) >= (3, 2), "smart_search": True, "ocr": (major, minor) >= (3, 2)}
+
     async def search(self, filter: dict[str, Any], size: int = 100, random: bool = False, order_field: str = "fileCreatedAt", order_direction: str = "desc") -> list[Photo]:
         endpoint = "/api/search/random" if random else "/api/search/metadata"
         body: dict[str, Any] = {"filter": filter, "size": min(size, 1000), "withExif": True, "withPeople": True, "withStacked": False}

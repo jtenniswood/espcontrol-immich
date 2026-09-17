@@ -235,9 +235,23 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
     async def health(self, _: web.Request) -> web.Response:
         return web.json_response({"status": "ok", "version": "0.1.0"})
 
+    async def capabilities(self, _: web.Request) -> web.Response:
+        try:
+            return web.json_response(await self.client.capabilities())
+        except Exception:
+            return web.json_response({"version": "unavailable", "structured_search": False, "memories": False, "smart_search": False, "ocr": False}, status=503)
+
+    async def catalog(self, request: web.Request) -> web.Response:
+        kind = request.match_info["kind"]
+        try:
+            values = {"albums": self.client.albums, "people": self.client.people, "tags": self.client.tags, "memories": self.client.memories}[kind]
+        except KeyError as exc:
+            raise web.HTTPNotFound() from exc
+        return web.json_response(await values())
+
     def application(self) -> web.Application:
         app = web.Application()
-        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
         return app
 
     async def start_existing(self) -> None:

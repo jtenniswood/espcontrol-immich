@@ -30,6 +30,15 @@ def test_filter_compiler_supports_or_branches() -> None:
     assert result["type"] == {"eq": "IMAGE"}
 
 
+def test_filter_compiler_rejects_unsupported_operator() -> None:
+    try:
+        compile_filter({"rating": {"contains": 4}})
+    except FilterValidationError as exc:
+        assert "contains" in str(exc)
+    else:
+        raise AssertionError("unsupported filter operator was accepted")
+
+
 async def test_memory_candidates_are_deduplicated() -> None:
     class Client:
         async def memories(self, for_date=None, size=100):
