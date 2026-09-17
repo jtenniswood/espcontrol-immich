@@ -146,6 +146,18 @@ class ImmichApi:
         result = await self._request("POST", endpoint, json=body)
         return [_photo(asset) for asset in _asset_items(result, random=random)]
 
+    async def albums(self) -> list[dict[str, Any]]:
+        """List albums accessible to this account, including shared albums."""
+        result = await self._request("GET", "/api/albums")
+        if not isinstance(result, list) or any(
+            not isinstance(album, dict)
+            or not isinstance(album.get("id"), str) or not album["id"]
+            or not isinstance(album.get("albumName"), str)
+            for album in result
+        ):
+            raise ImmichApiError("Immich returned an invalid album list")
+        return result
+
     async def smart_search(self, query: str, filter_value: dict[str, Any], size: int = 200) -> list[dict[str, Any]]:
         result = await self._request("POST", "/api/search/smart", json={"query": query, "filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True})
         return [_photo(asset) for asset in _asset_items(result)]

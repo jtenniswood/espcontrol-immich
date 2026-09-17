@@ -36,12 +36,12 @@
       },
       "album": {
         "title": "Choose an Immich album",
-        "description": "Enter the album ID to show photos from that album only.",
+        "description": "Choose an album from your Immich server. Only photos in this album will be shown.",
         "data": {
-          "album_id": "Immich album ID"
+          "album_id": "Album"
         },
         "data_description": {
-          "album_id": "Paste the album ID from Immich. This is required when Album by ID is selected."
+          "album_id": "Search by album name. Albums with the same name also show their ID so you can tell them apart."
         }
       },
       "memories": {
@@ -90,8 +90,11 @@
       "invalid_auth": "Check the API key and its asset.read permission in Immich.",
       "cannot_connect": "Could not connect to Immich.",
       "invalid_url": "Check the Immich URL.",
-      "album_required": "Enter an Immich album ID or choose All photos.",
-      "smart_query_required": "Enter a Smart Search description."
+      "smart_query_required": "Enter a Smart Search description.",
+      "album_access_denied": "Could not access albums. Check that your Immich API key is valid and has album.read permission, then choose Album to retry.",
+      "albums_unavailable": "Could not load albums from Immich. Choose Album to retry, or select another photo source.",
+      "no_albums": "No albums are available to this Immich account. Create or share an album in Immich, then choose Album to retry, or select All photos.",
+      "album_unavailable": "That album is no longer available. Choose another album from the updated list."
     },
     "abort": {
       "already_configured": "A frame with this name is already configured."

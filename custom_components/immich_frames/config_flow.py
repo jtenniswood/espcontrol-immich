@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers import selector
 
 from .api import ImmichApi, ImmichApiError
 from .const import (
@@ -98,11 +100,11 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_API_KEY): str,
         }), errors=errors)
 
-    async def async_step_source(self, user_input: dict[str, Any] | None = None):
+    async def async_step_source(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         if user_input:
             source = {
                 "All photos": "all",
-                "Album by ID": "album",
+                "Album": "album",
                 "On This Day memories": "memories",
                 "Smart Search": "smart",
             }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
@@ -115,20 +117,41 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_smart()
             return await self.async_step_display()
         return self.async_show_form(step_id="source", data_schema=vol.Schema({
-            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Album by ID", "On This Day memories", "Smart Search"]),
-        }))
+            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Album", "On This Day memories", "Smart Search"]),
+        }), errors=errors or {})
 
     async def async_step_album(self, user_input: dict[str, Any] | None = None):
+        api = ImmichApi(self._data[CONF_URL], self._data[CONF_API_KEY])
+        try:
+            albums = await api.albums()
+        except ImmichApiError as exc:
+            error = "album_access_denied" if exc.status in (401, 403) else "albums_unavailable"
+            return await self.async_step_source(errors={"base": error})
+        except OSError:
+            return await self.async_step_source(errors={"base": "albums_unavailable"})
+        finally:
+            await api.close()
+        if not albums:
+            return await self.async_step_source(errors={"base": "no_albums"})
+        names = {album["id"]: album["albumName"].strip() or "Untitled album" for album in albums}
+        counts = Counter(name.casefold() for name in names.values())
+        options = [
+            {"value": album_id, "label": f"{name} ({album_id})" if counts[name.casefold()] > 1 else name}
+            for album_id, name in sorted(names.items(), key=lambda item: (item[1].casefold(), item[0]))
+        ]
         errors: dict[str, str] = {}
         if user_input:
             album_id = str(user_input.get(CONF_ALBUM_ID, "")).strip()
-            if not album_id:
-                errors["base"] = "album_required"
+            if album_id not in names:
+                errors["base"] = "album_unavailable"
             else:
                 self._data[CONF_ALBUM_ID] = album_id
                 return await self.async_step_display()
         return self.async_show_form(step_id="album", data_schema=vol.Schema({
-            vol.Required(CONF_ALBUM_ID): str,
+            vol.Required(CONF_ALBUM_ID): selector.SelectSelector(selector.SelectSelectorConfig(
+                options=options, mode=selector.SelectSelectorMode.DROPDOWN,
+                custom_value=False,
+            )),
         }), errors=errors)
 
     async def async_step_memories(self, user_input: dict[str, Any] | None = None):
