@@ -9,18 +9,18 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from .api import ImmichApi, ImmichApiError
+from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
-    CONF_ALBUM_ID, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
+    CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
     CONF_MODE, CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DOMAIN,
 )
 
-SOURCE_LABELS = {"all": "All photos", "album": "Album", "memories": "On This Day memories", "smart": "Smart Search"}
+SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
 MODE_LABELS = {"single": "Single image", "pairs": "Matching portrait pairs"}
 ORIENTATION_LABELS = {"any": "Any orientation", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
 SOURCE_FIELDS = {
-    "album": (CONF_ALBUM_ID,),
+    "album": (CONF_ALBUM_ID, CONF_ALBUM_IDS),
     "memories": (CONF_MEMORY_WINDOW, CONF_FALLBACK),
     "smart": (CONF_SMART_QUERY,),
 }
@@ -43,9 +43,9 @@ class FrameSettingsFlow:
         if user_input:
             source = {
                 "All photos": "all",
-                "Album": "album",
-                "On This Day memories": "memories",
-                "Smart Search": "smart",
+                "Albums": "album",
+                "Memories": "memories",
+                "Keywords": "smart",
             }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
             self._data[CONF_SOURCE] = source
             if source == "album":
@@ -83,20 +83,21 @@ class FrameSettingsFlow:
         ]
         errors: dict[str, str] = {}
         if user_input:
-            album_id = str(user_input.get(CONF_ALBUM_ID, "")).strip()
-            if not album_id:
+            album_ids = selected_album_ids(user_input)
+            if not album_ids:
                 errors["base"] = "album_required"
-            elif album_id not in names:
+            elif any(album_id not in names for album_id in album_ids):
                 errors["base"] = "album_unavailable"
             else:
-                self._data[CONF_ALBUM_ID] = album_id
+                self._data[CONF_ALBUM_IDS] = album_ids
+                self._data.pop(CONF_ALBUM_ID, None)
                 return await self.async_step_display()
-        saved_album = self._data.get(CONF_ALBUM_ID)
-        album_field = vol.Optional(CONF_ALBUM_ID, default=saved_album) if saved_album in names else vol.Optional(CONF_ALBUM_ID)
+        saved_albums = [album_id for album_id in selected_album_ids(user_input if user_input is not None else self._data) if album_id in names]
+        album_field = vol.Optional(CONF_ALBUM_IDS, default=saved_albums)
         return self.async_show_form(step_id="album", data_schema=vol.Schema({
             album_field: selector.SelectSelector(selector.SelectSelectorConfig(
                 options=options, mode=selector.SelectSelectorMode.DROPDOWN,
-                custom_value=False,
+                custom_value=False, multiple=True,
             )),
             **_navigation("Back to photo source"),
         }), errors=errors)
@@ -184,7 +185,7 @@ class FrameSettingsFlow:
             vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
             vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Smart Search"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), display=True, change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
+            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), display=True, change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
         }), errors=errors)
 
 

@@ -73,7 +73,7 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
 
 
 @pytest.mark.parametrize("source,old,new", [
-    ("album", {"album_id": "a"}, {"album_id": "b"}),
+    ("album", {"album_ids": ["a"]}, {"album_ids": ["a", "b"]}),
     ("smart", {"smart_query": "beach"}, {"smart_query": "mountains"}),
     ("memories", {"memory_window_days": 2, "fallback_to_all": False}, {"memory_window_days": 5, "fallback_to_all": True}),
 ])
@@ -114,8 +114,8 @@ async def test_change_source_clears_old_filters_and_validates_name(hass):
     entry = frame(hass, album_id="a")
     frame(hass, "all", title="Bedroom")
     result = await open_settings(hass, entry, "source")
-    assert result["data_schema"]({})["source"] == "Album"
-    result = await submit(hass, result, source="Smart Search")
+    assert result["data_schema"]({})["source"] == "Albums"
+    result = await submit(hass, result, source="Keywords")
     result = await submit(hass, result, smart_query=" ")
     assert result["errors"] == {"base": "smart_query_required"}
     result = await submit(hass, result, smart_query="beach")

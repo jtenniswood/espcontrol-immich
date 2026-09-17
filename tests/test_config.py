@@ -54,3 +54,15 @@ def test_app_can_start_before_immich_is_configured(tmp_path) -> None:
 def test_requested_output_dimensions_use_fixed_frame(size):
     frame = FrameApp._frame_from_body({"name": "Frame", "output_width": size[0], "output_height": size[1]})
     assert (frame.output_width, frame.output_height) == (1280, 800)
+
+
+def test_multiple_albums_take_precedence_over_legacy_selection() -> None:
+    frame = FrameApp._frame_from_body({"name": "Albums", "source": "album", "album_ids": ["a", "b", "a"], "album_id": "old"})
+    assert frame.album_ids == ["a", "b"]
+    assert frame.album_id is None
+
+
+@pytest.mark.parametrize("album_ids", [[], "a", [None], [""], ["a", 12]])
+def test_invalid_multiple_album_selection_is_rejected(album_ids) -> None:
+    with pytest.raises(ValueError, match="album_ids"):
+        FrameApp._frame_from_body({"name": "Albums", "source": "album", "album_ids": album_ids, "album_id": "old"})

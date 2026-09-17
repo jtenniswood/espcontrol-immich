@@ -12,7 +12,7 @@ import aiohttp
 from PIL import Image, ImageOps
 
 from .const import (
-    CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
+    CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     OUTPUT_SIZE,
 )
@@ -22,6 +22,14 @@ class ImmichApiError(RuntimeError):
     def __init__(self, message: str, status: int | None = None) -> None:
         super().__init__(message)
         self.status = status
+
+
+def selected_album_ids(options: dict[str, Any]) -> list[str]:
+    """Read multiple selections, falling back to existing single-album frames."""
+    values = options.get(CONF_ALBUM_IDS, [options.get(CONF_ALBUM_ID)])
+    if not isinstance(values, list):
+        return []
+    return list(dict.fromkeys(value.strip() for value in values if isinstance(value, str) and value.strip()))
 
 
 def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
@@ -191,10 +199,10 @@ class ImmichApi:
         filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
         if source == "album":
-            album_id = str(options.get(CONF_ALBUM_ID, "")).strip()
-            if not album_id:
-                raise ImmichApiError("Album ID is required")
-            candidates = await self.search({**filter_value, "albumIds": {"any": [album_id]}}, random=True)
+            album_ids = selected_album_ids(options)
+            if not album_ids:
+                raise ImmichApiError("Choose at least one album")
+            candidates = await self.search({**filter_value, "albumIds": {"any": album_ids}}, random=True)
         elif source == "smart":
             candidates = await self.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value)
         elif source == "memories":
@@ -257,14 +265,18 @@ class ImmichApi:
             canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
+            # Pairs have a fixed 16:10 frame with one black pixel between tiles.
             canvas = Image.new("RGB", canvas_size, "black")
-            width = canvas.width // 2
-            for index, image in enumerate(images[:2]):
-                image.thumbnail((width, canvas.height), Image.Resampling.LANCZOS)
-                canvas.paste(image, (index * width + (width - image.width) // 2, (canvas.height - image.height) // 2))
+            divider = canvas.width // 2
+            tiles = ((0, divider), (divider + 1, canvas.width - divider - 1))
+            for image, (left, width) in zip(images[:2], tiles):
+                cropped = ImageOps.fit(image, (width, canvas.height), Image.Resampling.LANCZOS)
+                canvas.paste(cropped, (left, 0))
             layout = "side_by_side"
         output = BytesIO()
-        canvas.save(output, "JPEG", quality=85, optimize=True)
+        # Avoid chroma bleeding across the narrow divider in paired output.
+        canvas.save(output, "JPEG", quality=95 if len(images) == 2 else 85,
+                    subsampling=0 if len(images) == 2 else -1, optimize=True)
         return output.getvalue(), layout
 
 

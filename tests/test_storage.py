@@ -24,3 +24,21 @@ def test_legacy_saved_dimensions_are_normalized_on_load(tmp_path):
     storage.db.commit()
     frame = storage.list_frames()[0]
     assert (frame.output_width, frame.output_height) == (1280, 800)
+
+
+def test_multiple_albums_survive_restart(tmp_path: Path) -> None:
+    frame = FrameConfig("frame", "Albums", source="album", album_ids=["a", "b"])
+    Storage(tmp_path).save_frame(frame)
+    assert Storage(tmp_path).list_frames()[0] == frame
+
+
+def test_legacy_album_survives_restart(tmp_path: Path) -> None:
+    import json
+    storage = Storage(tmp_path)
+    storage.db.execute("INSERT INTO frames VALUES (?, ?, ?)", ("frame", "Album", json.dumps({
+        "frame_id": "frame", "name": "Album", "source": "album", "album_id": "old",
+    })))
+    storage.db.commit()
+    frame = Storage(tmp_path).list_frames()[0]
+    assert frame.album_id == "old"
+    assert frame.album_ids is None

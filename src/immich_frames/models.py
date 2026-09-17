@@ -96,6 +96,7 @@ class FrameConfig:
     output_height: int = OUTPUT_SIZE[1]
     fit: Literal["cover", "contain"] = "cover"
     orientation: Literal["any", "portrait", "landscape", "square"] = "any"
+    album_ids: list[str] | None = None
 
     def __post_init__(self) -> None:
         # Normalize saved/imported legacy dimensions to the fixed device frame.
