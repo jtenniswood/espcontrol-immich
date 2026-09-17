@@ -30,6 +30,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert coordinator.cache_path.with_suffix(".jpg").is_file()
         assert hass.states.get("image.immich_frame_frame") is not None
         assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
@@ -37,6 +38,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
         assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
