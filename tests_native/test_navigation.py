@@ -36,29 +36,29 @@ async def save(hass, result):
 
 
 async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
-    result = await submit(hass, await start(hass), source="Album")
-    result = await submit(hass, result, album_id="a")
+    result = await submit(hass, await start(hass), source="Albums")
+    result = await submit(hass, result, album_ids=["a"])
     result = await submit(hass, result, frame_name="Kitchen", mode="Matching portrait pairs",
                           orientation="Portrait photos only", screen_shape="Square (1:1)", pair_window_days=3, pairs_only=True,
                           interval=75, navigation="back")
     assert result["step_id"] == "album"
-    assert result["data_schema"]({})["album_id"] == "a"
+    assert result["data_schema"]({})["album_ids"] == ["a"]
     assert result["data_schema"]({})["navigation"] == "continue"
-    result = await submit(hass, result, album_id="b")
+    result = await submit(hass, result, album_ids=["a", "b"])
     defaults = result["data_schema"]({})
     assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1)", "original_aspect_ratio": False, "mode": "Matching portrait pairs",
                         "orientation": "Portrait photos only", "pair_window_days": 3,
                         "pairs_only": True, "interval": 75, "navigation": "continue"}
     result = await save(hass, result)
     assert result["type"] == "create_entry"
-    assert result["data"]["album_id"] == "b"
+    assert result["data"]["album_ids"] == ["a", "b"]
     assert result["data"]["mode"] == "pairs"
     assert result["data"]["screen_shape"] == "square"
     assert result["data"]["api_key"] == "test-key"
     assert "navigation" not in result["data"]
 
 
-@pytest.mark.parametrize("label,step", [("Album", "album"), ("Smart Search", "smart")])
+@pytest.mark.parametrize("label,step", [("Albums", "album"), ("Keywords", "smart")])
 async def test_back_without_required_selection(hass, mock_albums, label, step):
     result = await submit(hass, await start(hass), source=label)
     assert result["step_id"] == step
@@ -71,7 +71,7 @@ async def test_back_without_required_selection(hass, mock_albums, label, step):
     assert result["step_id"] == "display"
 
 
-@pytest.mark.parametrize("label,error", [("Album", "album_required"), ("Smart Search", "smart_query_required")])
+@pytest.mark.parametrize("label,error", [("Albums", "album_required"), ("Keywords", "smart_query_required")])
 async def test_continue_requires_source_selection(hass, label, error):
     result = await submit(hass, await start(hass), source=label)
     result = await submit(hass, result, navigation="continue")
@@ -79,32 +79,32 @@ async def test_continue_requires_source_selection(hass, label, error):
 
 
 async def test_changing_source_discards_inactive_filters_but_keeps_drafts(hass):
-    result = await submit(hass, await start(hass), source="Album")
-    result = await submit(hass, result, album_id="b", navigation="back")
-    result = await submit(hass, result, source="On This Day memories")
+    result = await submit(hass, await start(hass), source="Albums")
+    result = await submit(hass, result, album_ids=["a", "b"], navigation="back")
+    result = await submit(hass, result, source="Memories")
     result = await submit(hass, result, memory_window_days=5, fallback_to_all=True, navigation="back")
-    result = await submit(hass, result, source="Smart Search")
+    result = await submit(hass, result, source="Keywords")
     result = await submit(hass, result, smart_query="beach", navigation="back")
-    result = await submit(hass, result, source="Album")
-    assert result["data_schema"]({})["album_id"] == "b"
+    result = await submit(hass, result, source="Albums")
+    assert result["data_schema"]({})["album_ids"] == ["a", "b"]
     result = await submit(hass, result, navigation="back")
-    result = await submit(hass, result, source="Smart Search")
+    result = await submit(hass, result, source="Keywords")
     assert result["data_schema"]({})["smart_query"] == "beach"
     result = await submit(hass, result, navigation="back")
-    result = await submit(hass, result, source="On This Day memories")
+    result = await submit(hass, result, source="Memories")
     assert result["data_schema"]({})["memory_window_days"] == 5
     assert result["data_schema"]({})["fallback_to_all"] is True
     result = await submit(hass, result, navigation="back")
     result = await submit(hass, result, source="All photos")
     result = await save(hass, result)
     assert result["data"]["source"] == "all"
-    assert not ({"album_id", "smart_query", "memory_window_days", "fallback_to_all", "navigation"} & result["data"].keys())
+    assert not ({"album_id", "album_ids", "smart_query", "memory_window_days", "fallback_to_all", "navigation"} & result["data"].keys())
 
 
 @pytest.mark.parametrize("label,step,values", [
     ("All photos", "source", {}),
-    ("On This Day memories", "memories", {"memory_window_days": 4, "fallback_to_all": True}),
-    ("Smart Search", "smart", {"smart_query": "sea"}),
+    ("Memories", "memories", {"memory_window_days": 4, "fallback_to_all": True}),
+    ("Keywords", "smart", {"smart_query": "sea"}),
 ])
 async def test_display_back_targets_previous_step(hass, label, step, values):
     result = await submit(hass, await start(hass), source=label)
@@ -117,8 +117,8 @@ async def test_display_back_targets_previous_step(hass, label, step, values):
 
 
 async def test_display_can_change_source_directly(hass):
-    result = await submit(hass, await start(hass), source="Album")
-    result = await submit(hass, result, album_id="a")
+    result = await submit(hass, await start(hass), source="Albums")
+    result = await submit(hass, result, album_ids=["a"])
     result = await submit(hass, result, navigation="source", interval=120)
     assert result["step_id"] == "source"
     result = await submit(hass, result, source="All photos")
@@ -146,7 +146,7 @@ async def test_reconfigure_cancel_leaves_entry_unchanged(hass):
     entry = existing_frame(hass)
     before = dict(entry.data)
     result = await reconfigure(hass, entry)
-    assert result["data_schema"]({})["source"] == "Album"
+    assert result["data_schema"]({})["source"] == "Albums"
     result = await submit(hass, result, source="All photos")
     assert result["data_schema"]({})["frame_name"] == "Frame"
     assert result["data_schema"]({})["interval"] == 90
@@ -172,17 +172,17 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         entity_ids = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}
         device_ids = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
         old_coordinator = hass.data[DOMAIN][entry.entry_id]
-        result = await submit(hass, await reconfigure(hass, entry), source="Album")
-        assert result["data_schema"]({})["album_id"] == "a"
-        result = await submit(hass, result, album_id="b")
+        result = await submit(hass, await reconfigure(hass, entry), source="Albums")
+        assert result["data_schema"]({})["album_ids"] == ["a"]
+        result = await submit(hass, result, album_ids=["a", "b"])
         assert entry.data["album_id"] == "a"
         result = await submit(hass, result, **result["data_schema"]({}))
         await hass.async_block_till_done()
         assert result["type"] == "abort"
         assert result["reason"] == "reconfigure_successful"
         assert len(hass.config_entries.async_entries(DOMAIN)) == 1
-        assert entry.data["album_id"] == "b"
-        assert album_queries == [{"any": ["a"]}, {"any": ["b"]}]
+        assert entry.data["album_ids"] == ["a", "b"]
+        assert album_queries == [{"any": ["a"]}, {"any": ["a", "b"]}]
         assert hass.data[DOMAIN][entry.entry_id] is not old_coordinator
         assert {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)} == entity_ids
         assert {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)} == device_ids

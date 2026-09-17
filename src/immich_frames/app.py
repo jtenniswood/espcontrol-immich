@@ -89,7 +89,7 @@ class FrameApp:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
             except ValueError:
                 return
-            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
+            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
             self.storage.save_frame(updated)
             if self.publisher:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
@@ -190,9 +190,15 @@ class FrameApp:
         source = body.get("source", "all")
         if source not in ("all", "album", "filter", "memories", "smart"):
             raise ValueError("source must be all, album, filter, memories, or smart")
-        album_id = str(body.get("album_id", "")).strip() or None
-        if source == "album" and not album_id:
-            raise ValueError("album_id is required for album source")
+        album_id = str(body.get("album_id") or "").strip() or None
+        album_ids = body.get("album_ids")
+        if album_ids is not None:
+            if not isinstance(album_ids, list) or any(not isinstance(value, str) or not value.strip() for value in album_ids):
+                raise ValueError("album_ids must be a list of album IDs")
+            album_ids = list(dict.fromkeys(value.strip() for value in album_ids))
+            album_id = None
+        if source == "album" and not (album_ids if album_ids is not None else album_id):
+            raise ValueError("album_ids must contain at least one album")
         order_direction = body.get("order_direction", "desc")
         if order_direction not in ("asc", "desc", "random"):
             raise ValueError("order_direction must be asc, desc, or random")
@@ -212,7 +218,7 @@ class FrameApp:
             frame_id=frame_id or str(uuid.uuid4()), name=name, connection_id=connection_id, mode=mode,
             pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
             slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
-            source=source, album_id=album_id, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
+            source=source, album_id=album_id, album_ids=album_ids, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
             fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
             smart_reference_asset_id=body.get("smart_reference_asset_id"), order_field=order_field, order_direction=order_direction,
             output_width=max(320, min(4096, int(body.get("output_width", 1920)))), output_height=max(240, min(4096, int(body.get("output_height", 1080)))), fit=fit, orientation=orientation,
@@ -222,11 +228,80 @@ class FrameApp:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
 <form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Album by ID</option><option value=memories>On This Day memories</option><option value=smart>Smart Search</option></select></label><label>Immich album ID <input name=album_id></label><label>Smart Search text <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Any orientation</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching portrait pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Require complete pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Any orientation</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching portrait pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Require complete pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
-const out=document.querySelector('#frames'); async function load(){out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2);const connections=await (await fetch('/api/connections')).json();document.querySelector('#connections').innerHTML=connections.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
-document.querySelector('#c').onsubmit=async e=>{e.preventDefault();const response=await fetch('/api/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});if(!response.ok) alert(await response.text());e.target.reset();load()};
-document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));for(const key of ['pairs_only','fallback_to_all']) data[key]=e.target[key].checked;for(const key of ['pair_window_days','memory_window_days']) data[key]=Number(data[key]||0);const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});if(!response.ok) alert(await response.text());e.target.reset();load()};load();
+const out=document.querySelector('#frames');
+const form=document.querySelector('#f');
+const connections=document.querySelector('#connections');
+const picker=document.querySelector('#album-picker');
+const albumOptions=document.querySelector('#album-options');
+const albumStatus=document.querySelector('#album-status');
+let albumRequest=0;
+function filterAlbums(){
+  const query=document.querySelector('#album-search').value.toLocaleLowerCase();
+  for(const label of albumOptions.children) label.style.display=label.textContent.toLocaleLowerCase().includes(query)?'block':'none';
+}
+async function loadAlbums(){
+  const request=++albumRequest;
+  const selected=new Set([...albumOptions.querySelectorAll('input:checked')].map(input=>input.value));
+  albumOptions.replaceChildren();
+  picker.hidden=form.elements.source.value!=='album';
+  if(picker.hidden) return;
+  if(!connections.value){albumStatus.textContent='Connect to Immich to load albums.';return;}
+  albumStatus.textContent='Loading albums…';
+  try{
+    const response=await fetch('/api/catalog/albums?connection_id='+encodeURIComponent(connections.value));
+    if(!response.ok) throw new Error('Could not load albums. Check the connection and album.read permission, then reload.');
+    const albums=await response.json();
+    if(!Array.isArray(albums)||albums.some(album=>!album||typeof album.id!=='string'||typeof album.albumName!=='string')) throw new Error('Immich returned an invalid album list. Try reloading.');
+    if(request!==albumRequest) return;
+    const names=new Map();
+    for(const album of albums) names.set(album.id,album.albumName.trim()||'Untitled album');
+    const counts=new Map();
+    for(const name of names.values()) counts.set(name.toLocaleLowerCase(),(counts.get(name.toLocaleLowerCase())||0)+1);
+    for(const [id,name] of [...names].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]))){
+      const label=document.createElement('label');
+      label.style.display='block';
+      const input=document.createElement('input');
+      input.type='checkbox';input.name='album_ids';input.value=id;input.checked=selected.has(id);
+      label.append(input,document.createTextNode(counts.get(name.toLocaleLowerCase())>1?`${name} (${id})`:name));
+      albumOptions.append(label);
+    }
+    albumStatus.textContent=names.size?'Select one or more albums. Photos from all selected albums will be shown together.':'No albums are available. Create or share an album in Immich, then reload.';
+    filterAlbums();
+  }catch(error){if(request===albumRequest) albumStatus.textContent=error.message;}
+}
+async function load(){
+  out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2);
+  const saved=connections.value;
+  const values=await (await fetch('/api/connections')).json();
+  connections.replaceChildren(...values.map(connection=>new Option(connection.name,connection.id)));
+  if(values.some(connection=>connection.id===saved)) connections.value=saved;
+  await loadAlbums();
+}
+connections.onchange=()=>{albumOptions.replaceChildren();loadAlbums();};
+form.elements.source.onchange=loadAlbums;
+document.querySelector('#reload-albums').onclick=loadAlbums;
+document.querySelector('#album-search').oninput=filterAlbums;
+document.querySelector('#c').onsubmit=async e=>{
+  e.preventDefault();
+  const response=await fetch('/api/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});
+  if(!response.ok){alert(await response.text());return;}
+  e.target.reset();await load();
+};
+form.onsubmit=async e=>{
+  e.preventDefault();
+  const fields=new FormData(form);
+  const data=Object.fromEntries(fields);
+  data.album_ids=fields.getAll('album_ids');
+  if(data.source==='album'&&!data.album_ids.length){albumStatus.textContent='Choose at least one album to continue.';return;}
+  for(const key of ['pairs_only','fallback_to_all']) data[key]=form.elements[key].checked;
+  for(const key of ['pair_window_days','memory_window_days']) data[key]=Number(data[key]||0);
+  const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
+  if(!response.ok){alert(await response.text());return;}
+  form.reset();await load();
+};
+load();
 </script>""", content_type="text/html")
 
     async def list_frames(self, _: web.Request) -> web.Response:
@@ -270,7 +345,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         return web.Response(status=204)
 
     async def export_config(self, _: web.Request) -> web.Response:
-        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "pairs_only": f.pairs_only, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit, "orientation": f.orientation} for f in self.storage.list_frames()]})
+        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "pairs_only": f.pairs_only, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "album_id": f.album_id, "album_ids": f.album_ids, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit, "orientation": f.orientation} for f in self.storage.list_frames()]})
 
     async def import_config(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -312,7 +387,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
                 "name": body.get("name", frame.name), "connection_id": body.get("connection_id", frame.connection_id), "mode": body.get("mode", frame.mode),
                 "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
                 "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
-                "source": body.get("source", frame.source), "album_id": body.get("album_id", frame.album_id), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
+                "source": body.get("source", frame.source), "album_id": body.get("album_id", frame.album_id), "album_ids": body.get("album_ids", None if "album_id" in body else frame.album_ids), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
                 "smart_query": body.get("smart_query", frame.smart_query), "smart_reference_asset_id": body.get("smart_reference_asset_id", frame.smart_reference_asset_id),
                 "order_field": body.get("order_field", frame.order_field), "order_direction": body.get("order_direction", frame.order_direction),
                 "output_width": body.get("output_width", frame.output_width), "output_height": body.get("output_height", frame.output_height), "fit": body.get("fit", frame.fit), "orientation": body.get("orientation", frame.orientation),
