@@ -11,17 +11,41 @@
       },
       "source": {
         "title": "Choose a photo source",
-        "description": "Immich connection verified. Choose where this frame should find photos.",
+        "description": "Immich connection verified. Choose how this frame should select photos.",
         "data": {
-          "source": "Photo source",
-          "smart_query": "Smart Search text",
+          "source": "Photo source"
+        }
+      },
+      "album": {
+        "title": "Choose an Immich album",
+        "description": "Enter the album ID to show photos from that album only.",
+        "data": {
+          "album_id": "Immich album ID"
+        },
+        "data_description": {
+          "album_id": "Paste the album ID from Immich. This is required when Album by ID is selected."
+        }
+      },
+      "memories": {
+        "title": "Configure On This Day memories",
+        "description": "Set the date range used to find memories around today.",
+        "data": {
           "memory_window_days": "Memory window (days)",
           "fallback_to_all": "Fall back to All photos when memories are empty"
         },
         "data_description": {
-          "smart_query": "Describe what Smart Search should find.",
           "memory_window_days": "How many days before and after today to check when using On This Day memories.",
           "fallback_to_all": "Use the All photos source if Immich has no matching memories."
+        }
+      },
+      "smart": {
+        "title": "Configure Smart Search",
+        "description": "Describe what Immich Smart Search should find.",
+        "data": {
+          "smart_query": "Smart Search text"
+        },
+        "data_description": {
+          "smart_query": "Enter a description such as “beach at sunset”."
         }
       },
       "display": {
@@ -45,7 +69,9 @@
     },
     "error": {
       "cannot_connect": "Could not connect to Immich.",
-      "invalid_url": "Check the Immich URL."
+      "invalid_url": "Check the Immich URL.",
+      "album_required": "Enter an Immich album ID or choose All photos.",
+      "smart_query_required": "Enter a Smart Search description."
     },
     "abort": {
       "already_configured": "A frame with this name is already configured."

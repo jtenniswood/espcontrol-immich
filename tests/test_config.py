@@ -15,6 +15,17 @@ def test_frame_body_defaults_to_all_photos() -> None:
     assert FrameApp._frame_from_body({"name": "All photos"}).source == "all"
 
 
+def test_frame_body_supports_album_source() -> None:
+    frame = FrameApp._frame_from_body({"name": "Album", "source": "album", "album_id": "album-123"})
+    assert frame.source == "album"
+    assert frame.album_id == "album-123"
+
+
+def test_frame_body_requires_album_id_for_album_source() -> None:
+    with pytest.raises(ValueError, match="album_id"):
+        FrameApp._frame_from_body({"name": "Album", "source": "album"})
+
+
 def test_frame_body_rejects_invalid_source() -> None:
     with pytest.raises(ValueError, match="source"):
         FrameApp._frame_from_body({"name": "Hall", "source": "unknown"})

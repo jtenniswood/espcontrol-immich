@@ -10,6 +10,11 @@ from typing import Any
 import aiohttp
 from PIL import Image, ImageOps
 
+from .const import (
+    CONF_ALBUM_ID, CONF_FILTER, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
+    CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+)
+
 
 class ImmichApiError(RuntimeError):
     def __init__(self, message: str, status: int | None = None) -> None:
@@ -125,9 +130,14 @@ class ImmichApi:
 
     async def snapshot(self, options: dict[str, Any], generation: int, recent_ids: set[str]) -> FrameSnapshot:
         source = options.get(CONF_SOURCE, "all")
-        filter_value = {} if source == "all" else dict(options.get(CONF_FILTER) or {})
+        filter_value = {} if source in ("all", "album") else dict(options.get(CONF_FILTER) or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
-        if source == "smart":
+        if source == "album":
+            album_id = str(options.get(CONF_ALBUM_ID, "")).strip()
+            if not album_id:
+                raise ImmichApiError("Album ID is required")
+            candidates = await self.search({**filter_value, "albumIds": {"any": [album_id]}}, random=True)
+        elif source == "smart":
             candidates = await self.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value)
         elif source == "memories":
             anchor = date.today()

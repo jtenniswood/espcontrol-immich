@@ -64,3 +64,14 @@ async def test_orientation_is_applied_after_metadata_search() -> None:
     frame = FrameConfig("f", "Portraits", orientation="portrait")
     result = await select_candidates(Client(), frame)
     assert [item.id for item in result] == ["portrait"]
+
+
+async def test_album_candidates_use_album_id_filter() -> None:
+    class Client:
+        async def search(self, filter, size=100, random=False, order_field="fileCreatedAt", order_direction="desc"):
+            assert filter["albumIds"] == {"any": ["album-123"]}
+            return [Photo("album-photo", 100, 100, None, None, "album.jpg")]
+
+    frame = FrameConfig("f", "Album", source="album", album_id="album-123")
+    result = await select_candidates(Client(), frame)
+    assert [item.id for item in result] == ["album-photo"]

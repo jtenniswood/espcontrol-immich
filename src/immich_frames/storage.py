@@ -23,7 +23,7 @@ class Storage:
         data = {
             "frame_id": frame.frame_id, "name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days,
             "pairs_only": frame.pairs_only, "slideshow_interval": frame.slideshow_interval, "filter": frame.filter,
-            "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
+            "source": frame.source, "album_id": frame.album_id, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
             "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id,
             "order_field": frame.order_field, "order_direction": frame.order_direction,
             "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation,

@@ -89,7 +89,7 @@ class FrameApp:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
             except ValueError:
                 return
-            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
+            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
             self.storage.save_frame(updated)
             if self.publisher:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
@@ -188,8 +188,11 @@ class FrameApp:
         if fit not in ("cover", "contain"):
             raise ValueError("fit must be cover or contain")
         source = body.get("source", "all")
-        if source not in ("all", "filter", "memories", "smart"):
-            raise ValueError("source must be all, filter, memories, or smart")
+        if source not in ("all", "album", "filter", "memories", "smart"):
+            raise ValueError("source must be all, album, filter, memories, or smart")
+        album_id = str(body.get("album_id", "")).strip() or None
+        if source == "album" and not album_id:
+            raise ValueError("album_id is required for album source")
         order_direction = body.get("order_direction", "desc")
         if order_direction not in ("asc", "desc", "random"):
             raise ValueError("order_direction must be asc, desc, or random")
@@ -209,7 +212,7 @@ class FrameApp:
             frame_id=frame_id or str(uuid.uuid4()), name=name, connection_id=connection_id, mode=mode,
             pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
             slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
-            source=source, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
+            source=source, album_id=album_id, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
             fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
             smart_reference_asset_id=body.get("smart_reference_asset_id"), order_field=order_field, order_direction=order_direction,
             output_width=max(320, min(4096, int(body.get("output_width", 1920)))), output_height=max(240, min(4096, int(body.get("output_height", 1080)))), fit=fit, orientation=orientation,
@@ -219,7 +222,7 @@ class FrameApp:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
 <form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=memories>On This Day memories</option><option value=smart>Smart Search</option></select></label><label>Smart Search text <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Any orientation</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching portrait pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Require complete pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Album by ID</option><option value=memories>On This Day memories</option><option value=smart>Smart Search</option></select></label><label>Immich album ID <input name=album_id></label><label>Smart Search text <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Any orientation</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching portrait pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Require complete pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
 const out=document.querySelector('#frames'); async function load(){out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2);const connections=await (await fetch('/api/connections')).json();document.querySelector('#connections').innerHTML=connections.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
 document.querySelector('#c').onsubmit=async e=>{e.preventDefault();const response=await fetch('/api/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});if(!response.ok) alert(await response.text());e.target.reset();load()};
@@ -309,7 +312,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
                 "name": body.get("name", frame.name), "connection_id": body.get("connection_id", frame.connection_id), "mode": body.get("mode", frame.mode),
                 "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
                 "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
-                "source": body.get("source", frame.source), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
+                "source": body.get("source", frame.source), "album_id": body.get("album_id", frame.album_id), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
                 "smart_query": body.get("smart_query", frame.smart_query), "smart_reference_asset_id": body.get("smart_reference_asset_id", frame.smart_reference_asset_id),
                 "order_field": body.get("order_field", frame.order_field), "order_direction": body.get("order_direction", frame.order_direction),
                 "output_width": body.get("output_width", frame.output_width), "output_height": body.get("output_height", frame.output_height), "fit": body.get("fit", frame.fit), "orientation": body.get("orientation", frame.orientation),

@@ -5,6 +5,7 @@ The minimum supported server is Immich 3.2.0. The initial test target is Immich 
 Implemented sources and search features:
 
 - All photos source with the safe image/timeline constraints applied automatically.
+- Album-by-ID source using Immich's `albumIds` metadata filter.
 - Smart Search text/reference-photo requests.
 - On This Day memory windows and optional fallback to All photos when no memories are available.
 - Explicit image, non-trashed, non-locked safety constraints.
