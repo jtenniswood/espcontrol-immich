@@ -18,6 +18,11 @@
           "fallback_to_all": "Fall back when memories are empty",
           "interval": "Slideshow interval (seconds)",
           "filter": "Immich filter JSON"
+        },
+        "data_description": {
+          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
+          "pair_window_days": "The maximum number of days between the two photos.",
+          "pairs_only": "Skip a slide unless a matching portrait companion is available."
         }
       }
     },
