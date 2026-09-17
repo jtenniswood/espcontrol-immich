@@ -31,4 +31,8 @@ class IntervalNumber(ImmichFrameEntity, NumberEntity):
         interval = max(10, min(86400, int(value)))
         self.coordinator.options[CONF_INTERVAL] = interval
         self.coordinator.update_interval = timedelta(seconds=interval)
+        self.hass.config_entries.async_update_entry(
+            self.coordinator.entry,
+            data={**self.coordinator.entry.data, CONF_INTERVAL: interval},
+        )
         self.async_write_ha_state()

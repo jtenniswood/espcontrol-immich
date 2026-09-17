@@ -68,6 +68,7 @@
       }
     },
     "error": {
+      "invalid_auth": "Check the API key and its asset.read permission in Immich.",
       "cannot_connect": "Could not connect to Immich.",
       "invalid_url": "Check the Immich URL.",
       "album_required": "Enter an Immich album ID or choose All photos.",

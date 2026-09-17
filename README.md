@@ -13,6 +13,8 @@ pip install -e '.[test]'
 pytest
 ```
 
+Native integration tests run against Home Assistant 2026.9.2 with mocked Immich responses, including setup, entity registration, image rendering, and cache recovery. In a separate Python 3.14 environment, install `-e '.[test]' -r requirements-native-test.txt` and run `pytest -q tests_native`. CI runs both suites.
+
 The integration stores the Immich URL and API key in a Home Assistant config entry. API keys are never exposed as entity state, image URLs, or logs.
 
 See [installation](docs/installation.md), the [native integration guide](docs/native-integration.md), the [entity contract](docs/entity-contract.md), and the [compatibility matrix](docs/compatibility.md).

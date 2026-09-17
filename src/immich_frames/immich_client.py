@@ -58,6 +58,10 @@ class ImmichClient:
 
     async def version(self) -> str:
         value = await self._request("GET", "/api/server/version")
+        if isinstance(value, dict) and all(type(value.get(key)) is int for key in ("major", "minor", "patch")):
+            return ".".join(str(value[key]) for key in ("major", "minor", "patch"))
+        if not isinstance(value, (str, dict)):
+            raise ImmichError("Immich returned an invalid server version response")
         return value if isinstance(value, str) else value.get("version", "unknown")
 
     async def capabilities(self) -> dict[str, Any]:
@@ -77,6 +81,10 @@ class ImmichClient:
             if cursor:
                 body["cursor"] = cursor
             result = await self._request("POST", endpoint, json=body)
+            if random:
+                if not isinstance(result, list):
+                    raise ImmichError("Immich returned an invalid random search response")
+                return [Photo.from_api(item) for item in result[:size]]
             photos.extend(Photo.from_api(item) for item in result.get("assets", {}).get("items", []))
             cursor = result.get("assets", {}).get("nextCursor")
             if not cursor or not result.get("assets", {}).get("items"):

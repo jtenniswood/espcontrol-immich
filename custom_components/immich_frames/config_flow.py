@@ -26,12 +26,14 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     raise ValueError("invalid_url")
                 api = ImmichApi(url, str(user_input[CONF_API_KEY]))
                 try:
-                    await api.version()
+                    await api.validate_connection()
                 finally:
                     await api.close()
             except ValueError:
                 errors["base"] = "invalid_url"
-            except (ImmichApiError, OSError):
+            except ImmichApiError as exc:
+                errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
+            except OSError:
                 errors["base"] = "cannot_connect"
             else:
                 self._data = {CONF_URL: url, CONF_API_KEY: str(user_input[CONF_API_KEY])}

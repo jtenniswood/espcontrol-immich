@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError
 from .const import CONF_INTERVAL, DOMAIN
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
@@ -27,12 +30,14 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         self.cache_path = Path(hass.config.path(".storage", f"immich_frames_{entry.entry_id}"))
         super().__init__(
             hass,
-            logger=__import__("logging").getLogger(DOMAIN),
+            logger=LOGGER,
             name=f"EspControl Immich Companion {entry.title}",
             update_interval=timedelta(seconds=int(self.options.get(CONF_INTERVAL, 30))),
             config_entry=entry,
         )
-        self._load_cache()
+
+    async def _async_setup(self) -> None:
+        await self.hass.async_add_executor_job(self._load_cache)
 
     def _load_cache(self) -> None:
         image_path = self.cache_path.with_suffix(".jpg")
@@ -41,9 +46,13 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             return
         try:
             state = json.loads(state_path.read_text())
+            if not isinstance(state, dict) or not isinstance(state.get("photos"), list):
+                return
             photos = tuple(state["photos"])
+            if not photos or any(not isinstance(photo, dict) or not photo.get("id") for photo in photos):
+                return
             self.generation = int(state["generation"])
-            self.data = FrameSnapshot(image_path.read_bytes(), self.generation, photos, state.get("layout", "single"), __import__("datetime").datetime.fromisoformat(state["created_at"]), int(state.get("matching_assets", 0)), connected=False, using_cache=True, status="cached")
+            self.data = FrameSnapshot(image_path.read_bytes(), self.generation, photos, state.get("layout", "single"), datetime.fromisoformat(state["created_at"]), int(state.get("matching_assets", 0)), connected=False, using_cache=True, status="cached")
             self.history = [self.data]
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
             return
@@ -65,14 +74,20 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         return snapshot
 
     async def _save_cache(self, snapshot: FrameSnapshot) -> None:
+        try:
+            await self.hass.async_add_executor_job(self._write_cache, snapshot)
+        except OSError:
+            LOGGER.warning("Could not save the frame cache", exc_info=True)
+
+    def _write_cache(self, snapshot: FrameSnapshot) -> None:
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         state = {
             "generation": snapshot.generation, "layout": snapshot.layout,
             "created_at": snapshot.created_at.isoformat(), "matching_assets": snapshot.matching_assets,
             "photos": [{key: value for key, value in photo.items() if key != "capture_dt"} for photo in snapshot.photos],
         }
-        await self.hass.async_add_executor_job(self.cache_path.with_suffix(".jpg").write_bytes, snapshot.image)
-        await self.hass.async_add_executor_job(self.cache_path.with_suffix(".json").write_text, json.dumps(state))
+        self.cache_path.with_suffix(".jpg").write_bytes(snapshot.image)
+        self.cache_path.with_suffix(".json").write_text(json.dumps(state))
 
     async def async_refresh_now(self) -> None:
         await self.async_refresh()
@@ -87,6 +102,9 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             self.async_set_updated_data(self.history[-1])
 
     async def async_clear_cache(self) -> None:
+        await self.hass.async_add_executor_job(self._clear_cache)
+
+    def _clear_cache(self) -> None:
         self.cache_path.with_suffix(".jpg").unlink(missing_ok=True)
         self.cache_path.with_suffix(".json").unlink(missing_ok=True)
 

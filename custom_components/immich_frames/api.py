@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
@@ -20,6 +21,19 @@ class ImmichApiError(RuntimeError):
     def __init__(self, message: str, status: int | None = None) -> None:
         super().__init__(message)
         self.status = status
+
+
+def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
+    """Random search returns an array; metadata/smart search return an envelope."""
+    items = value
+    if not random:
+        assets = value.get("assets") if isinstance(value, dict) else None
+        items = assets.get("items") if isinstance(assets, dict) else None
+    if not isinstance(items, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("id"), str) for item in items
+    ):
+        raise ImmichApiError("Immich returned an invalid photo search response")
+    return items
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +98,7 @@ class ImmichApi:
             await self.session.close()
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        if self.session is None:
+        if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
         for attempt in range(3):
             try:
@@ -107,7 +121,22 @@ class ImmichApi:
 
     async def version(self) -> str:
         value = await self._request("GET", "/api/server/version")
-        return value if isinstance(value, str) else value.get("version", "unknown")
+        if isinstance(value, dict):
+            if all(type(value.get(key)) is int for key in ("major", "minor", "patch")):
+                return ".".join(str(value[key]) for key in ("major", "minor", "patch"))
+            value = value.get("version")
+        if isinstance(value, str) and re.fullmatch(r"v?\d+\.\d+\.\d+(?:[-+].+)?", value):
+            return value.lstrip("v")
+        raise ImmichApiError("Immich returned an invalid server version response")
+
+    async def validate_connection(self) -> None:
+        version = await self.version()
+        major, minor = (int(part) for part in version.split(".")[:2])
+        if (major, minor) < (3, 2):
+            raise ImmichApiError("Immich 3.2 or later is required")
+        # The version endpoint is public. Search verifies the key and asset.read.
+        await self.search({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None},
+                           "visibility": {"eq": "timeline"}}, size=1)
 
     async def search(self, filter_value: dict[str, Any], size: int = 200, random: bool = False) -> list[dict[str, Any]]:
         endpoint = "/api/search/random" if random else "/api/search/metadata"
@@ -115,15 +144,18 @@ class ImmichApi:
         if not random:
             body["orderBy"] = {"field": "fileCreatedAt", "direction": "desc"}
         result = await self._request("POST", endpoint, json=body)
-        return [_photo(asset) for asset in result.get("assets", {}).get("items", [])]
+        return [_photo(asset) for asset in _asset_items(result, random=random)]
 
     async def smart_search(self, query: str, filter_value: dict[str, Any], size: int = 200) -> list[dict[str, Any]]:
         result = await self._request("POST", "/api/search/smart", json={"query": query, "filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True})
-        return [_photo(asset) for asset in result.get("assets", {}).get("items", [])]
+        return [_photo(asset) for asset in _asset_items(result)]
 
     async def memories(self, for_date: str, size: int = 100) -> list[dict[str, Any]]:
         result = await self._request("GET", "/api/memories", params={"for": for_date, "size": min(size, 1000)})
-        return result if isinstance(result, list) else result.get("memories", [])
+        items = result if isinstance(result, list) else result.get("memories") if isinstance(result, dict) else None
+        if not isinstance(items, list) or any(not isinstance(item, dict) for item in items):
+            raise ImmichApiError("Immich returned an invalid memories response")
+        return items
 
     async def thumbnail(self, asset_id: str) -> bytes:
         return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": "preview"})
@@ -146,7 +178,7 @@ class ImmichApi:
                 assets.extend(await self.memories((anchor + timedelta(days=offset)).isoformat()))
             ids = list(dict.fromkeys(asset.get("id") for memory in assets for asset in memory.get("assets", []) if asset.get("id")))
             candidates = await self.search({**filter_value, "id": {"in": ids[:1000]}}) if ids else []
-            if not candidates and options.get("fallback_to_all"):
+            if not candidates and options.get(CONF_FALLBACK):
                 candidates = await self.search(filter_value, random=True)
         else:
             candidates = await self.search(filter_value, random=True)
@@ -157,13 +189,22 @@ class ImmichApi:
         primary = next((item for item in candidates if item["id"] not in recent_ids), candidates[0])
         photos = [primary]
         if options.get(CONF_MODE) == "pairs":
-            companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, 0)))
+            companion = None
+            # Prefer unseen photos, but search the whole candidate batch for a pair.
+            for candidate in sorted(candidates, key=lambda item: item["id"] in recent_ids):
+                companion = self._companion(candidate, [item for item in candidates if item["id"] != candidate["id"]], int(options.get(CONF_PAIR_WINDOW, 0)))
+                if companion:
+                    photos = [candidate]
+                    break
             if companion:
                 photos.append(companion)
             elif options.get(CONF_PAIRS_ONLY):
                 raise ImmichApiError("No matching pair is available")
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
-        output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data)
+        try:
+            output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data)
+        except (OSError, ValueError) as exc:
+            raise ImmichApiError("Could not decode the photo preview from Immich") from exc
         return FrameSnapshot(output, generation, tuple(photos), layout, datetime.now(timezone.utc), len(candidates))
 
     @staticmethod
