@@ -21,46 +21,63 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input:
             try:
-                user_input[CONF_SOURCE] = {
-                    "All photos": "all",
-                    "On This Day memories": "memories",
-                    "Smart Search": "smart",
-                }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
-                user_input[CONF_MODE] = {
-                    "Single image": "single",
-                    "Matching portrait pairs": "pairs",
-                }.get(user_input[CONF_MODE], user_input[CONF_MODE])
-                user_input[CONF_ORIENTATION] = {
-                    "Any orientation": "any",
-                    "Portrait photos only": "portrait",
-                    "Landscape photos only": "landscape",
-                    "Square photos only": "square",
-                }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
                 url = str(user_input[CONF_URL]).strip()
                 if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
                     raise ValueError("invalid_url")
                 api = ImmichApi(url, str(user_input[CONF_API_KEY]))
-                await api.version()
-                await api.close()
+                try:
+                    await api.version()
+                finally:
+                    await api.close()
             except ValueError:
                 errors["base"] = "invalid_url"
             except (ImmichApiError, OSError):
                 errors["base"] = "cannot_connect"
             else:
-                await self.async_set_unique_id(f"{url}|{user_input[CONF_FRAME_NAME].strip()}")
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=user_input[CONF_FRAME_NAME].strip(), data=user_input)
+                self._data = {CONF_URL: url, CONF_API_KEY: str(user_input[CONF_API_KEY])}
+                return await self.async_step_source()
         return self.async_show_form(step_id="user", data_schema=vol.Schema({
             vol.Required(CONF_URL): str,
             vol.Required(CONF_API_KEY): str,
-            vol.Required(CONF_FRAME_NAME, default="Immich Frame"): str,
+        }), errors=errors)
+
+    async def async_step_source(self, user_input: dict[str, Any] | None = None):
+        if user_input:
+            user_input[CONF_SOURCE] = {
+                "All photos": "all",
+                "On This Day memories": "memories",
+                "Smart Search": "smart",
+            }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
+            self._data.update(user_input)
+            return await self.async_step_display()
+        return self.async_show_form(step_id="source", data_schema=vol.Schema({
             vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "On This Day memories", "Smart Search"]),
             vol.Optional(CONF_SMART_QUERY, default=""): str,
+            vol.Required(CONF_MEMORY_WINDOW, default=2): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
+            vol.Required(CONF_FALLBACK, default=False): bool,
+        }))
+
+    async def async_step_display(self, user_input: dict[str, Any] | None = None):
+        if user_input:
+            user_input[CONF_MODE] = {
+                "Single image": "single",
+                "Matching portrait pairs": "pairs",
+            }.get(user_input[CONF_MODE], user_input[CONF_MODE])
+            user_input[CONF_ORIENTATION] = {
+                "Any orientation": "any",
+                "Portrait photos only": "portrait",
+                "Landscape photos only": "landscape",
+                "Square photos only": "square",
+            }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
+            self._data.update(user_input)
+            await self.async_set_unique_id(f"{self._data[CONF_URL]}|{self._data[CONF_FRAME_NAME].strip()}")
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(title=self._data[CONF_FRAME_NAME].strip(), data=self._data)
+        return self.async_show_form(step_id="display", data_schema=vol.Schema({
+            vol.Required(CONF_FRAME_NAME, default="Immich Frame"): str,
             vol.Required(CONF_MODE, default="Single image"): vol.In(["Single image", "Matching portrait pairs"]),
             vol.Required(CONF_ORIENTATION, default="Any orientation"): vol.In(["Any orientation", "Portrait photos only", "Landscape photos only", "Square photos only"]),
             vol.Required(CONF_PAIR_WINDOW, default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=False): bool,
-            vol.Required(CONF_MEMORY_WINDOW, default=2): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
-            vol.Required(CONF_FALLBACK, default=False): bool,
             vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-        }), errors=errors)
+        }))

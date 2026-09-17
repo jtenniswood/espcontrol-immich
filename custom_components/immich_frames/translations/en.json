@@ -2,27 +2,43 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add an EspControl Immich Companion frame",
-        "description": "Enter your Immich server and choose what this Home Assistant device should display.",
+        "title": "Connect to Immich",
+        "description": "Enter your Immich server details. Home Assistant will verify the connection before continuing.",
         "data": {
           "url": "Immich URL",
-          "api_key": "Read-only API key",
-          "frame_name": "Frame name",
+          "api_key": "Read-only API key"
+        }
+      },
+      "source": {
+        "title": "Choose a photo source",
+        "description": "Immich connection verified. Choose where this frame should find photos.",
+        "data": {
           "source": "Photo source",
           "smart_query": "Smart Search text",
+          "memory_window_days": "Memory window (days)",
+          "fallback_to_all": "Fall back to All photos when memories are empty"
+        },
+        "data_description": {
+          "smart_query": "Describe what Smart Search should find.",
+          "memory_window_days": "How many days before and after today to check when using On This Day memories.",
+          "fallback_to_all": "Use the All photos source if Immich has no matching memories."
+        }
+      },
+      "display": {
+        "title": "Configure the display",
+        "description": "Choose how this frame should present the selected photos.",
+        "data": {
+          "frame_name": "Frame name",
           "mode": "Display mode",
           "orientation": "Photo orientation filter",
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Require complete pairs",
-          "memory_window_days": "Memory window (days)",
-          "fallback_to_all": "Fall back when memories are empty",
           "interval": "Slideshow interval (seconds)"
         },
         "data_description": {
           "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
           "orientation": "Only photos with the selected orientation are eligible. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
-          "memory_window_days": "How many days before and after today to check when using On This Day memories.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available."
         }
       }
