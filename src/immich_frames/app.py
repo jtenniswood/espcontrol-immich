@@ -10,9 +10,10 @@ from typing import Any
 from urllib.parse import urlparse
 
 from aiohttp import web
+from PIL import Image
 
 from .immich_client import ImmichClient, ImmichError
-from .models import FrameConfig, Photo, Slide
+from .models import OUTPUT_SIZE, FrameConfig, Photo, Slide
 from .pairing import choose_companion
 from .rendering import render_slide
 from .filtering import FilterValidationError, compile_filter
@@ -215,7 +216,7 @@ class FrameApp:
             source=source, album_id=album_id, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
             fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
             smart_reference_asset_id=body.get("smart_reference_asset_id"), order_field=order_field, order_direction=order_direction,
-            output_width=max(320, min(4096, int(body.get("output_width", 1920)))), output_height=max(240, min(4096, int(body.get("output_height", 1080)))), fit=fit, orientation=orientation,
+            fit=fit, orientation=orientation,
         )
 
     async def home(self, _: web.Request) -> web.Response:
@@ -385,6 +386,9 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         if not image_path.exists() or not state_path.exists():
             return
         try:
+            with Image.open(image_path) as image:
+                if image.size != OUTPUT_SIZE:
+                    return
             state = json.loads(state_path.read_text())
             self.metadata_role[frame.frame_id] = state.get("selected_role", "primary")
             photos = [Photo.from_cache(state["primary"])]

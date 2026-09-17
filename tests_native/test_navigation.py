@@ -39,21 +39,20 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Album")
     result = await submit(hass, result, album_id="a")
     result = await submit(hass, result, frame_name="Kitchen", mode="Matching portrait pairs",
-                          orientation="Portrait photos only", screen_shape="Square (1:1)", pair_window_days=3, pairs_only=True,
+                          orientation="Portrait photos only", pair_window_days=3, pairs_only=True,
                           interval=75, navigation="back")
     assert result["step_id"] == "album"
     assert result["data_schema"]({})["album_id"] == "a"
     assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_id="b")
     defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1)", "original_aspect_ratio": False, "mode": "Matching portrait pairs",
+    assert defaults == {"frame_name": "Kitchen", "mode": "Matching portrait pairs",
                         "orientation": "Portrait photos only", "pair_window_days": 3,
                         "pairs_only": True, "interval": 75, "navigation": "continue"}
     result = await save(hass, result)
     assert result["type"] == "create_entry"
     assert result["data"]["album_id"] == "b"
     assert result["data"]["mode"] == "pairs"
-    assert result["data"]["screen_shape"] == "square"
     assert result["data"]["api_key"] == "test-key"
     assert "navigation" not in result["data"]
 

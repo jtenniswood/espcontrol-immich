@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from immich_frames.models import FrameConfig
@@ -15,3 +16,11 @@ def test_connection_secrets_are_not_listed(tmp_path: Path) -> None:
     storage.save_connection("home", "Home Immich", "https://photos.example", "secret")
     assert storage.list_connections() == [{"id": "home", "name": "Home Immich", "url": "https://photos.example"}]
     assert storage.get_connection("home") == ("home", "https://photos.example", "secret")
+
+def test_legacy_saved_dimensions_are_normalized_on_load(tmp_path):
+    storage = Storage(tmp_path)
+    config = {"frame_id": "old", "name": "Old frame", "output_width": 4096, "output_height": 4096}
+    storage.db.execute("INSERT INTO frames VALUES (?, ?, ?)", ("old", "Old frame", json.dumps(config)))
+    storage.db.commit()
+    frame = storage.list_frames()[0]
+    assert (frame.output_width, frame.output_height) == (1280, 800)

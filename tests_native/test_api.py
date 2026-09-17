@@ -15,7 +15,7 @@ async def test_first_snapshot_from_random_list(source, asset, jpeg):
     assert snapshot.primary["id"] == "portrait-a"
     assert snapshot.primary["exif"]["city"] == "Bath"
     assert snapshot.layout == "single"
-    assert Image.open(BytesIO(snapshot.image)).size == (1920, 1080)
+    assert Image.open(BytesIO(snapshot.image)).size == (1280, 800)
     request = api._request.call_args_list[0]
     assert request.args == ("POST", "/api/search/random")
     query = request.kwargs["json"]["filter"]

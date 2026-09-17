@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 Mode = Literal["single", "pairs"]
+OUTPUT_SIZE = (1280, 800)
 
 
 def parse_datetime(value: str | None) -> datetime | None:
@@ -91,10 +92,15 @@ class FrameConfig:
     smart_reference_asset_id: str | None = None
     order_field: Literal["fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"] = "fileCreatedAt"
     order_direction: Literal["asc", "desc"] = "desc"
-    output_width: int = 1920
-    output_height: int = 1080
+    output_width: int = OUTPUT_SIZE[0]
+    output_height: int = OUTPUT_SIZE[1]
     fit: Literal["cover", "contain"] = "cover"
     orientation: Literal["any", "portrait", "landscape", "square"] = "any"
+
+    def __post_init__(self) -> None:
+        # Normalize saved/imported legacy dimensions to the fixed device frame.
+        object.__setattr__(self, "output_width", OUTPUT_SIZE[0])
+        object.__setattr__(self, "output_height", OUTPUT_SIZE[1])
 
 
 @dataclass(slots=True, frozen=True)
