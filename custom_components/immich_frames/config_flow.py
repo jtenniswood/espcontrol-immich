@@ -21,6 +21,12 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input:
             try:
+                user_input[CONF_SOURCE] = {
+                    "All photos": "all",
+                    "Structured filter": "filter",
+                    "On This Day memories": "memories",
+                    "Smart Search": "smart",
+                }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
                 url = str(user_input[CONF_URL]).strip()
                 if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
                     raise ValueError("invalid_url")
@@ -40,7 +46,7 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_URL): str,
             vol.Required(CONF_API_KEY): str,
             vol.Required(CONF_FRAME_NAME, default="Immich Frame"): str,
-            vol.Required(CONF_SOURCE, default="filter"): vol.In(["filter", "memories", "smart"]),
+            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Structured filter", "On This Day memories", "Smart Search"]),
             vol.Optional(CONF_SMART_QUERY, default=""): str,
             vol.Required(CONF_MODE, default="single"): vol.In(["single", "pairs"]),
             vol.Required(CONF_ORIENTATION, default="any"): vol.In(["any", "portrait", "landscape", "square"]),

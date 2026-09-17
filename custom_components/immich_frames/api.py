@@ -124,9 +124,9 @@ class ImmichApi:
         return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": "preview"})
 
     async def snapshot(self, options: dict[str, Any], generation: int, recent_ids: set[str]) -> FrameSnapshot:
-        filter_value = dict(options.get(CONF_FILTER) or {})
+        source = options.get(CONF_SOURCE, "all")
+        filter_value = {} if source == "all" else dict(options.get(CONF_FILTER) or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
-        source = options.get(CONF_SOURCE, "filter")
         if source == "smart":
             candidates = await self.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value)
         elif source == "memories":

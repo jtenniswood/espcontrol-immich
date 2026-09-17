@@ -11,6 +11,10 @@ def test_frame_body_supports_sources_and_pair_options() -> None:
     assert frame.filter["type"] == {"eq": "IMAGE"}
 
 
+def test_frame_body_defaults_to_all_photos() -> None:
+    assert FrameApp._frame_from_body({"name": "All photos"}).source == "all"
+
+
 def test_frame_body_rejects_invalid_source() -> None:
     with pytest.raises(ValueError, match="source"):
         FrameApp._frame_from_body({"name": "Hall", "source": "unknown"})

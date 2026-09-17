@@ -83,7 +83,7 @@ class FrameConfig:
     pairs_only: bool = False
     slideshow_interval: int = 30
     filter: dict[str, Any] = field(default_factory=dict)
-    source: Literal["filter", "memories", "smart"] = "filter"
+    source: Literal["all", "filter", "memories", "smart"] = "all"
     memory_window_days: int = 2
     fallback_to_all: bool = False
     smart_query: str | None = None
