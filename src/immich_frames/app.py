@@ -114,8 +114,7 @@ class FrameApp:
             primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
             photos: tuple[Photo, ...] = (primary,)
             if frame.mode == "pairs":
-                pair_orientation = "portrait" if frame.output_width >= frame.output_height else "landscape"
-                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days, pair_orientation)
+                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days)
                 if companion:
                     photos = (primary, companion)
                 elif frame.pairs_only:

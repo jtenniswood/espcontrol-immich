@@ -271,14 +271,18 @@ class ImmichApi:
                 canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
-            canvas = Image.new("RGB", canvas_size, "black")
-            width = canvas.width // 2
-            for index, image in enumerate(images[:2]):
-                image.thumbnail((width, canvas.height), Image.Resampling.LANCZOS)
-                canvas.paste(image, (index * width + (width - image.width) // 2, (canvas.height - image.height) // 2))
+            # Pairs have a fixed 16:10 frame with one black pixel between tiles.
+            canvas = Image.new("RGB", (1280, 800), "black")
+            divider = canvas.width // 2
+            tiles = ((0, divider), (divider + 1, canvas.width - divider - 1))
+            for image, (left, width) in zip(images[:2], tiles):
+                cropped = ImageOps.fit(image, (width, canvas.height), Image.Resampling.LANCZOS)
+                canvas.paste(cropped, (left, 0))
             layout = "side_by_side"
         output = BytesIO()
-        canvas.save(output, "JPEG", quality=85, optimize=True)
+        # Avoid chroma bleeding across the narrow divider in paired output.
+        canvas.save(output, "JPEG", quality=95 if len(images) == 2 else 85,
+                    subsampling=0 if len(images) == 2 else -1, optimize=True)
         return output.getvalue(), layout
 
 
