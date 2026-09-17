@@ -1,6 +1,6 @@
 # Home Assistant entity contract
 
-Each configured frame is one Home Assistant device. Entity IDs are generated from stable frame identifiers, so renaming a frame does not break automations.
+Each configured frame is one native Home Assistant device. Entity IDs are generated from the config entry identifier, so renaming a frame does not break automations.
 
 | Entity | Type | Purpose |
 |---|---|---|
@@ -13,6 +13,6 @@ Each configured frame is one Home Assistant device. Entity IDs are generated fro
 | Slide interval | Number | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 
-All image and metadata messages carry the same slide generation. The image is published only after every selected photo has been downloaded and rendered. During a temporary Immich outage the last complete cached slide remains available and is marked `using_cached_image`/`cached` in the runtime state; the connectivity binary sensor is off and the status identifies the failure class.
+The image and metadata entities update from the same coordinator snapshot. The image is replaced only after every selected photo has been downloaded and rendered. During a temporary Immich outage the last complete cached slide remains available; the connectivity binary sensor is off and the status identifies the failure class.
 
 The selected metadata object becomes unavailable when a secondary photo does not exist; metadata from the preceding slide is never retained as if it belonged to the current slide.

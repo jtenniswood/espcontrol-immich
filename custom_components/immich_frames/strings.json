@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an Immich frame",
+        "description": "Enter your Immich server and choose what this Home Assistant device should display.",
+        "data": {
+          "url": "Immich URL",
+          "api_key": "Read-only API key",
+          "frame_name": "Frame name",
+          "source": "Photo source",
+          "smart_query": "Smart Search text",
+          "mode": "Display mode",
+          "orientation": "Orientation",
+          "pair_window_days": "Pair window (days)",
+          "pairs_only": "Require complete pairs",
+          "memory_window_days": "Memory window (days)",
+          "fallback_to_all": "Fall back when memories are empty",
+          "interval": "Slideshow interval (seconds)",
+          "filter": "Immich filter JSON"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to Immich.",
+      "invalid_filter_or_url": "Check the URL and filter JSON."
+    },
+    "abort": {
+      "already_configured": "A frame with this name is already configured."
+    }
+  }
+}

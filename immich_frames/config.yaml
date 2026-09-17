@@ -12,24 +12,14 @@ ingress: true
 ingress_port: 8099
 panel_icon: mdi:image-multiple
 homeassistant_api: true
-services:
-  - mqtt:need
 map:
   - addon_config:rw
 options:
   immich_url: ""
   immich_api_key: ""
-  mqtt_host: "core-mosquitto"
-  mqtt_port: 1883
-  mqtt_username: ""
-  mqtt_password: ""
   cache_limit_mb: 256
 schema:
   # Empty values allow the ingress connection form to be used after install.
   immich_url: str
   immich_api_key: password
-  mqtt_host: str
-  mqtt_port: port
-  mqtt_username: str?
-  mqtt_password: password?
   cache_limit_mb: int

@@ -1,6 +1,6 @@
 # Compatibility and feature coverage
 
-The minimum supported server is Immich 3.2.0. The initial test target is Immich 3.2.x. The app checks the server version before enabling structured-search features and reports unavailable capabilities instead of silently dropping an active rule.
+The minimum supported server is Immich 3.2.0. The initial test target is Immich 3.2.x. The integration checks the server version before setup and reports unavailable capabilities instead of silently dropping an active rule.
 
 Implemented sources and search features:
 
@@ -13,6 +13,6 @@ Implemented sources and search features:
 - Single-image and capture-date matching-pair output.
 - Local orientation selection (`any`, portrait, landscape, or square) applied after Immich metadata retrieval.
 
-The app does not modify Immich assets. Uploading, editing, tagging, rating changes, library administration, and video playback are outside the read-only frame scope.
+The integration does not modify Immich assets. Uploading, editing, tagging, rating changes, library administration, and video playback are outside the read-only frame scope.
 
-The add-on is built and tested for Home Assistant `amd64` and `aarch64` images. These are the architectures supported by the current official Home Assistant base images. CI builds both declared architectures; a published release creates one multi-architecture GHCR manifest.
+The optional renderer app is built and tested for Home Assistant `amd64` and `aarch64` images. These are the architectures supported by the current official Home Assistant base images. CI builds both declared architectures; a published release creates one multi-architecture GHCR manifest.

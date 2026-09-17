@@ -13,7 +13,6 @@ from aiohttp import web
 
 from .immich_client import ImmichClient, ImmichError
 from .models import FrameConfig, Photo, Slide
-from .mqtt import MqttPublisher
 from .pairing import choose_companion
 from .rendering import render_slide
 from .filtering import FilterValidationError, compile_filter
@@ -33,14 +32,7 @@ class FrameApp:
         self.slides: dict[str, Any] = {}
         self.clients: dict[str, ImmichClient] = {}
         self.client = self._client_for("default") if self.storage.get_connection("default") else None
-        self.publisher: MqttPublisher | None = None
-        try:
-            if config.get("mqtt_host"):
-                self.publisher = MqttPublisher(config["mqtt_host"], int(config.get("mqtt_port", 1883)), config.get("mqtt_username"), config.get("mqtt_password"))
-        except Exception as exc:
-            LOG.warning("MQTT is unavailable; frames will remain locally managed: %s", exc)
-        if self.publisher:
-            self.publisher.set_command_handler(self._handle_command)
+        self.publisher = None
         self.tasks: dict[str, asyncio.Task[None]] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
         self.paused: set[str] = set()

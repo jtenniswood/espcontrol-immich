@@ -1,6 +1,6 @@
 # Installation
 
-Immich Frames is distributed as a Home Assistant app and is intended for Home Assistant OS or another installation that supports apps. Add this repository to **Settings → Apps → App repositories**, install **Immich Frames**, and install/configure an MQTT broker first.
+The recommended installation is the native Home Assistant integration in `custom_components/immich_frames`. It works on Home Assistant OS, Supervised, Container, and Core; MQTT is not required. The repository also contains an optional supervised renderer app for deployments that specifically want an app container.
 
 Enter the Immich server URL and a read-only API key with these permissions:
 
@@ -14,10 +14,8 @@ Enter the Immich server URL and a read-only API key with these permissions:
 | `memory.read` | On This Day and saved memories |
 | `asset.statistics` | Optional matching counts |
 
-The app uses MQTT discovery. It does not expose the Immich API key through MQTT, image URLs, metadata, or logs. TLS verification remains enabled by default; using an `http://` URL is an explicit local-network choice.
+The integration verifies the server against `/api/server/version` before creating the device. TLS verification remains enabled by default; using an `http://` URL is an explicit local-network choice.
 
-Open the app through its ingress page and create an Immich connection. The connection is verified against `/api/server/version` before it is stored. A frame then selects that connection, a source, a slideshow interval, and either single-image or matching-pair output. The advanced filter field accepts the typed Immich 3.2 structured-search format. The catalog endpoints expose albums, people, tags, and memories for a richer configuration UI or external automation.
+The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available and the device reports its cached and connection state.
 
-The add-on keeps the last complete rendered slide in its data directory. If Immich becomes unavailable, the image remains available and the device reports `using_cache` plus an `upstream_unavailable` or `invalid_api_key` status. The configured cache limit applies across all frames.
-
-For backup or migration, download `GET /api/export`, create the referenced Immich connections on the new installation, then send the document to `POST /api/import`. Imports are validated before any frame is written.
+For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **Immich Frames**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.
