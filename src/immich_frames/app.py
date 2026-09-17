@@ -208,9 +208,11 @@ class FrameApp:
     async def home(self, _: web.Request) -> web.Response:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
-<form id=f><label>Name <input name=name required></label><label>Source <select name=source><option value=filter>Structured filter</option><option value=memories>On This Day memories</option><option value=smart>Smart Search</option></select></label><label>Smart Search text <input name=smart_query></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Pairs only</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><label>Immich filter JSON <textarea name=filter>{}</textarea></label><button>Create frame</button></form>
+<form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=filter>Structured filter</option><option value=memories>On This Day memories</option><option value=smart>Smart Search</option></select></label><label>Smart Search text <input name=smart_query></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Pairs only</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><label>Immich filter JSON <textarea name=filter>{}</textarea></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
-const out=document.querySelector('#frames'); async function load(){out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2)}
+const out=document.querySelector('#frames'); async function load(){out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2);const connections=await (await fetch('/api/connections')).json();document.querySelector('#connections').innerHTML=connections.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+document.querySelector('#c').onsubmit=async e=>{e.preventDefault();const response=await fetch('/api/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});if(!response.ok) alert(await response.text());e.target.reset();load()};
 document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));data.filter=JSON.parse(data.filter||'{}');for(const key of ['pairs_only','fallback_to_all']) data[key]=e.target[key].checked;for(const key of ['pair_window_days','memory_window_days']) data[key]=Number(data[key]||0);const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});if(!response.ok) alert(await response.text());e.target.reset();load()};load();
 </script>""", content_type="text/html")
 
@@ -226,8 +228,11 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         name, url, api_key = str(body["name"]), str(body["url"]), str(body["api_key"])
         if not url or not api_key:
             raise web.HTTPBadRequest(text="url and api_key are required")
-        async with ImmichClient(url, api_key) as test_client:
-            version = await test_client.version()
+        try:
+            async with ImmichClient(url, api_key) as test_client:
+                version = await test_client.version()
+        except Exception as exc:
+            raise web.HTTPBadGateway(text=f"Unable to verify Immich connection: {exc}") from exc
         self.storage.save_connection(connection_id, name, url, api_key)
         client = ImmichClient(url, api_key)
         self.clients[connection_id] = client
