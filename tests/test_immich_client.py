@@ -58,3 +58,17 @@ async def test_server_errors_are_retried() -> None:
     async with ImmichClient("http://immich.test", "secret", session) as client:
         assert await client.version() == "3.2.0"
     assert len(session.requests) == 3
+
+
+async def test_random_search_returns_asset_array_without_pagination() -> None:
+    session = Session([[{"id": "random-photo", "width": 100, "height": 200}]])
+    async with ImmichClient("http://immich.test", "secret", session) as client:
+        photos = await client.search({}, size=20, random=True)
+    assert [photo.id for photo in photos] == ["random-photo"]
+    assert len(session.requests) == 1
+
+
+async def test_numeric_version_response() -> None:
+    session = Session([{"major": 3, "minor": 2, "patch": 0}])
+    async with ImmichClient("http://immich.test", "secret", session) as client:
+        assert await client.version() == "3.2.0"
