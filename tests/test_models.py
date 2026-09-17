@@ -20,3 +20,4 @@ def test_slide_state_contains_both_roles() -> None:
     state = Slide("frame", 2, (primary, secondary), b"jpeg", "side_by_side").state()
     assert state["asset_ids"] == ["a", "b"]
     assert state["secondary"]["available"] is True
+    assert Slide("frame", 2, (primary, secondary), b"jpeg", "side_by_side").state("secondary")["selected"]["asset_id"] == "b"

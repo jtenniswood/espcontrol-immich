@@ -40,6 +40,7 @@ class FrameApp:
         self.tasks: dict[str, asyncio.Task[None]] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
         self.paused: set[str] = set()
+        self.metadata_role: dict[str, str] = {}
         self.history: dict[str, list[Any]] = {}
         self.cache_dir = data_dir / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -63,10 +64,17 @@ class FrameApp:
         elif command == "previous" and self.history.get(frame_id):
             slide = self.history[frame_id][-2] if len(self.history[frame_id]) > 1 else self.history[frame_id][-1]
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, paused=frame_id in self.paused)
+                self.publisher.publish_frame(frame, slide, paused=frame_id in self.paused, role=self.metadata_role.get(frame_id, "primary"))
         elif command == "clear_cache":
             for item in self.cache_dir.glob(f"{frame_id}.*"):
                 item.unlink(missing_ok=True)
+        elif command in {"primary", "secondary"}:
+            self.metadata_role[frame_id] = command
+            if self.publisher:
+                self.publisher.publish_controls(frame, frame_id in self.paused, command)
+                slide = self.slides.get(frame_id)
+                if slide:
+                    self.publisher.publish_frame(frame, slide, paused=frame_id in self.paused, role=command)
         elif command.startswith("interval:"):
             try:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
@@ -117,7 +125,7 @@ class FrameApp:
             state_temporary.write_text(json.dumps(slide.state()))
             state_temporary.replace(state_path)
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates))
+                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates), role=self.metadata_role.get(frame.frame_id, "primary"))
         except Exception as exc:
             LOG.exception("Unable to refresh frame %s", frame.name)
             if self.publisher:
@@ -245,6 +253,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
             return
         try:
             state = json.loads(state_path.read_text())
+            self.metadata_role[frame.frame_id] = state.get("selected_role", "primary")
             photos = [Photo.from_cache(state["primary"])]
             if state.get("secondary", {}).get("available"):
                 photos.append(Photo.from_cache(state["secondary"]))
@@ -253,7 +262,7 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
             self.slides[frame.frame_id] = slide
             self.history[frame.frame_id] = [slide]
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached")
+                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached", role=self.metadata_role.get(frame.frame_id, "primary"))
         except (OSError, KeyError, ValueError, TypeError):
             LOG.warning("Ignoring incomplete cache for frame %s", frame.name)
 

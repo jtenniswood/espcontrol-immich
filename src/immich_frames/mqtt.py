@@ -48,13 +48,13 @@ class MqttPublisher:
         metadata = {"json_attributes_topic": f"{root}/metadata", "state_topic": f"{root}/metadata"}
         entities: list[tuple[str, str, str, dict[str, Any]]] = [
             ("image", "image", "Frame", {"image_topic": f"{root}/image", "content_type": "image/jpeg"}),
-            ("sensor", "photo_date", "Photo date", {"value_template": "{{ value_json.primary.taken_at or 'unknown' }}", **metadata}),
-            ("sensor", "photo_location", "Photo location", {"value_template": "{{ value_json.primary.location or 'unknown' }}", **metadata}),
-            ("sensor", "photo_filename", "Photo filename", {"value_template": "{{ value_json.primary.filename or 'unknown' }}", **metadata}),
-            ("sensor", "photo_people", "Photo people", {"value_template": "{{ (value_json.primary.people or []) | join(', ') }}", **metadata}),
-            ("sensor", "photo_tags", "Photo tags", {"value_template": "{{ (value_json.primary.tags or []) | join(', ') }}", **metadata}),
-            ("sensor", "photo_rating", "Photo rating", {"value_template": "{{ value_json.primary.rating if value_json.primary.rating is not none else 'unknown' }}", **metadata}),
-            ("sensor", "photo_camera", "Photo camera", {"value_template": "{{ value_json.primary.camera.model or 'unknown' }}", **metadata}),
+            ("sensor", "photo_date", "Photo date", {"value_template": "{{ value_json.selected.taken_at or 'unknown' }}", **metadata}),
+            ("sensor", "photo_location", "Photo location", {"value_template": "{{ value_json.selected.location or 'unknown' }}", **metadata}),
+            ("sensor", "photo_filename", "Photo filename", {"value_template": "{{ value_json.selected.filename or 'unknown' }}", **metadata}),
+            ("sensor", "photo_people", "Photo people", {"value_template": "{{ (value_json.selected.people or []) | join(', ') }}", **metadata}),
+            ("sensor", "photo_tags", "Photo tags", {"value_template": "{{ (value_json.selected.tags or []) | join(', ') }}", **metadata}),
+            ("sensor", "photo_rating", "Photo rating", {"value_template": "{{ value_json.selected.rating if value_json.selected.rating is not none else 'unknown' }}", **metadata}),
+            ("sensor", "photo_camera", "Photo camera", {"value_template": "{{ value_json.selected.camera.model or 'unknown' }}", **metadata}),
             ("sensor", "status", "Status", {"state_topic": f"{root}/status"}),
             ("sensor", "slide", "Slide", {"value_template": "{{ value_json.generation }}", "state_topic": f"{root}/state"}),
             ("sensor", "matching_assets", "Matching assets", {"state_topic": f"{root}/matching_assets", "unit_of_measurement": "assets"}),
@@ -72,10 +72,10 @@ class MqttPublisher:
             config = {"name": name, "unique_id": f"{frame.frame_id}_{key}", "device": device, **availability, **extra}
             self.client.publish(f"homeassistant/{component}/{frame.frame_id}/{key}/config", json.dumps(config), retain=True)
 
-    def publish_frame(self, frame: FrameConfig, slide: Slide, paused: bool = False, using_cache: bool = False, status: str = "ready", matching_assets: int | None = None) -> None:
+    def publish_frame(self, frame: FrameConfig, slide: Slide, paused: bool = False, using_cache: bool = False, status: str = "ready", matching_assets: int | None = None, role: str = "primary") -> None:
         root = f"immich_frames/{frame.frame_id}"
         self._discovery(frame)
-        state = slide.state()
+        state = slide.state("secondary" if role == "secondary" and slide.secondary else "primary")
         for item in (state["primary"], state["secondary"]):
             if item.get("available"):
                 item["location"] = ", ".join(x for x in (item.get("city"), item.get("state"), item.get("country")) if x)

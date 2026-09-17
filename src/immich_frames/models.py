@@ -128,11 +128,11 @@ class Slide:
             "latitude": photo.exif.get("latitude"), "longitude": photo.exif.get("longitude"),
         }
 
-    def state(self) -> dict[str, Any]:
+    def state(self, role: Literal["primary", "secondary"] = "primary") -> dict[str, Any]:
         primary = self.metadata("primary")
         secondary = self.metadata("secondary")
         return {
-            "slide_id": primary["slide_id"], "generation": self.generation, "layout": self.layout,
-            "asset_ids": [photo.id for photo in self.photos], "primary": primary, "secondary": secondary,
+            "slide_id": primary["slide_id"], "generation": self.generation, "layout": self.layout, "selected_role": role,
+            "asset_ids": [photo.id for photo in self.photos], "primary": primary, "secondary": secondary, "selected": secondary if role == "secondary" else primary,
             "created_at": self.created_at.isoformat(),
         }
