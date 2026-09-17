@@ -15,6 +15,7 @@ from .models import FrameConfig, Photo
 from .mqtt import MqttPublisher
 from .pairing import choose_companion
 from .rendering import render_slide
+from .selection import safe_filter
 from .storage import Storage
 
 LOG = logging.getLogger("immich_frames")
@@ -37,7 +38,7 @@ class FrameApp:
 
     async def refresh_frame(self, frame: FrameConfig) -> None:
         try:
-            query = {"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"in": ["timeline", "archive", "hidden"]}, **frame.filter}
+            query = safe_filter(frame.filter)
             candidates = await self.client.search(query, size=100, random=True)
             if not candidates:
                 LOG.warning("Frame %s has no matching photos", frame.name)
