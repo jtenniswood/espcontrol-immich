@@ -31,6 +31,12 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "Single image": "single",
                     "Matching portrait pairs": "pairs",
                 }.get(user_input[CONF_MODE], user_input[CONF_MODE])
+                user_input[CONF_ORIENTATION] = {
+                    "Any orientation": "any",
+                    "Portrait photos only": "portrait",
+                    "Landscape photos only": "landscape",
+                    "Square photos only": "square",
+                }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
                 url = str(user_input[CONF_URL]).strip()
                 if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
                     raise ValueError("invalid_url")
@@ -53,7 +59,7 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Structured filter", "On This Day memories", "Smart Search"]),
             vol.Optional(CONF_SMART_QUERY, default=""): str,
             vol.Required(CONF_MODE, default="Single image"): vol.In(["Single image", "Matching portrait pairs"]),
-            vol.Required(CONF_ORIENTATION, default="any"): vol.In(["any", "portrait", "landscape", "square"]),
+            vol.Required(CONF_ORIENTATION, default="Any orientation"): vol.In(["Any orientation", "Portrait photos only", "Landscape photos only", "Square photos only"]),
             vol.Required(CONF_PAIR_WINDOW, default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=False): bool,
             vol.Required(CONF_MEMORY_WINDOW, default=2): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),

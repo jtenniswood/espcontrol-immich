@@ -11,7 +11,7 @@
           "source": "Photo source",
           "smart_query": "Smart Search text",
           "mode": "Display mode",
-          "orientation": "Orientation",
+          "orientation": "Photo orientation filter",
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Require complete pairs",
           "memory_window_days": "Memory window (days)",
@@ -21,6 +21,7 @@
         },
         "data_description": {
           "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side.",
+          "orientation": "Only photos with the selected orientation are eligible. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
           "pair_window_days": "The maximum number of days between the two photos.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available."
         }
