@@ -43,7 +43,7 @@ def test_original_ratio_respects_exif_rotation():
 @pytest.mark.parametrize("mode,companion,size,layout", [
     ("single", False, (200, 400), "single"),
     ("pairs", False, (200, 400), "single"),
-    ("pairs", True, (1080, 1080), "side_by_side"),
+    ("pairs", True, (1280, 800), "side_by_side"),
 ])
 async def test_snapshot_passes_option_to_renderer_without_changing_pairs(asset, mode, companion, size, layout):
     api = ImmichApi("http://immich.test", "key")

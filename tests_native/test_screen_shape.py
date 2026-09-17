@@ -22,7 +22,7 @@ async def test_snapshot_uses_screen_shape_without_filtering_photos(asset, jpeg, 
     assets = [asset, {**asset, "id": "second"}] if paired else [asset]
     api._request = AsyncMock(side_effect=[assets, *([jpeg] * len(assets))])
     snapshot = await api.snapshot({"screen_shape": shape, "mode": "pairs" if paired else "single"}, 1, set())
-    assert Image.open(BytesIO(snapshot.image)).size == size
+    assert Image.open(BytesIO(snapshot.image)).size == ((1280, 800) if paired else size)
     assert snapshot.layout == ("side_by_side" if paired else "single")
     assert [photo["id"] for photo in snapshot.photos] == [a["id"] for a in assets]
     assert api._request.call_args_list[0].kwargs["json"]["filter"] == {
@@ -32,7 +32,7 @@ async def test_snapshot_uses_screen_shape_without_filtering_photos(asset, jpeg, 
 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
 @pytest.mark.parametrize("paired", [False, True])
-def test_render_keeps_whole_photo_proportions_and_pair_order(shape, label, size, paired):
+def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, size, paired):
     # Wide photos leave visible black padding, even when placed into a portrait tile.
     payloads = []
     for color in (["red", "blue"] if paired else ["red"]):
@@ -41,14 +41,24 @@ def test_render_keeps_whole_photo_proportions_and_pair_order(shape, label, size,
         payloads.append(output.getvalue())
     output, _ = ImmichApi._render([], payloads, shape)
     image = Image.open(BytesIO(output))
+    size = (1280, 800) if paired else size
     width, height = size
     tile_width = width // len(payloads)
     for index in range(len(payloads)):
         center = (index * tile_width + tile_width // 2, height // 2)
         pixel = image.getpixel(center)
         assert pixel[0 if index == 0 else 2] > 240
-        scaled_height = min(400, tile_width // 2)
-        assert max(image.getpixel((center[0], (height - scaled_height) // 2 - 10))) < 10
+        if paired:
+            assert image.getpixel((center[0], 0))[0 if index == 0 else 2] > 240
+            assert image.getpixel((center[0], height - 1))[0 if index == 0 else 2] > 240
+        else:
+            scaled_height = min(400, tile_width // 2)
+            assert max(image.getpixel((center[0], (height - scaled_height) // 2 - 10))) < 10
+    if paired:
+        for y in range(height):
+            assert max(image.getpixel((640, y))) < 10
+            assert image.getpixel((639, y))[0] > 240
+            assert image.getpixel((641, y))[2] > 240
     assert image.size == size
 
 
