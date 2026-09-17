@@ -11,7 +11,7 @@ import aiohttp
 from PIL import Image, ImageOps
 
 from .const import (
-    CONF_ALBUM_ID, CONF_FILTER, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
+    CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
 )
 
@@ -130,7 +130,7 @@ class ImmichApi:
 
     async def snapshot(self, options: dict[str, Any], generation: int, recent_ids: set[str]) -> FrameSnapshot:
         source = options.get(CONF_SOURCE, "all")
-        filter_value = {} if source in ("all", "album") else dict(options.get(CONF_FILTER) or {})
+        filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
         if source == "album":
             album_id = str(options.get(CONF_ALBUM_ID, "")).strip()
