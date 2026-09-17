@@ -353,10 +353,13 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
     async def catalog(self, request: web.Request) -> web.Response:
         kind = request.match_info["kind"]
         connection_id = request.query.get("connection_id", "default")
+        method_name = {"albums": "albums", "people": "people", "tags": "tags", "memories": "memories"}.get(kind)
+        if method_name is None:
+            raise web.HTTPNotFound()
         try:
-            values = {"albums": self._client_for(connection_id).albums, "people": self._client_for(connection_id).people, "tags": self._client_for(connection_id).tags, "memories": self._client_for(connection_id).memories}[kind]
-        except KeyError as exc:
-            raise web.HTTPNotFound() from exc
+            values = getattr(self._client_for(connection_id), method_name)
+        except ValueError as exc:
+            raise web.HTTPNotFound(text=str(exc)) from exc
         return web.json_response(await values())
 
     def application(self) -> web.Application:
