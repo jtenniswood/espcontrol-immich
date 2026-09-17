@@ -2,7 +2,7 @@ name: Immich Frames
 version: "0.1.0"
 slug: immich_frames
 description: Create Home Assistant photo-frame devices backed by Immich 3.2+
-url: https://github.com/jtenniswood/immich-frames
+url: https://github.com/jtenniswood/espcontrol-immich
 arch:
   - amd64
   - aarch64
