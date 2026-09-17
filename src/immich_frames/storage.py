@@ -39,6 +39,10 @@ class Storage:
         self.db.execute("INSERT OR REPLACE INTO connections(id,name,url,api_key) VALUES(?,?,?,?)", (connection_id, name, url.rstrip("/"), api_key))
         self.db.commit()
 
+    def delete_connection(self, connection_id: str) -> None:
+        self.db.execute("DELETE FROM connections WHERE id=?", (connection_id,))
+        self.db.commit()
+
     def get_connection(self, connection_id: str) -> tuple[str, str, str] | None:
         return self.db.execute("SELECT id,url,api_key FROM connections WHERE id=?", (connection_id,)).fetchone()
 

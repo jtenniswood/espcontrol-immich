@@ -31,6 +31,10 @@ class ImmichClient:
         if self._owned_session and self._session:
             await self._session.close()
 
+    async def close(self) -> None:
+        if self._owned_session and self._session and not self._session.closed:
+            await self._session.close()
+
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         if self._session is None:
             self._session = aiohttp.ClientSession(headers={"x-api-key": self.api_key})

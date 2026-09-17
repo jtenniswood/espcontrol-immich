@@ -28,7 +28,8 @@ options:
   mqtt_password: ""
   cache_limit_mb: 256
 schema:
-  immich_url: url
+  # Empty values allow the ingress connection form to be used after install.
+  immich_url: str
   immich_api_key: password
   mqtt_host: str
   mqtt_port: port

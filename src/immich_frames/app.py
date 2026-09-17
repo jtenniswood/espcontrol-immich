@@ -7,6 +7,7 @@ import os
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from aiohttp import web
 
@@ -238,10 +239,14 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
 
     async def create_connection(self, request: web.Request) -> web.Response:
         body = await request.json()
-        connection_id = str(body.get("id") or uuid.uuid4())
-        name, url, api_key = str(body["name"]), str(body["url"]), str(body["api_key"])
-        if not url or not api_key:
-            raise web.HTTPBadRequest(text="url and api_key are required")
+        try:
+            connection_id = str(body.get("id") or uuid.uuid4()).strip()
+            name, url, api_key = str(body["name"]).strip(), str(body["url"]).strip(), str(body["api_key"]).strip()
+        except (AttributeError, KeyError, TypeError) as exc:
+            raise web.HTTPBadRequest(text="name, url and api_key are required") from exc
+        parsed_url = urlparse(url)
+        if not connection_id or not name or not api_key or parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+            raise web.HTTPBadRequest(text="name, url and api_key are required; url must be http or https")
         try:
             async with ImmichClient(url, api_key) as test_client:
                 version = await test_client.version()
@@ -252,6 +257,20 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         self.clients[connection_id] = client
         return web.json_response({"id": connection_id, "name": name, "url": url, "version": version}, status=201)
 
+    async def delete_connection(self, request: web.Request) -> web.Response:
+        connection_id = request.match_info["connection_id"]
+        if connection_id == "default" and self.config.get("immich_url"):
+            raise web.HTTPConflict(text="The configured default connection cannot be deleted")
+        if any(frame.connection_id == connection_id for frame in self.storage.list_frames()):
+            raise web.HTTPConflict(text="Connection is used by a frame")
+        if self.storage.get_connection(connection_id) is None:
+            raise web.HTTPNotFound()
+        client = self.clients.pop(connection_id, None)
+        if client:
+            await client.close()
+        self.storage.delete_connection(connection_id)
+        return web.Response(status=204)
+
     async def export_config(self, _: web.Request) -> web.Response:
         return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "pairs_only": f.pairs_only, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit} for f in self.storage.list_frames()]})
 
@@ -260,14 +279,17 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
         entries = body.get("frames") if isinstance(body, dict) else None
         if not isinstance(entries, list):
             raise web.HTTPBadRequest(text="frames must be an array")
-        imported: list[str] = []
         try:
+            frames: list[FrameConfig] = []
             for entry in entries:
                 if not isinstance(entry, dict):
                     raise ValueError("each frame must be an object")
                 frame_id = str(entry.get("frame_id") or uuid.uuid4())
                 frame = self._frame_from_body(entry, frame_id)
                 self._client_for(frame.connection_id)
+                frames.append(frame)
+            imported: list[str] = []
+            for frame in frames:
                 self.storage.save_frame(frame)
                 self.start_frame(frame)
                 imported.append(frame.frame_id)
@@ -336,8 +358,19 @@ document.querySelector('#f').onsubmit=async e=>{e.preventDefault();const data=Ob
 
     def application(self) -> web.Application:
         app = web.Application()
-        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/connections", self.list_connections), web.post("/api/connections", self.create_connection), web.get("/api/export", self.export_config), web.post("/api/import", self.import_config), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/connections", self.list_connections), web.post("/api/connections", self.create_connection), web.delete("/api/connections/{connection_id}", self.delete_connection), web.get("/api/export", self.export_config), web.post("/api/import", self.import_config), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.on_cleanup.append(self.shutdown)
         return app
+
+    async def shutdown(self, _: web.Application) -> None:
+        for task in self.tasks.values():
+            task.cancel()
+        if self.tasks:
+            await asyncio.gather(*self.tasks.values(), return_exceptions=True)
+        for client in self.clients.values():
+            await client.close()
+        if self.publisher:
+            self.publisher.close()
 
     async def start_existing(self) -> None:
         self.loop = asyncio.get_running_loop()

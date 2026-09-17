@@ -14,3 +14,4 @@ Implemented sources and search features:
 
 The app does not modify Immich assets. Uploading, editing, tagging, rating changes, library administration, and video playback are outside the read-only frame scope.
 
+The add-on is built and tested for Home Assistant `amd64`, `aarch64`, `armv7`, `armhf`, and `i386` images. CI builds every declared architecture; a published release creates one multi-architecture GHCR manifest.
