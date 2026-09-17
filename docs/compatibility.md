@@ -4,6 +4,7 @@ The minimum supported server is Immich 3.2.0. The initial test target is Immich 
 
 Implemented sources and search features:
 
+- All photos source with the safe image/timeline constraints applied automatically.
 - Structured metadata search with cursor pagination and typed operators.
 - Album, person, tag, favorite, rating, date, location, camera, filename, OCR, and visibility fields where the server exposes them.
 - OR branches combined with top-level AND constraints.
