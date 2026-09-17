@@ -32,9 +32,10 @@ async def test_connection_checks_authenticated_search(hass, status):
         assert result["errors"] == {"base": "invalid_auth"}
     else:
         assert result["step_id"] == "source"
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album by ID"})
-        assert result["step_id"] == "album"
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"album_id": "album-id"})
+        with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "album-id", "albumName": "Holidays"}]):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "Album"})
+            assert result["step_id"] == "album"
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], {"album_id": "album-id"})
         assert result["step_id"] == "display"
         with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {

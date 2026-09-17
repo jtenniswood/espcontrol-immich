@@ -1,21 +1,222 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.core import callback
+from homeassistant.helpers import selector
 
 from .api import ImmichApi, ImmichApiError
 from .const import (
     CONF_ALBUM_ID, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_MODE, CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
-    CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DOMAIN,
+    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
+    CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
 )
 
+SOURCE_LABELS = {"all": "All photos", "album": "Album", "memories": "On This Day memories", "smart": "Smart Search"}
+SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:9)", "portrait": "Portrait (9:16)", "square": "Square (1:1)"}
+MODE_LABELS = {"single": "Single image", "pairs": "Matching portrait pairs"}
+ORIENTATION_LABELS = {"any": "Any orientation", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
+SOURCE_FIELDS = {
+    "album": (CONF_ALBUM_ID,),
+    "memories": (CONF_MEMORY_WINDOW, CONF_FALLBACK),
+    "smart": (CONF_SMART_QUERY,),
+}
 
-class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+
+def _navigation(back_label: str, *, display: bool = False, change_source: bool = False) -> dict:
+    options = {"continue": "Save frame" if display else "Continue", "back": back_label}
+    if change_source:
+        options["source"] = "Change photo source"
+    return {vol.Optional("navigation", default="continue"): vol.In(options)}
+
+
+class FrameSettingsFlow:
+    """Shared source and display forms for setup and later edits."""
+
+    def _remember(self, user_input: dict[str, Any]) -> None:
+        self._data.update({key: value for key, value in user_input.items() if key != "navigation"})
+
+    async def async_step_source(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
+        if user_input:
+            source = {
+                "All photos": "all",
+                "Album": "album",
+                "On This Day memories": "memories",
+                "Smart Search": "smart",
+            }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
+            self._data[CONF_SOURCE] = source
+            if source == "album":
+                return await self.async_step_album()
+            if source == "memories":
+                return await self.async_step_memories()
+            if source == "smart":
+                return await self.async_step_smart()
+            return await self.async_step_display()
+        return self.async_show_form(step_id="source", data_schema=vol.Schema({
+            vol.Required(CONF_SOURCE, default=SOURCE_LABELS.get(self._data.get(CONF_SOURCE), "All photos")): vol.In(list(SOURCE_LABELS.values())),
+        }), errors=errors or {})
+
+    async def async_step_album(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None and user_input.get("navigation") == "back":
+            self._remember(user_input)
+            return await self.async_step_source()
+        api = ImmichApi(self._data[CONF_URL], self._data[CONF_API_KEY])
+        try:
+            albums = await api.albums()
+        except ImmichApiError as exc:
+            error = "album_access_denied" if exc.status in (401, 403) else "albums_unavailable"
+            return await self.async_step_source(errors={"base": error})
+        except OSError:
+            return await self.async_step_source(errors={"base": "albums_unavailable"})
+        finally:
+            await api.close()
+        if not albums:
+            return await self.async_step_source(errors={"base": "no_albums"})
+        names = {album["id"]: album["albumName"].strip() or "Untitled album" for album in albums}
+        counts = Counter(name.casefold() for name in names.values())
+        options = [
+            {"value": album_id, "label": f"{name} ({album_id})" if counts[name.casefold()] > 1 else name}
+            for album_id, name in sorted(names.items(), key=lambda item: (item[1].casefold(), item[0]))
+        ]
+        errors: dict[str, str] = {}
+        if user_input:
+            album_id = str(user_input.get(CONF_ALBUM_ID, "")).strip()
+            if not album_id:
+                errors["base"] = "album_required"
+            elif album_id not in names:
+                errors["base"] = "album_unavailable"
+            else:
+                self._data[CONF_ALBUM_ID] = album_id
+                return await self.async_step_display()
+        saved_album = self._data.get(CONF_ALBUM_ID)
+        album_field = vol.Optional(CONF_ALBUM_ID, default=saved_album) if saved_album in names else vol.Optional(CONF_ALBUM_ID)
+        return self.async_show_form(step_id="album", data_schema=vol.Schema({
+            album_field: selector.SelectSelector(selector.SelectSelectorConfig(
+                options=options, mode=selector.SelectSelectorMode.DROPDOWN,
+                custom_value=False,
+            )),
+            **_navigation("Back to photo source"),
+        }), errors=errors)
+
+    async def async_step_memories(self, user_input: dict[str, Any] | None = None):
+        if user_input:
+            self._remember(user_input)
+            if user_input.get("navigation") == "back":
+                return await self.async_step_source()
+            return await self.async_step_display()
+        return self.async_show_form(step_id="memories", data_schema=vol.Schema({
+            vol.Required(CONF_MEMORY_WINDOW, default=self._data.get(CONF_MEMORY_WINDOW, 2)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
+            vol.Required(CONF_FALLBACK, default=self._data.get(CONF_FALLBACK, False)): bool,
+            **_navigation("Back to photo source"),
+        }))
+
+    async def async_step_smart(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input:
+            self._remember(user_input)
+            if user_input.get("navigation") == "back":
+                return await self.async_step_source()
+            if not str(user_input.get(CONF_SMART_QUERY, "")).strip():
+                errors["base"] = "smart_query_required"
+            else:
+                return await self.async_step_display()
+        return self.async_show_form(step_id="smart", data_schema=vol.Schema({
+            vol.Optional(CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")): str,
+            **_navigation("Back to photo source"),
+        }), errors=errors)
+
+    async def async_step_display(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input:
+            user_input[CONF_MODE] = {
+                "Single image": "single",
+                "Matching portrait pairs": "pairs",
+            }.get(user_input[CONF_MODE], user_input[CONF_MODE])
+            user_input[CONF_ORIENTATION] = {
+                "Any orientation": "any",
+                "Portrait photos only": "portrait",
+                "Landscape photos only": "landscape",
+                "Square photos only": "square",
+            }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
+            user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
+            self._remember(user_input)
+            if user_input.get("navigation") == "source":
+                return await self.async_step_source()
+            if user_input.get("navigation") == "back":
+                source = self._data.get(CONF_SOURCE)
+                if source in SOURCE_FIELDS:
+                    return await getattr(self, f"async_step_{source}")()
+                return await self.async_step_source()
+            name = self._data[CONF_FRAME_NAME].strip()
+            unique_id = f"{self._data[CONF_URL]}|{name}"
+            entry = self._settings_entry
+            if not name:
+                errors[CONF_FRAME_NAME] = "name_required"
+            elif any(other.unique_id == unique_id and other is not entry for other in self.hass.config_entries.async_entries(DOMAIN)):
+                errors[CONF_FRAME_NAME] = "name_in_use"
+            else:
+                data = dict(self._data)
+                data[CONF_FRAME_NAME] = name
+                # Keep drafts while navigating, but save only the active source's filters.
+                for source, fields in SOURCE_FIELDS.items():
+                    if source != data.get(CONF_SOURCE):
+                        for field in fields:
+                            data.pop(field, None)
+                data.pop("filter", None)
+                return await self._async_save_settings(data, name, unique_id)
+        names = {
+            entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
+            if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
+        }
+        name = "Immich Frame"
+        suffix = 2
+        while name in names:
+            name = f"Immich Frame {suffix}"
+            suffix += 1
+        return self.async_show_form(step_id="display", data_schema=vol.Schema({
+            vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
+            vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
+            vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
+            vol.Required(CONF_ORIGINAL_ASPECT_RATIO, default=self._data.get(CONF_ORIGINAL_ASPECT_RATIO, False)): bool,
+            vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
+            vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
+            vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
+            vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
+            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Smart Search"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), display=True, change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
+        }), errors=errors)
+
+
+class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        return ImmichFramesOptionsFlow()
+
+    @property
+    def _settings_entry(self):
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            return self._get_reconfigure_entry()
+        return None
+
+    async def _async_save_settings(self, data, name, unique_id):
+        if (entry := self._settings_entry) is not None:
+            return self.async_update_reload_and_abort(entry, title=name, unique_id=unique_id, data=data)
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title=name, data=data)
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        """Edit a copy; the running frame changes only when the user saves."""
+        entry = self._get_reconfigure_entry()
+        self._data = dict(entry.data)
+        self._data.setdefault(CONF_FRAME_NAME, entry.title)
+        return await self.async_step_source()
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         if user_input is None and self._saved_connections():
@@ -98,90 +299,27 @@ class ImmichFramesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_API_KEY): str,
         }), errors=errors)
 
-    async def async_step_source(self, user_input: dict[str, Any] | None = None):
-        if user_input:
-            source = {
-                "All photos": "all",
-                "Album by ID": "album",
-                "On This Day memories": "memories",
-                "Smart Search": "smart",
-            }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
-            self._data[CONF_SOURCE] = source
-            if source == "album":
-                return await self.async_step_album()
-            if source == "memories":
-                return await self.async_step_memories()
-            if source == "smart":
-                return await self.async_step_smart()
-            return await self.async_step_display()
-        return self.async_show_form(step_id="source", data_schema=vol.Schema({
-            vol.Required(CONF_SOURCE, default="All photos"): vol.In(["All photos", "Album by ID", "On This Day memories", "Smart Search"]),
-        }))
 
-    async def async_step_album(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-        if user_input:
-            album_id = str(user_input.get(CONF_ALBUM_ID, "")).strip()
-            if not album_id:
-                errors["base"] = "album_required"
-            else:
-                self._data[CONF_ALBUM_ID] = album_id
-                return await self.async_step_display()
-        return self.async_show_form(step_id="album", data_schema=vol.Schema({
-            vol.Required(CONF_ALBUM_ID): str,
-        }), errors=errors)
+class ImmichFramesOptionsFlow(FrameSettingsFlow, config_entries.OptionsFlow):
+    """Edit an existing frame through Home Assistant's Configure button."""
 
-    async def async_step_memories(self, user_input: dict[str, Any] | None = None):
-        if user_input:
-            self._data.update(user_input)
-            return await self.async_step_display()
-        return self.async_show_form(step_id="memories", data_schema=vol.Schema({
-            vol.Required(CONF_MEMORY_WINDOW, default=2): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
-            vol.Required(CONF_FALLBACK, default=False): bool,
-        }))
+    @property
+    def _settings_entry(self):
+        return self.config_entry
 
-    async def async_step_smart(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-        if user_input:
-            if not str(user_input.get(CONF_SMART_QUERY, "")).strip():
-                errors["base"] = "smart_query_required"
-            else:
-                self._data.update(user_input)
-                return await self.async_step_display()
-        return self.async_show_form(step_id="smart", data_schema=vol.Schema({
-            vol.Required(CONF_SMART_QUERY): str,
-        }), errors=errors)
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        self._data = dict(self.config_entry.data)
+        self._data.setdefault(CONF_FRAME_NAME, self.config_entry.title)
+        steps = ["source"]
+        if (source := self._data.get(CONF_SOURCE)) in SOURCE_FIELDS:
+            steps.append(source)
+        steps.append("display")
+        return self.async_show_menu(step_id="init", menu_options=steps)
 
-    async def async_step_display(self, user_input: dict[str, Any] | None = None):
-        if user_input:
-            user_input[CONF_MODE] = {
-                "Single image": "single",
-                "Matching portrait pairs": "pairs",
-            }.get(user_input[CONF_MODE], user_input[CONF_MODE])
-            user_input[CONF_ORIENTATION] = {
-                "Any orientation": "any",
-                "Portrait photos only": "portrait",
-                "Landscape photos only": "landscape",
-                "Square photos only": "square",
-            }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
-            self._data.update(user_input)
-            await self.async_set_unique_id(f"{self._data[CONF_URL]}|{self._data[CONF_FRAME_NAME].strip()}")
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(title=self._data[CONF_FRAME_NAME].strip(), data=self._data)
-        names = {
-            entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
-            if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
-        }
-        name = "Immich Frame"
-        suffix = 2
-        while name in names:
-            name = f"Immich Frame {suffix}"
-            suffix += 1
-        return self.async_show_form(step_id="display", data_schema=vol.Schema({
-            vol.Required(CONF_FRAME_NAME, default=name): str,
-            vol.Required(CONF_MODE, default="Single image"): vol.In(["Single image", "Matching portrait pairs"]),
-            vol.Required(CONF_ORIENTATION, default="Any orientation"): vol.In(["Any orientation", "Portrait photos only", "Landscape photos only", "Square photos only"]),
-            vol.Required(CONF_PAIR_WINDOW, default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
-            vol.Required(CONF_PAIRS_ONLY, default=False): bool,
-            vol.Required(CONF_INTERVAL, default=DEFAULT_INTERVAL): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-        }))
+    async def _async_save_settings(self, data, name, unique_id):
+        # Runtime controls and existing installations store settings in entry.data.
+        # Keep that single source of truth; only apply the draft on Save frame.
+        entry = self.config_entry
+        if self.hass.config_entries.async_update_entry(entry, title=name, unique_id=unique_id, data=data):
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return self.async_create_entry(title="", data=dict(entry.options))

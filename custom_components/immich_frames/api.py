@@ -14,6 +14,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+    CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
 
 
@@ -34,6 +35,19 @@ def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
     ):
         raise ImmichApiError("Immich returned an invalid photo search response")
     return items
+
+
+def _with_memory_ids(query: dict[str, Any], asset_ids: list[str]) -> dict[str, Any] | None:
+    """Intersect a filter with memory IDs using Immich's scalar ID operators."""
+    result = dict(query)
+    branches = []
+    # Distribute existing alternatives so memory IDs never replace user rules.
+    for branch in result.pop("or", [{}]):
+        condition = branch.get("id", {})
+        for asset_id in asset_ids:
+            if condition.get("eq", asset_id) == asset_id and condition.get("ne") != asset_id:
+                branches.append({**branch, "id": {"eq": asset_id}})
+    return {**result, "or": branches} if branches else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +160,18 @@ class ImmichApi:
         result = await self._request("POST", endpoint, json=body)
         return [_photo(asset) for asset in _asset_items(result, random=random)]
 
+    async def albums(self) -> list[dict[str, Any]]:
+        """List albums accessible to this account, including shared albums."""
+        result = await self._request("GET", "/api/albums")
+        if not isinstance(result, list) or any(
+            not isinstance(album, dict)
+            or not isinstance(album.get("id"), str) or not album["id"]
+            or not isinstance(album.get("albumName"), str)
+            for album in result
+        ):
+            raise ImmichApiError("Immich returned an invalid album list")
+        return result
+
     async def smart_search(self, query: str, filter_value: dict[str, Any], size: int = 200) -> list[dict[str, Any]]:
         result = await self._request("POST", "/api/search/smart", json={"query": query, "filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True})
         return [_photo(asset) for asset in _asset_items(result)]
@@ -177,7 +203,8 @@ class ImmichApi:
             for offset in range(-int(options.get(CONF_MEMORY_WINDOW, 2)), int(options.get(CONF_MEMORY_WINDOW, 2)) + 1):
                 assets.extend(await self.memories((anchor + timedelta(days=offset)).isoformat()))
             ids = list(dict.fromkeys(asset.get("id") for memory in assets for asset in memory.get("assets", []) if asset.get("id")))
-            candidates = await self.search({**filter_value, "id": {"in": ids[:1000]}}) if ids else []
+            memory_filter = _with_memory_ids(filter_value, ids[:1000])
+            candidates = await self.search(memory_filter) if memory_filter else []
             if not candidates and options.get(CONF_FALLBACK):
                 candidates = await self.search(filter_value, random=True)
         else:
@@ -202,7 +229,11 @@ class ImmichApi:
                 raise ImmichApiError("No matching pair is available")
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
-            output, layout = await asyncio.get_running_loop().run_in_executor(None, self._render, photos, image_data)
+            output, layout = await asyncio.get_running_loop().run_in_executor(
+                None, self._render, photos, image_data,
+                options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
+                options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
+            )
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
         return FrameSnapshot(output, generation, tuple(photos), layout, datetime.now(timezone.utc), len(candidates))
@@ -216,16 +247,20 @@ class ImmichApi:
         return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 
     @staticmethod
-    def _render(photos: list[dict[str, Any]], payloads: list[bytes]) -> tuple[bytes, str]:
-        canvas_size = (1920, 1080)
+    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, original_aspect_ratio: bool = False) -> tuple[bytes, str]:
+        canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
         images: list[Image.Image] = []
         for payload in payloads:
             image = ImageOps.exif_transpose(Image.open(BytesIO(payload))).convert("RGB")
             images.append(image)
         if len(images) == 1:
-            canvas = Image.new("RGB", canvas_size, "black")
-            images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
-            canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
+            if original_aspect_ratio:
+                # Send the oriented preview itself, without a fixed-size background.
+                canvas = images[0]
+            else:
+                canvas = Image.new("RGB", canvas_size, "black")
+                images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
+                canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
             canvas = Image.new("RGB", canvas_size, "black")

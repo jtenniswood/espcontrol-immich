@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
 import pytest
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.translation import async_translate_state
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.const import DOMAIN
@@ -28,6 +30,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert coordinator.cache_path.with_suffix(".jpg").is_file()
         assert hass.states.get("image.immich_frame_frame") is not None
         assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
@@ -35,6 +38,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
         assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -61,9 +65,20 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         "url": "http://immich.test", "api_key": "test-key", "mode": "pairs", "pairs_only": True,
     })
     entry.add_to_hass(hass)
+    # Simulate upgrading an existing frame: its entity ID and service options stay valid.
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "select", DOMAIN, f"{entry.entry_id}_metadata_role", config_entry=entry,
+        suggested_object_id="immich_frame_metadata_photo", original_name="Metadata photo",
+    )
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
+        select_entry = registry.async_get("select.immich_frame_metadata_photo")
+        assert select_entry.original_name == "Show photo details for"
+        assert select_entry.translation_key == "metadata_role"
+        label = async_translate_state(hass, "secondary", "select", DOMAIN, select_entry.translation_key, None)
+        assert label == "Right photo in a pair"
         await hass.services.async_call("select", "select_option", {
             "entity_id": "select.immich_frame_metadata_photo", "option": "secondary",
         }, blocking=True)

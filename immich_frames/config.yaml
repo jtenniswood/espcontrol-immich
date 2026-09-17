@@ -1,5 +1,5 @@
 name: EspControl Immich Companion
-version: "0.1.0"
+version: "0.1.1"
 slug: immich_frames
 description: Create Home Assistant photo-frame devices backed by Immich 3.2+
 url: https://github.com/jtenniswood/espcontrol-immich
