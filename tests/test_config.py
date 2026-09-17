@@ -16,6 +16,16 @@ def test_frame_body_rejects_invalid_source() -> None:
         FrameApp._frame_from_body({"name": "Hall", "source": "unknown"})
 
 
+def test_frame_body_rejects_unknown_order_field() -> None:
+    with pytest.raises(ValueError, match="order_field"):
+        FrameApp._frame_from_body({"name": "Hall", "order_field": "secretField"})
+
+
+def test_frame_body_requires_name() -> None:
+    with pytest.raises(ValueError, match="name"):
+        FrameApp._frame_from_body({"name": "  "})
+
+
 def test_app_can_start_before_immich_is_configured(tmp_path) -> None:
     app = FrameApp({}, tmp_path)
     assert app.client is None

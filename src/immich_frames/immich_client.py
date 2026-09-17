@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import aiohttp
@@ -8,7 +9,9 @@ from .models import Photo
 
 
 class ImmichError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class ImmichClient:
@@ -31,14 +34,23 @@ class ImmichClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         if self._session is None:
             self._session = aiohttp.ClientSession(headers={"x-api-key": self.api_key})
-        try:
-            async with self._session.request(method, self.base_url + path, headers=self._headers, timeout=aiohttp.ClientTimeout(total=15), **kwargs) as response:
-                if response.status >= 400:
-                    detail = (await response.text())[:500]
-                    raise ImmichError(f"Immich {response.status}: {detail}")
-                return await response.json() if "json" in response.headers.get("content-type", "") else await response.read()
-        except aiohttp.ClientError as exc:
-            raise ImmichError(str(exc)) from exc
+        for attempt in range(3):
+            try:
+                async with self._session.request(method, self.base_url + path, headers=self._headers, timeout=aiohttp.ClientTimeout(total=15), **kwargs) as response:
+                    if response.status >= 400:
+                        detail = (await response.text())[:500]
+                        retryable = response.status == 429 or response.status >= 500
+                        if retryable and attempt < 2:
+                            await asyncio.sleep(0.25 * (attempt + 1))
+                            continue
+                        raise ImmichError(f"Immich {response.status}: {detail}", response.status)
+                    return await response.json() if "json" in response.headers.get("content-type", "") else await response.read()
+            except aiohttp.ClientError as exc:
+                if attempt < 2:
+                    await asyncio.sleep(0.25 * (attempt + 1))
+                    continue
+                raise ImmichError(str(exc)) from exc
+        raise ImmichError("Immich request failed after retries")
 
     async def version(self) -> str:
         value = await self._request("GET", "/api/server/version")

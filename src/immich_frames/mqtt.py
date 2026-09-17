@@ -55,6 +55,8 @@ class MqttPublisher:
             ("sensor", "photo_tags", "Photo tags", {"value_template": "{{ (value_json.selected.tags or []) | join(', ') }}", **metadata}),
             ("sensor", "photo_rating", "Photo rating", {"value_template": "{{ value_json.selected.rating if value_json.selected.rating is not none else 'unknown' }}", **metadata}),
             ("sensor", "photo_camera", "Photo camera", {"value_template": "{{ value_json.selected.camera.model or 'unknown' }}", **metadata}),
+            ("sensor", "photo_latitude", "Photo latitude", {"value_template": "{{ value_json.selected.latitude if value_json.selected.latitude is not none else 'unknown' }}", **metadata}),
+            ("sensor", "photo_longitude", "Photo longitude", {"value_template": "{{ value_json.selected.longitude if value_json.selected.longitude is not none else 'unknown' }}", **metadata}),
             ("sensor", "status", "Status", {"state_topic": f"{root}/status"}),
             ("sensor", "slide", "Slide", {"value_template": "{{ value_json.generation }}", "state_topic": f"{root}/state"}),
             ("sensor", "matching_assets", "Matching assets", {"state_topic": f"{root}/matching_assets", "unit_of_measurement": "assets"}),
@@ -73,7 +75,7 @@ class MqttPublisher:
             config = {"name": name, "unique_id": f"{frame.frame_id}_{key}", "device": device, **availability, **extra}
             self.client.publish(f"homeassistant/{component}/{frame.frame_id}/{key}/config", json.dumps(config), retain=True)
 
-    def publish_frame(self, frame: FrameConfig, slide: Slide, paused: bool = False, using_cache: bool = False, status: str = "ready", matching_assets: int | None = None, role: str = "primary", cache_size: int | None = None) -> None:
+    def publish_frame(self, frame: FrameConfig, slide: Slide, paused: bool = False, using_cache: bool = False, status: str = "ready", matching_assets: int | None = None, role: str = "primary", cache_size: int | None = None, connected: bool = True) -> None:
         root = f"immich_frames/{frame.frame_id}"
         self._discovery(frame)
         state = slide.state("secondary" if role == "secondary" and slide.secondary else "primary")
@@ -85,7 +87,7 @@ class MqttPublisher:
         self.client.publish(f"{root}/state", json.dumps({"generation": slide.generation, "layout": slide.layout}), retain=True)
         self.client.publish(f"{root}/status", status, retain=True)
         self.client.publish(f"{root}/availability", "online", retain=True)
-        self.client.publish(f"{root}/immich_connected", "on", retain=True)
+        self.client.publish(f"{root}/immich_connected", "on" if connected else "off", retain=True)
         self.client.publish(f"{root}/using_cache", "on" if using_cache else "off", retain=True)
         self.client.publish(f"{root}/slideshow", "off" if paused else "on", retain=True)
         self.client.publish(f"{root}/metadata_role", role, retain=True)
@@ -113,8 +115,8 @@ class MqttPublisher:
 
     def remove_frame(self, frame: FrameConfig) -> None:
         root = f"immich_frames/{frame.frame_id}"
-        entities = [("image", "image"), ("sensor", "photo_date"), ("sensor", "photo_location"), ("sensor", "photo_filename"), ("sensor", "photo_people"), ("sensor", "photo_tags"), ("sensor", "photo_rating"), ("sensor", "photo_camera"), ("sensor", "status"), ("sensor", "slide"), ("sensor", "matching_assets"), ("sensor", "cache_size"), ("binary_sensor", "immich_connected"), ("binary_sensor", "using_cache"), ("switch", "slideshow"), ("select", "metadata_role"), ("number", "interval"), ("button", "next"), ("button", "previous"), ("button", "refresh"), ("button", "clear_cache")]
+        entities = [("image", "image"), ("sensor", "photo_date"), ("sensor", "photo_location"), ("sensor", "photo_filename"), ("sensor", "photo_people"), ("sensor", "photo_tags"), ("sensor", "photo_rating"), ("sensor", "photo_camera"), ("sensor", "photo_latitude"), ("sensor", "photo_longitude"), ("sensor", "status"), ("sensor", "slide"), ("sensor", "matching_assets"), ("sensor", "cache_size"), ("binary_sensor", "immich_connected"), ("binary_sensor", "using_cache"), ("switch", "slideshow"), ("select", "metadata_role"), ("number", "interval"), ("button", "next"), ("button", "previous"), ("button", "refresh"), ("button", "clear_cache")]
         for component, key in entities:
             self.client.publish(f"homeassistant/{component}/{frame.frame_id}/{key}/config", "", retain=True)
-        for topic in ("image", "metadata", "status", "availability", "state", "immich_connected", "using_cache", "slideshow", "metadata_role", "interval", "matching_assets"):
+        for topic in ("image", "metadata", "status", "availability", "state", "immich_connected", "using_cache", "slideshow", "metadata_role", "interval", "matching_assets", "cache_size"):
             self.client.publish(f"{root}/{topic}", "", retain=True)

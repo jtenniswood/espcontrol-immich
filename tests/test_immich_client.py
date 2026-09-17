@@ -21,6 +21,13 @@ class Response:
         return ""
 
 
+class ErrorResponse(Response):
+    status = 503
+
+    async def text(self):
+        return "temporary outage"
+
+
 class Session:
     def __init__(self, responses):
         self.responses = iter(responses)
@@ -39,3 +46,15 @@ async def test_metadata_search_follows_cursor() -> None:
         photos = await client.search({"type": {"eq": "IMAGE"}}, size=2)
     assert [photo.id for photo in photos] == ["a", "b"]
     assert session.requests[1][2]["json"]["cursor"] == "next"
+
+
+async def test_server_errors_are_retried() -> None:
+    class FlakySession(Session):
+        def request(self, method, url, **kwargs):
+            self.requests.append((method, url, kwargs))
+            return ErrorResponse(None) if len(self.requests) < 3 else Response({"version": "3.2.0"})
+
+    session = FlakySession([])
+    async with ImmichClient("http://immich.test", "secret", session) as client:
+        assert await client.version() == "3.2.0"
+    assert len(session.requests) == 3
