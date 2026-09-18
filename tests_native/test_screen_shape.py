@@ -12,12 +12,9 @@ from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
 from tests_native.flow_helpers import finish_settings
 
-SHAPES = [("landscape", "10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)", (1280, 800)),
-          ("portrait", "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)", (800, 1280)),
-          ("square", "4-inch ESP32-P4 86 Panel (720 × 720, square)", (720, 720)),
-          ("4848s040", "4-inch Guition 4848S040 (480 × 480, square)", (480, 480)),
-          ("jc1060p470", "7-inch Guition JC1060P470 (1024 × 600, landscape)", (1024, 600)),
-          ("jc4880p443", "4.3-inch Guition JC4880P443 (480 × 800, portrait)", (480, 800))]
+SHAPES = [("landscape", "Landscape (1280 × 800)", (1280, 800)),
+          ("portrait", "Portrait (800 × 1280)", (800, 1280)),
+          ("square", "Square (720 × 720)", (720, 720))]
 
 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
@@ -92,7 +89,7 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert result["data_schema"]({})["screen_shape"] == ("10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)" if route == "setup" else label)
+    assert result["data_schema"]({})["screen_shape"] == ("Landscape (1280 × 800)" if route == "setup" else label)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
         result = await finish_settings(manager, result)
@@ -120,7 +117,7 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
         # A failing server must not bring back the old landscape cache after saving portrait.
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            result = await manager.async_configure(result["flow_id"], {"screen_shape": "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)"})
+            result = await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (800 × 1280)"})
             await finish_settings(manager, result)
             await hass.async_block_till_done()
             assert entry.entry_id not in hass.data[DOMAIN]
@@ -180,12 +177,9 @@ async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg
     ("square", True, False, (720, 721), False),
     ("square", True, True, (720, 720), True),
     ("square", True, True, (360, 720), False),
-    ("4848s040", False, False, (480, 480), True),
-    ("4848s040", False, False, (720, 720), False),
-    ("jc1060p470", False, False, (1024, 600), True),
-    ("jc1060p470", False, False, (1280, 800), False),
-    ("jc4880p443", False, False, (480, 800), True),
-    ("jc4880p443", False, False, (800, 1280), False),
+    ("square", False, False, (480, 480), False),
+    ("landscape", False, False, (1024, 600), False),
+    ("portrait", False, False, (480, 800), False),
 ])
 async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, paired, cached_size, accepted):
     """Correct cache metadata must not hide an image with obsolete dimensions."""
@@ -210,3 +204,32 @@ async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, pai
     await hass.async_add_executor_job(coordinator._load_cache)
     assert (coordinator.data is not None) is accepted
     await coordinator.async_close()
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize("legacy,label,shape", [
+    ("jc1060p470", "Landscape (1280 × 800)", "landscape"),
+    ("jc4880p443", "Portrait (800 × 1280)", "portrait"),
+    ("4848s040", "Square (720 × 720)", "square"),
+])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
+async def test_edit_legacy_preset_before_setup(hass, legacy, label, shape, route):
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
+        "url": "http://immich.test", "api_key": "key", "frame_name": "Frame",
+        "source": "all", "screen_shape": legacy,
+    })
+    entry.add_to_hass(hass)
+    if route == "options":
+        manager = hass.config_entries.options
+        result = await manager.async_init(entry.entry_id)
+        result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
+    else:
+        manager = hass.config_entries.flow
+        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+    assert result["data_schema"]({})["screen_shape"] == label
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
+        await finish_settings(manager, result)
+        await hass.async_block_till_done()
+    assert entry.data["screen_shape"] == shape

@@ -106,7 +106,7 @@ async def test_cancel_discards_changes_and_back_preserves_draft(hass):
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
     result = await submit(hass, result, smart_query="mountains")
-    result = await submit(hass, result, screen_shape="10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)", navigation="back")
+    result = await submit(hass, result, screen_shape="Portrait (800 × 1280)", navigation="back")
     assert result["step_id"] == "smart"
     assert result["data_schema"]({})["smart_query"] == "mountains"
     hass.config_entries.options.async_abort(result["flow_id"])
