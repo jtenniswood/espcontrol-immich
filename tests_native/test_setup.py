@@ -28,17 +28,17 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         coordinator = hass.data[DOMAIN][entry.entry_id]
         assert coordinator.data.primary["id"] == asset["id"]
         assert coordinator.cache_path.with_suffix(".jpg").is_file()
-        assert hass.states.get("image.immich_frame_frame") is not None
-        assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
-        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
+        assert hass.states.get("image.immich_frame_image") is not None
+        assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
-        assert hass.states.get("sensor.immich_frame_photo_filename").state == "a.jpg"
-        assert hass.states.get("sensor.immich_frame_photo_date").state == "17 September, 2026"
+        assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -82,7 +82,7 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         await hass.services.async_call("select", "select_option", {
             "entity_id": "select.immich_frame_metadata_photo", "option": "secondary",
         }, blocking=True)
-        assert hass.states.get("sensor.immich_frame_photo_filename").state == "b.jpg"
+        assert hass.states.get("sensor.immich_frame_filename").state == "b.jpg"
         await hass.services.async_call("number", "set_value", {
             "entity_id": "number.immich_frame_slide_interval", "value": 90,
         }, blocking=True)

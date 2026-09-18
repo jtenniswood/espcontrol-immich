@@ -4,8 +4,8 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 
 | Entity | Type | Purpose |
 |---|---|---|
-| Frame | Image | Final rendered single image or pair |
-| Photo date/location/filename/people/tags/rating/camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
+| Image | Image | Final rendered single image or pair |
+| Date/Location/Filename/People/Tags/Rating/Camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
 | Slideshow | Switch | Pause or resume automatic advancement |
 | Show photo details for | Select | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
 | Slide interval | Number | 10–86,400 seconds |

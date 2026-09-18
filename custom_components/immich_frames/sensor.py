@@ -21,13 +21,13 @@ def _friendly_date(value: str | None) -> str | None:
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data["immich_frames"][entry.entry_id]
     async_add_entities([PhotoSensor(coordinator, key, name, value) for key, name, value in (
-        ("photo_date", "Photo date", lambda p, d: _friendly_date(p.get("captured"))),
-        ("photo_location", "Photo location", lambda p, d: ", ".join(x for x in (p.get("exif", {}).get("city"), p.get("exif", {}).get("state"), p.get("exif", {}).get("country")) if x) or None),
-        ("photo_filename", "Photo filename", lambda p, d: p.get("filename")),
-        ("photo_people", "Photo people", lambda p, d: ", ".join(p.get("people", [])) or None),
-        ("photo_tags", "Photo tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
-        ("photo_rating", "Photo rating", lambda p, d: p.get("rating")),
-        ("photo_camera", "Photo camera", lambda p, d: p.get("exif", {}).get("model")),
+        ("photo_date", "Date", lambda p, d: _friendly_date(p.get("captured"))),
+        ("photo_location", "Location", lambda p, d: ", ".join(x for x in (p.get("exif", {}).get("city"), p.get("exif", {}).get("state"), p.get("exif", {}).get("country")) if x) or None),
+        ("photo_filename", "Filename", lambda p, d: p.get("filename")),
+        ("photo_people", "People", lambda p, d: ", ".join(p.get("people", [])) or None),
+        ("photo_tags", "Tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
+        ("photo_rating", "Rating", lambda p, d: p.get("rating")),
+        ("photo_camera", "Camera", lambda p, d: p.get("exif", {}).get("model")),
     )])
 
 
