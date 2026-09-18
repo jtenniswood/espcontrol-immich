@@ -6,6 +6,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -55,8 +56,10 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
         devices = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
         coordinator = hass.data[DOMAIN][entry.entry_id]
         result = await open_settings(hass, entry, "display")
+        result = await submit(hass, result, mode="Matching portrait pairs")
         assert result["data_schema"]({})["interval"] == 90
-        result = await submit(hass, result, interval=120, mode="Matching portrait pairs", pair_window_days=3)
+        result = await submit(hass, result, interval=120)
+        result = await submit(hass, result, pair_window_days=3)
         await hass.async_block_till_done()
         assert result["type"] == "create_entry"
         assert entry.data["interval"] == 120
@@ -89,7 +92,7 @@ async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
         assert result["step_id"] == "display"
         assert all(entry.data[k] == v for k, v in old.items())
         with patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
-            result = await submit(hass, result, **result["data_schema"]({}))
+            result = await finish_settings(hass.config_entries.options, result)
             await hass.async_block_till_done()
         reload.assert_awaited_once_with(entry.entry_id)
     assert result["type"] == "create_entry"
@@ -103,7 +106,7 @@ async def test_cancel_discards_changes_and_back_preserves_draft(hass):
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
     result = await submit(hass, result, smart_query="mountains")
-    result = await submit(hass, result, interval=120, screen_shape="Portrait (10:16, 800 × 1280)", navigation="back")
+    result = await submit(hass, result, screen_shape="Portrait (10:16, 800 × 1280)", navigation="back")
     assert result["step_id"] == "smart"
     assert result["data_schema"]({})["smart_query"] == "mountains"
     hass.config_entries.options.async_abort(result["flow_id"])
@@ -124,6 +127,7 @@ async def test_change_source_clears_old_filters_and_validates_name(hass):
     assert entry.data["source"] == "album"
     with patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await submit(hass, result, frame_name="Living room")
+        result = await finish_settings(hass.config_entries.options, result)
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
     assert entry.title == "Living room"

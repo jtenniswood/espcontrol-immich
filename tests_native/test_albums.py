@@ -6,6 +6,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -47,7 +48,7 @@ async def test_album_picker_uses_connected_account_and_stores_id(hass, reuse):
         assert close.await_count == 2
     assert calls == [("http://immich.test", "test-key", "GET", "/api/albums", {})] * 2
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], result["data_schema"]({}))
+        result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
     assert result["data"]["source"] == "album"

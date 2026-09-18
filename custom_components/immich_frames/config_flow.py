@@ -27,11 +27,16 @@ SOURCE_FIELDS = {
 }
 
 
-def _navigation(back_label: str, *, display: bool = False, change_source: bool = False) -> dict:
-    options = {"continue": "Save frame" if display else "Continue", "back": back_label}
+def _navigation(back_label: str, *, save: bool = False, change_source: bool = False) -> dict:
+    options = {"continue": "Save frame" if save else "Continue", "back": back_label}
     if change_source:
         options["source"] = "Change photo source"
-    return {vol.Optional("navigation", default="continue"): vol.In(options)}
+    return {vol.Optional("navigation", default="continue"): selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[{"value": value, "label": label} for value, label in options.items()],
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )}
 
 
 class FrameSettingsFlow:
@@ -130,19 +135,13 @@ class FrameSettingsFlow:
             **_navigation("Back to photo source"),
         }), errors=errors)
 
-    async def async_step_display(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
+    async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
+        errors = errors or {}
         if user_input:
             user_input[CONF_MODE] = {
                 "Single image": "single",
                 "Matching portrait pairs": "pairs",
             }.get(user_input[CONF_MODE], user_input[CONF_MODE])
-            user_input[CONF_ORIENTATION] = {
-                "Any orientation": "any",
-                "Portrait photos only": "portrait",
-                "Landscape photos only": "landscape",
-                "Square photos only": "square",
-            }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
             user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
             self._remember(user_input)
             if user_input.get("navigation") == "source":
@@ -152,23 +151,9 @@ class FrameSettingsFlow:
                 if source in SOURCE_FIELDS:
                     return await getattr(self, f"async_step_{source}")()
                 return await self.async_step_source()
-            name = self._data[CONF_FRAME_NAME].strip()
-            unique_id = f"{self._data[CONF_URL]}|{name}"
-            entry = self._settings_entry
-            if not name:
-                errors[CONF_FRAME_NAME] = "name_required"
-            elif any(other.unique_id == unique_id and other is not entry for other in self.hass.config_entries.async_entries(DOMAIN)):
-                errors[CONF_FRAME_NAME] = "name_in_use"
-            else:
-                data = dict(self._data)
-                data[CONF_FRAME_NAME] = name
-                # Keep drafts while navigating, but save only the active source's filters.
-                for source, fields in SOURCE_FIELDS.items():
-                    if source != data.get(CONF_SOURCE):
-                        for field in fields:
-                            data.pop(field, None)
-                data.pop("filter", None)
-                return await self._async_save_settings(data, name, unique_id)
+            errors = self._name_errors()
+            if not errors:
+                return await self.async_step_photos()
         names = {
             entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
             if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
@@ -182,13 +167,61 @@ class FrameSettingsFlow:
             vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
             vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
             vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
+            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
+        }), errors=errors, last_step=False)
+
+    async def async_step_photos(self, user_input: dict[str, Any] | None = None):
+        pairs = self._data.get(CONF_MODE) == "pairs"
+        if user_input:
+            user_input[CONF_ORIENTATION] = {label: value for value, label in ORIENTATION_LABELS.items()}.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
+            self._remember(user_input)
+            if user_input.get("navigation") == "back":
+                return await self.async_step_display()
+            if pairs:
+                return await self.async_step_pairing()
+            return await self._async_finish_settings()
+        return self.async_show_form(step_id="photos", data_schema=vol.Schema({
             vol.Required(CONF_ORIGINAL_ASPECT_RATIO, default=self._data.get(CONF_ORIGINAL_ASPECT_RATIO, False)): bool,
             vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
+            vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
+            **_navigation("Back to frame setup", save=not pairs),
+        }), last_step=not pairs)
+
+    async def async_step_pairing(self, user_input: dict[str, Any] | None = None):
+        if user_input:
+            self._remember(user_input)
+            if user_input.get("navigation") == "back":
+                return await self.async_step_photos()
+            return await self._async_finish_settings()
+        return self.async_show_form(step_id="pairing", data_schema=vol.Schema({
             vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
-            vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), display=True, change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
-        }), errors=errors)
+            **_navigation("Back to photo display", save=True),
+        }), last_step=True)
+
+    def _name_errors(self) -> dict[str, str]:
+        name = self._data[CONF_FRAME_NAME].strip()
+        if not name:
+            return {CONF_FRAME_NAME: "name_required"}
+        unique_id = f"{self._data[CONF_URL]}|{name}"
+        if any(other.unique_id == unique_id and other is not self._settings_entry for other in self.hass.config_entries.async_entries(DOMAIN)):
+            return {CONF_FRAME_NAME: "name_in_use"}
+        return {}
+
+    async def _async_finish_settings(self):
+        # Recheck in case another flow claimed this name while these steps were open.
+        if errors := self._name_errors():
+            return await self.async_step_display(errors=errors)
+        data = dict(self._data)
+        name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
+        unique_id = f"{data[CONF_URL]}|{name}"
+        # Keep drafts while navigating, but save only the active source's filters.
+        for source, fields in SOURCE_FIELDS.items():
+            if source != data.get(CONF_SOURCE):
+                for field in fields:
+                    data.pop(field, None)
+        data.pop("filter", None)
+        return await self._async_save_settings(data, name, unique_id)
 
 
 class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN):
