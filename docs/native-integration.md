@@ -32,7 +32,7 @@ Crop to fit requests a full-size photo only when the preview is too small for th
 
 ## Navigation and photo details
 
-The device provides pause/resume, Next, Previous, Refresh and Clear cache controls. Metadata sensors describe the single photo or the left photo in a pair. Dates use the photo's recorded date, displayed as **14 May, 2007**. Missing details remain blank; a rating of zero remains 0.
+The device provides pause/resume, Next, Previous and Clear cache controls. Metadata sensors describe the single photo or the left photo in a pair. Dates use the photo's recorded date, displayed as **14 May, 2007**. Missing details remain blank; a rating of zero remains 0.
 
 To open a photo, expand the Image entity's Attributes and follow **Open in Immich**. Paired slides also expose **Open second photo in Immich**. Image, metadata and links follow the same displayed snapshot, including Previous navigation and cached slides. Links contain no API key. Your browser must reach the configured Immich server and may require sign-in.
 

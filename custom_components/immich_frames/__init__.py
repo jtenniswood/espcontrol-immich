@@ -19,6 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "binary_sensor": ("using_cache", "immich_connected"),
             "select": ("metadata_role",),
             "switch": ("pairs_only",),
+            "button": ("refresh",),
         }.items()
         for key in keys
     }

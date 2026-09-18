@@ -91,9 +91,6 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         if self.hass.config_entries.async_update_entry(self.entry, data=data):
             self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
-    async def async_refresh_now(self) -> None:
-        await self.async_refresh()
-
     async def async_next(self) -> None:
         self.paused = False
         await self.async_refresh()
