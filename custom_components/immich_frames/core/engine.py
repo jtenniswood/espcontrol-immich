@@ -19,8 +19,6 @@ from .settings import (
     DEFAULT_PAIR_WINDOW,
     CONF_SCREEN_SHAPE,
     DEFAULT_SCREEN_SHAPE,
-    SCREEN_SIZES,
-    PHOTO_FIT_CROP,
     FrameSettings,
     slide_photo_fit,
 )
@@ -204,19 +202,8 @@ async def snapshot(
     try:
         shape = options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE)
         fit = slide_photo_fit(options, photos)
-        size = SCREEN_SIZES.get(shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
-        sizes = (
-            [size]
-            if len(photos) == 1
-            else [(size[0] // 2, size[1]), (size[0] - size[0] // 2 - 1, size[1])]
-        )
         image_data = await asyncio.gather(
-            *(
-                client.crop_image(item, tile_size)
-                if fit == PHOTO_FIT_CROP
-                else client.thumbnail(item["id"])
-                for item, tile_size in zip(photos, sizes)
-            )
+            *(client.photo_image(item["id"]) for item in photos)
         )
         output, layout = await asyncio.get_running_loop().run_in_executor(
             None,
@@ -227,7 +214,7 @@ async def snapshot(
             fit,
         )
     except (OSError, ValueError) as exc:
-        raise ImmichApiError("Could not decode the photo preview from Immich") from exc
+        raise ImmichApiError("Could not decode the photo from Immich") from exc
     return FrameSnapshot(
         output,
         generation,

@@ -82,7 +82,7 @@ async def test_pair_mode_keeps_landscapes_then_shows_portrait_pairs(asset, jpeg)
 
 async def test_corrupt_preview_has_controlled_error(asset):
     api = ImmichApi("http://immich.test", "test-key")
-    api._request = AsyncMock(side_effect=[[asset], b"not an image"])
+    api._request = AsyncMock(side_effect=[[asset], b"invalid full-size image", b"not an image"])
     with pytest.raises(ImmichApiError, match="decode"):
         await api.snapshot({}, 1, set())
 

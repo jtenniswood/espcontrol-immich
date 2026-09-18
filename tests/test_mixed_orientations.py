@@ -20,7 +20,7 @@ async def test_mixed_slideshow_and_orientation_filters(tmp_path, source, orienta
     Image.new("RGB", (100, 200), "blue").save(output, "JPEG")
     client = Mock(search=AsyncMock(return_value=assets), smart_search=AsyncMock(return_value=assets),
                   memories=AsyncMock(return_value=[{"assets": [{"id": photo.id} for photo in assets]}]),
-                  thumbnail=AsyncMock(return_value=output.getvalue()))
+                  photo_image=AsyncMock(return_value=output.getvalue()))
     app.clients["default"] = client
     frame = FrameConfig("f", "Mixed", mode=mode, orientation=orientation,
                         source=source, album_ids=["album"], smart_query="beach", memory_window_days=0)
@@ -39,7 +39,7 @@ async def test_unmatched_portrait_and_landscape_both_appear(tmp_path):
     app.clients["default"] = Mock(search=AsyncMock(return_value=[
         Photo("portrait", 100, 200, None, None, "portrait.jpg"),
         Photo("landscape", 200, 100, None, None, "landscape.jpg"),
-    ]), thumbnail=AsyncMock(return_value=output.getvalue()))
+    ]), photo_image=AsyncMock(return_value=output.getvalue()))
     frame = FrameConfig("f", "Mixed", mode="pairs")
     for expected in ["portrait", "landscape"]:
         await app.refresh_frame(frame)
@@ -56,7 +56,7 @@ async def test_pairs_only_skips_single_portraits(tmp_path, has_pair):
                                      "localDateTime": "2026-09-17T12:00:00Z"}) for name in ["a", "b"])
     output = BytesIO()
     Image.new("RGB", (100, 200), "blue").save(output, "JPEG")
-    client = Mock(search=AsyncMock(return_value=photos), thumbnail=AsyncMock(return_value=output.getvalue()))
+    client = Mock(search=AsyncMock(return_value=photos), photo_image=AsyncMock(return_value=output.getvalue()))
     app.clients["default"] = client
     frame = FrameConfig("f", "Portrait pairs", mode="pairs_only", pair_window_days=0)
     await app.refresh_frame(frame)
@@ -65,4 +65,4 @@ async def test_pairs_only_skips_single_portraits(tmp_path, has_pair):
         assert app.slides["f"].layout == "side_by_side"
     else:
         assert "f" not in app.slides
-        client.thumbnail.assert_not_awaited()
+        client.photo_image.assert_not_awaited()

@@ -230,36 +230,17 @@ class ImmichApi:
             "GET", f"/api/assets/{asset_id}/thumbnail", params={"size": size}
         )
 
-    async def crop_image(self, photo: dict[str, Any], size: tuple[int, int]) -> bytes:
-        """Upgrade an undersized preview without making full-size access mandatory."""
-        preview = await self.thumbnail(photo["id"])
-        loop = asyncio.get_running_loop()
-        width, height = await loop.run_in_executor(None, image_size, preview)
-        resolution = min(width / size[0], height / size[1])
-        if resolution >= 1:
-            return preview
-        # Avoid downloading an original that is itself no larger than the preview.
-        # Compare sorted dimensions because metadata may precede EXIF rotation.
-        original = (photo.get("width"), photo.get("height"))
-        if all(isinstance(value, (int, float)) and value > 0 for value in original):
-            if all(a <= b for a, b in zip(sorted(original), sorted((width, height)))):
-                return preview
+    async def photo_image(self, asset_id: str) -> bytes:
+        """Prefer the full-resolution source in every layout, with preview fallback."""
         try:
-            # Immich serves the original, or a full-resolution converted image
-            # for formats such as HEIC when full-size generation is enabled.
-            fullsize = await self._request(
-                "GET",
-                f"/api/assets/{photo['id']}/thumbnail",
-                params={"size": "fullsize"},
-            )
-            full_width, full_height = await loop.run_in_executor(
-                None, image_size, fullsize
-            )
-            if min(full_width / size[0], full_height / size[1]) > resolution:
-                return fullsize
+            # Immich serves originals for web-compatible formats and converted
+            # full-size images for formats such as HEIC when available.
+            fullsize = await self.thumbnail(asset_id, size="fullsize")
+            await asyncio.get_running_loop().run_in_executor(None, image_size, fullsize)
+            return fullsize
         except (ImmichApiError, OSError, ValueError, Image.DecompressionBombError):
             LOGGER.debug("Full-size photo unavailable; using the preview")
-        return preview
+        return await self.thumbnail(asset_id)
 
     async def capabilities(self) -> dict[str, Any]:
         version = await self.version()
