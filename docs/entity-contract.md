@@ -11,6 +11,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Screen shape | Select (Configuration) | Choose Landscape (1280 × 800), Portrait (800 × 1280), or Square (720 × 720); saves the choice and reloads the frame |
 | Photo fit | Select (Configuration) | Crop to fit or Show full image |
 | Display mode | Select (Configuration) | Single image or Pair portrait photos |
+| Time range | Select (Configuration) | All time, or the last 1, 3 or 6 months; 1, 2, 3, 4, 5 or 10 years |
 | Photo orientation | Select (Configuration) | Mixed, portrait, landscape or square photos |
 | Pairing window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
 | Slide interval | Number (Configuration) | 10–86,400 seconds |

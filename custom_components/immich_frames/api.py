@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import calendar
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+    CONF_TIME_RANGE, DEFAULT_TIME_RANGE, TIME_RANGE_MONTHS,
     CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 from .rendering import background_colour, image_size
@@ -34,6 +36,26 @@ def selected_album_ids(options: dict[str, Any]) -> list[str]:
     if not isinstance(values, list):
         return []
     return list(dict.fromkeys(value.strip() for value in values if isinstance(value, str) and value.strip()))
+
+
+def _with_time_range(query: dict[str, Any], time_range: str, now: datetime) -> dict[str, Any]:
+    """Intersect the capture-date filter with a rolling calendar month/year range."""
+    months = TIME_RANGE_MONTHS.get(time_range, 0)
+    if not months:
+        return query
+    year, month_index = divmod(now.year * 12 + now.month - 1 - months, 12)
+    month = month_index + 1
+    cutoff = now.replace(year=year, month=month, day=min(now.day, calendar.monthrange(year, month)[1]))
+    condition = dict(query.get("takenAt") or {})
+    # Retain stricter bounds and other operators from legacy custom filters.
+    for operator, boundary, strictest in (("gte", cutoff, max), ("lte", now, min)):
+        existing = _datetime(condition.get(operator))
+        if existing is not None:
+            if existing.tzinfo is None:
+                existing = existing.replace(tzinfo=timezone.utc)
+            boundary = strictest(existing, boundary)
+        condition[operator] = boundary.isoformat()
+    return {**query, "takenAt": condition}
 
 
 def _asset_items(value: Any, *, random: bool = False) -> list[dict[str, Any]]:
@@ -230,6 +252,9 @@ class ImmichApi:
         source = options.get(CONF_SOURCE, "all")
         filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
         filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
+        filter_value = _with_time_range(
+            filter_value, options.get(CONF_TIME_RANGE, DEFAULT_TIME_RANGE), datetime.now(timezone.utc),
+        )
         if source == "album":
             album_ids = selected_album_ids(options)
             if not album_ids:

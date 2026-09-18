@@ -55,7 +55,10 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
                 return
             if state.get(CONF_PHOTO_FIT) != photo_fit(self.options):
                 return
-            if state.get("photo_settings", PHOTO_SELECTION_DEFAULTS) != photo_selection_settings(self.options):
+            cached_settings = state.get("photo_settings", PHOTO_SELECTION_DEFAULTS)
+            if not isinstance(cached_settings, dict):
+                return
+            if photo_selection_settings(cached_settings) != photo_selection_settings(self.options):
                 return
             size = SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
             if state.get("output_size") != list(size):

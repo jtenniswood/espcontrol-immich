@@ -95,19 +95,20 @@ async def test_pair_details_use_left_photo_and_interval_survives_reload(hass, as
         await hass.async_block_till_done()
         assert registry.async_get("select.immich_frame_metadata_photo") is None
         assert hass.states.get("select.immich_frame_metadata_photo") is None
-        assert registry.async_get("number.immich_frame_slide_interval").entity_category == EntityCategory.CONFIG
+        interval_id = registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_interval")
+        assert registry.async_get(interval_id).entity_category == EntityCategory.CONFIG
         assert hass.states.get("sensor.immich_frame_location").state == "Bath"
         coordinator = hass.data[DOMAIN][entry.entry_id]
         assert coordinator.data.secondary["filename"] == "b.jpg"
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_favourite").state == "No"
         await hass.services.async_call("number", "set_value", {
-            "entity_id": "number.immich_frame_slide_interval", "value": 90,
+            "entity_id": interval_id, "value": 90,
         }, blocking=True)
         assert entry.data["interval"] == 90
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.states.get("number.immich_frame_slide_interval").state == "90"
+        assert hass.states.get(interval_id).state == "90"
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_favourite").state == "No"
         assert registry.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_metadata_role") is None

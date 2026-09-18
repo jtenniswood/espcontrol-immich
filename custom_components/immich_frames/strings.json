@@ -165,6 +165,21 @@
           "landscape": "Landscape photos only",
           "square": "Square photos only"
         }
+      },
+      "time_range": {
+        "name": "Time range",
+        "state": {
+          "all_time": "All time",
+          "1_month": "Last 1 month",
+          "3_months": "Last 3 months",
+          "6_months": "Last 6 months",
+          "1_year": "Last 1 year",
+          "2_years": "Last 2 years",
+          "3_years": "Last 3 years",
+          "4_years": "Last 4 years",
+          "5_years": "Last 5 years",
+          "10_years": "Last 10 years"
+        }
       }
     },
     "number": {

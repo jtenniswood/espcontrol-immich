@@ -14,6 +14,20 @@ CONF_FILTER = "filter"
 CONF_SMART_QUERY = "smart_query"
 CONF_PAIR_WINDOW = "pair_window_days"
 CONF_ORIENTATION = "orientation"
+CONF_TIME_RANGE = "time_range"
+DEFAULT_TIME_RANGE = "all_time"
+TIME_RANGE_MONTHS = {
+    "all_time": 0,
+    "1_month": 1,
+    "3_months": 3,
+    "6_months": 6,
+    "1_year": 12,
+    "2_years": 24,
+    "3_years": 36,
+    "4_years": 48,
+    "5_years": 60,
+    "10_years": 120,
+}
 CONF_SCREEN_SHAPE = "screen_shape"
 CONF_ORIGINAL_ASPECT_RATIO = "original_aspect_ratio"  # Legacy saved setting.
 CONF_PHOTO_FIT = "photo_fit"
@@ -45,6 +59,7 @@ PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.SWITCH, P
 PHOTO_SELECTION_DEFAULTS = {
     CONF_MODE: "single",
     CONF_ORIENTATION: "any",
+    CONF_TIME_RANGE: DEFAULT_TIME_RANGE,
     CONF_PAIR_WINDOW: DEFAULT_PAIR_WINDOW,
 }
 
