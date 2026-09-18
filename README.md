@@ -31,7 +31,7 @@ On the frame’s device page:
 - **Display mode:** show one photo or pair portrait photos taken around the same date.
 - **Photo orientation:** choose which photo shapes to include.
 
-To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame.
+To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame. This opens the photo source editor directly, with the current source selected. As in setup, Albums opens the album picker and Keywords opens the keyword field. All photos and Memories save without another source screen. Your frame name is kept. Display settings are managed on the device page.
 
 **Crop to fit** automatically requests a full-size photo when the preview is too small for the crop. Photos are saved at high JPEG quality, keeping fine colour detail. Full-size photos use more bandwidth; if one is unavailable, the slideshow continues using the preview. See [image quality and permissions](docs/installation.md#image-quality).
 

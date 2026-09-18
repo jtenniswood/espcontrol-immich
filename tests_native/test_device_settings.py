@@ -86,18 +86,14 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         assert entry.data["orientation"] == "portrait"
         assert {item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)} == entity_ids
 
-        # Configure reads the values chosen on the device page.
+        # Editing a source must keep every preference chosen on the device page.
+        before = dict(entry.data)
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
-        result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-        assert result["data_schema"]({})["mode"] == "Pair portrait photos"
-        result = await manager.async_configure(result["flow_id"], {})
-        assert result["data_schema"]({})["photo_fit"] == "crop"
-        assert result["data_schema"]({})["orientation"] == "Portrait photos only"
-        assert result["data_schema"]({})["interval"] == 75
-        result = await manager.async_configure(result["flow_id"], {})
-        assert result["data_schema"]({})["pair_window_days"] == 3
-        manager.async_abort(result["flow_id"])
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+        await hass.async_block_till_done()
+        assert result["type"] == "create_entry"
+        assert all(entry.data[key] == value for key, value in before.items())
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)

@@ -11,7 +11,7 @@ This repository can be installed through HACS as a custom repository before its 
 3. Add the repository, search for **EspControl Immich Companion**, and download it.
 4. Restart Home Assistant.
 5. Open **Settings → Devices & services → Add integration** and select **EspControl Immich Companion**.
-6. Supply the Immich connection details and API key described below, then choose your frame's source and display settings.
+6. Supply the Immich connection details and API key described below, then choose your frame's photo source and name. Change display settings on the frame's device page.
 
 Add the integration again to create another frame. To update, download the new version in HACS and restart Home Assistant; the existing frame settings are retained.
 

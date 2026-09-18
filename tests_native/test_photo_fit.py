@@ -9,6 +9,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
+from tests_native.test_device_settings import set_value
 
 
 def preview(size, *, orientation=None):
@@ -82,42 +84,22 @@ async def test_snapshot_passes_fit_to_singles_pairs_and_fallback(asset, mode, co
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("fit", ["crop", "show_full"])
-async def test_fit_saves_and_retains_navigation_draft_on_all_routes(hass, route, fit):
-    if route == "setup":
-        manager = hass.config_entries.flow
-        with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
-            result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER}, data={
-                "url": "http://immich.test", "api_key": "key",
-            })
-        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+async def test_source_edit_preserves_photo_fit(hass, route, fit):
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
+        "url": "http://immich.test", "api_key": "key", "source": "all", "photo_fit": fit,
+    })
+    entry.add_to_hass(hass)
+    if route == "options":
+        manager = hass.config_entries.options
+        result = await manager.async_init(entry.entry_id)
     else:
-        entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
-            "url": "http://immich.test", "api_key": "key", "source": "all", "original_aspect_ratio": True,
-        })
-        entry.add_to_hass(hass)
-        if route == "options":
-            manager = hass.config_entries.options
-            result = await manager.async_init(entry.entry_id)
-            result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-        else:
-            manager = hass.config_entries.flow
-            result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-            result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    result = await manager.async_configure(result["flow_id"], {})
-    assert result["step_id"] == "photos"
-    assert result["data_schema"]({})["photo_fit"] == "show_full"
-    assert "original_aspect_ratio" not in result["data_schema"]({})
-    if route != "setup":
-        # Navigate back with an edit, then verify the draft is retained.
-        result = await manager.async_configure(result["flow_id"], {"photo_fit": fit, "navigation": "back"})
-        result = await manager.async_configure(result["flow_id"], {})
-        assert result["data_schema"]({})["photo_fit"] == fit
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await manager.async_configure(result["flow_id"], {"photo_fit": fit})
+        manager = hass.config_entries.flow
+        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+        await finish_settings(manager, result)
         await hass.async_block_till_done()
-    saved = result["data"] if route == "setup" else entry.data
-    assert saved["photo_fit"] == fit
-    assert "original_aspect_ratio" not in saved
+    assert entry.data["photo_fit"] == fit
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -134,13 +116,8 @@ async def test_fit_change_rejects_old_cache_then_restores_matching_cache(hass, a
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1280, 800)
-        manager = hass.config_entries.options
-        result = await manager.async_init(entry.entry_id)
-        result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-        result = await manager.async_configure(result["flow_id"], {})
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            await manager.async_configure(result["flow_id"], {"photo_fit": "crop"})
-            await hass.async_block_till_done()
+            await set_value(hass, entry, "select", "photo_fit", "crop")
             assert entry.entry_id not in hass.data[DOMAIN]
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()

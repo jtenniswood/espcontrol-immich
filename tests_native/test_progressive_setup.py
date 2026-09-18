@@ -12,7 +12,7 @@ from custom_components.immich_frames.const import DOMAIN
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
-async def start(hass, route, source="All photos"):
+async def start(hass, route):
     if route == "setup":
         manager = hass.config_entries.flow
         with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
@@ -29,28 +29,17 @@ async def start(hass, route, source="All photos"):
         if route == "options":
             manager = hass.config_entries.options
             result = await manager.async_init(entry.entry_id)
-            result = await manager.async_configure(result["flow_id"], {"next_step_id": "source"})
         else:
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]):
-        result = await manager.async_configure(result["flow_id"], {"source": source})
-        if source != "All photos":
-            assert ("navigation" in result["data_schema"].schema) is (route != "setup")
-            values = {"Albums": {"album_ids": ["a"]}, "Memories": {}, "Keywords": {"smart_query": "beach"}}
-            result = await manager.async_configure(result["flow_id"], values[source])
     return manager, result, entry
 
 
 def check_form(result, step, fields, final, route):
     assert result["step_id"] == step
-    expected_fields = set(fields) if route == "setup" else {*fields, "navigation"}
+    expected_fields = set(fields)
     assert set(result["data_schema"].schema) == expected_fields
     assert result["last_step"] is final
-    if route != "setup":
-        navigation = result["data_schema"].schema["navigation"]
-        assert navigation.config["mode"] == "dropdown"
-        assert navigation.config["options"][0]["label"] == ("Save frame" if final else "Continue")
     # Catch untranslated raw identifiers in both setup and Configure forms.
     section = "options" if route == "options" else "config"
     component = Path(__file__).parents[1] / "custom_components" / DOMAIN
@@ -63,82 +52,64 @@ def check_form(result, step, fields, final, route):
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("pairs", [False, True])
 @pytest.mark.parametrize("source", ["All photos", "Albums", "Memories", "Keywords"])
-async def test_short_steps_save_only_at_end(hass, route, pairs, source):
-    manager, result, entry = await start(hass, route, source)
-    before = dict(entry.data) if entry else None
-    check_form(result, "display", {"frame_name", "screen_shape", "mode"}, False, route)
-    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos" if pairs else "Single portrait images"})
-    check_form(result, "photos", {"photo_fit", "orientation", "interval"}, not pairs, route)
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
-        if pairs:
-            result = await manager.async_configure(result["flow_id"], {"interval": 75, "photo_fit": "show_full"})
-            check_form(result, "pairing", {"pair_window_days"}, True, route)
-            assert dict(entry.data) == before if entry else not hass.config_entries.async_entries(DOMAIN)
-            reload.assert_not_called()
-            result = await manager.async_configure(result["flow_id"], {"pair_window_days": 4})
-        else:
-            assert dict(entry.data) == before if entry else not hass.config_entries.async_entries(DOMAIN)
-            result = await manager.async_configure(result["flow_id"], {"interval": 75, "photo_fit": "show_full"})
+async def test_source_edits_save_directly_and_keep_device_settings(hass, route, pairs, source):
+    manager, result, entry = await start(hass, route)
+    # Simulate device controls being changed while the source dialog is open.
+    display_settings = {
+        "mode": "pairs" if pairs else "single", "screen_shape": "portrait",
+        "photo_fit": "crop", "orientation": "landscape", "interval": 75,
+        "pair_window_days": 4, "time_range": "6_months",
+    }
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **display_settings})
+    before = dict(entry.data)
+    check_form(result, "source", {"source"}, None, route)
+    assert dict(entry.data) == before
+    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
+        result = await manager.async_configure(result["flow_id"], {"source": source})
+        if source in ("Albums", "Keywords"):
+            step, values = {
+                "Albums": ("album", {"album_ids": ["a"]}),
+                "Keywords": ("smart", {"smart_query": "beach"}),
+            }[source]
+            check_form(result, step, set(values), True, route)
+            assert dict(entry.data) == before
+            result = await manager.async_configure(result["flow_id"], values)
         await hass.async_block_till_done()
     assert result["type"] == ("abort" if route == "reconfigure" else "create_entry")
-    saved = entry.data if entry else result["data"]
-    assert saved["mode"] == ("pairs" if pairs else "single")
-    assert saved["interval"] == 75
-    assert saved["photo_fit"] == "show_full"
-    if pairs:
-        assert saved["pair_window_days"] == 4
-        assert "pairs_only" not in saved
-    assert "navigation" not in saved
+    if source == "All photos" and route == "options":
+        reload.assert_not_awaited()  # Saving unchanged settings needs no reload.
+    else:
+        reload.assert_awaited_once_with(entry.entry_id)
+    assert entry.data["source"] == {"All photos": "all", "Albums": "album", "Memories": "memories", "Keywords": "smart"}[source]
+    assert all(entry.data[key] == value for key, value in display_settings.items())
+    assert "navigation" not in entry.data
+    assert entry.title == entry.data["frame_name"] == "Frame"
+    assert entry.unique_id == "http://immich.test|Frame"
 
 
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
-async def test_switching_to_single_skips_pairing_and_cancel_preserves_entry(hass, route):
+async def test_cancel_preserves_entry(hass, route):
     manager, result, entry = await start(hass, route)
-    before = dict(entry.data) if entry else None
-    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
-    result = await manager.async_configure(result["flow_id"], {"interval": 120})
-    result = await manager.async_configure(result["flow_id"], {"pair_window_days": 5, "navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"mode": "Single portrait images"})
-    check_form(result, "photos", {"photo_fit", "orientation", "interval"}, True, route)
-    assert result["data_schema"]({})["interval"] == 120
-    # Changing back to pairs restores the pairing draft.
-    result = await manager.async_configure(result["flow_id"], {"navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
-    result = await manager.async_configure(result["flow_id"], {})
-    assert result["data_schema"]({})["pair_window_days"] == 5
-    assert "pairs_only" not in result["data_schema"]({})
+    before = dict(entry.data)
+    result = await manager.async_configure(result["flow_id"], {"source": "Keywords"})
+    check_form(result, "smart", {"smart_query"}, True, route)
     manager.async_abort(result["flow_id"])
-    assert dict(entry.data) == before if entry else not hass.config_entries.async_entries(DOMAIN)
+    assert dict(entry.data) == before
 
 
-async def test_name_claimed_during_later_step_returns_to_frame_without_losing_draft(hass):
-    manager, result, entry = await start(hass, "options")
-    result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen"})
+async def test_new_frame_still_validates_duplicate_names(hass):
+    manager, result, _ = await start(hass, "setup")
+    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     other = MockConfigEntry(domain=DOMAIN, title="Kitchen", unique_id="http://immich.test|Kitchen", data={})
     other.add_to_hass(hass)
-    result = await manager.async_configure(result["flow_id"], {"interval": 120})
+    result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen"})
     assert result["step_id"] == "display"
     assert result["errors"] == {"frame_name": "name_in_use"}
-    assert entry.title == "Frame"
-    result = await manager.async_configure(result["flow_id"], {"frame_name": "Bedroom"})
-    assert result["data_schema"]({})["interval"] == 120
-
-
-@pytest.mark.parametrize("route", ["options", "reconfigure"])
-@pytest.mark.parametrize("label,value", [("Mixed (landscapes and portraits)", "any"), ("Landscape photos only", "landscape"), ("Portrait photos only", "portrait")])
-async def test_orientation_and_pair_mode_save_independently(hass, route, label, value):
-    manager, result, entry = await start(hass, route)
-    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
-    assert result["data_schema"]({})["orientation"] == "Mixed (landscapes and portraits)"
-    result = await manager.async_configure(result["flow_id"], {"orientation": label})
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await manager.async_configure(result["flow_id"], {})
+    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"frame_name": "Bedroom"})
         await hass.async_block_till_done()
-    saved = entry.data if entry else result["data"]
-    assert saved["orientation"] == value
-    assert saved["mode"] == "pairs"
-    assert "pairs_only" not in saved
+    assert result["type"] == "create_entry"
+    assert result["title"] == "Bedroom"
 
 
 @pytest.mark.parametrize("source,extra", [
@@ -171,3 +142,22 @@ async def test_new_setup_finishes_after_name_with_defaults(hass, source, extra):
     if source == "Memories":
         assert result["data"]["memory_window_days"] == 2
         assert result["data"]["fallback_to_all"] is False
+
+
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
+@pytest.mark.parametrize("saved", [{}, {"memory_window_days": 5, "fallback_to_all": True}])
+async def test_memories_matches_setup_and_preserves_existing_preferences(hass, route, saved):
+    manager, result, entry = await start(hass, route)
+    # Start a new edit after saving the existing Memories preferences.
+    manager.async_abort(result["flow_id"])
+    hass.config_entries.async_update_entry(entry, data={**entry.data, "source": "memories", **saved})
+    if route == "options":
+        result = await manager.async_init(entry.entry_id)
+    else:
+        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "Memories"})
+        await hass.async_block_till_done()
+    assert result["type"] == ("abort" if route == "reconfigure" else "create_entry")
+    assert entry.data["memory_window_days"] == saved.get("memory_window_days", 2)
+    assert entry.data["fallback_to_all"] == saved.get("fallback_to_all", False)

@@ -26,46 +26,48 @@ async def submit(hass, result, **values):
 
 async def open_settings(hass, entry, step):
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] == "menu"
-    assert "display" in result["menu_options"]
-    return await submit(hass, result, next_step_id=step)
+    assert result["type"] == "form"
+    assert result["step_id"] == "source"
+    if step == "source":
+        return result
+    return await submit(hass, result, source={"album": "Albums", "smart": "Keywords", "memories": "Memories"}[step])
 
 
-@pytest.mark.parametrize("source,shortcut", [("all", None), ("album", "album"), ("smart", "smart"), ("memories", "memories")])
-async def test_menu_offers_current_source_and_display(hass, source, shortcut):
+@pytest.mark.parametrize("source,label", [("all", "All photos"), ("album", "Albums"), ("smart", "Keywords"), ("memories", "Memories")])
+async def test_configure_opens_source_directly_with_current_selection(hass, source, label):
     entry = frame(hass, source)
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["menu_options"] == ["source", *([shortcut] if shortcut else []), "display"]
+    assert result["type"] == "form"
+    assert result["step_id"] == "source"
+    assert result["data_schema"]({})["source"] == label
+    assert entry.data["source"] == source
 
 
-async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, asset, jpeg):
+async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asset, jpeg):
     entry = frame(hass, album_id="a")
 
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
-            assert kwargs["json"]["filter"]["albumIds"] == {"any": ["a"]}
             return [asset]
         return jpeg
 
     with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.api.ImmichApi.albums", side_effect=AssertionError("Display edits must not fetch albums")
+        "custom_components.immich_frames.api.ImmichApi.albums", side_effect=AssertionError("Switching to All photos must not fetch albums")
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         entities = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}
         devices = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
         coordinator = hass.data[DOMAIN][entry.entry_id]
-        result = await open_settings(hass, entry, "display")
-        result = await submit(hass, result, mode="Pair portrait photos")
-        assert result["data_schema"]({})["interval"] == 90
-        result = await submit(hass, result, interval=120)
-        result = await submit(hass, result, pair_window_days=3)
+        result = await open_settings(hass, entry, "source")
+        result = await submit(hass, result, source="All photos")
+        result = await finish_settings(hass.config_entries.options, result)
         await hass.async_block_till_done()
         assert result["type"] == "create_entry"
-        assert entry.data["interval"] == 120
-        assert entry.data["mode"] == "pairs"
-        assert entry.data["pair_window_days"] == 3
-        assert entry.data["album_id"] == "a"
+        assert entry.data["interval"] == 90
+        assert entry.data["mode"] == "single"
+        assert entry.data["source"] == "all"
+        assert "album_id" not in entry.data
         assert entry.data["api_key"] == "test-key"
         assert not entry.options
         assert len(hass.config_entries.async_entries(DOMAIN)) == 1
@@ -78,9 +80,8 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
 @pytest.mark.parametrize("source,old,new", [
     ("album", {"album_ids": ["a"]}, {"album_ids": ["a", "b"]}),
     ("smart", {"smart_query": "beach"}, {"smart_query": "mountains"}),
-    ("memories", {"memory_window_days": 2, "fallback_to_all": False}, {"memory_window_days": 5, "fallback_to_all": True}),
 ])
-async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
+async def test_source_forms_edit_saved_settings(hass, source, old, new):
     entry = frame(hass, source, **old)
     with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[
         {"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"},
@@ -88,11 +89,10 @@ async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
         result = await open_settings(hass, entry, source)
         defaults = result["data_schema"]({})
         assert all(defaults[k] == v for k, v in old.items())
-        result = await submit(hass, result, **new)
-        assert result["step_id"] == "display"
+        assert result["last_step"] is True
         assert all(entry.data[k] == v for k, v in old.items())
         with patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
-            result = await finish_settings(hass.config_entries.options, result)
+            result = await submit(hass, result, **new)
             await hass.async_block_till_done()
         reload.assert_awaited_once_with(entry.entry_id)
     assert result["type"] == "create_entry"
@@ -101,37 +101,30 @@ async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
     assert "navigation" not in entry.data
 
 
-async def test_cancel_discards_changes_and_back_preserves_draft(hass):
+async def test_cancel_discards_source_changes(hass):
     entry = frame(hass, "smart", smart_query="beach")
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
-    result = await submit(hass, result, smart_query="mountains")
-    result = await submit(hass, result, screen_shape="Portrait (800 × 1280)", navigation="back")
     assert result["step_id"] == "smart"
-    assert result["data_schema"]({})["smart_query"] == "mountains"
+    assert set(result["data_schema"].schema) == {"smart_query"}
     hass.config_entries.options.async_abort(result["flow_id"])
     assert dict(entry.data) == before
 
 
-async def test_change_source_clears_old_filters_and_validates_name(hass):
+async def test_change_source_validates_keywords_and_preserves_identity(hass):
     entry = frame(hass, album_id="a")
-    frame(hass, "all", title="Bedroom")
     result = await open_settings(hass, entry, "source")
     assert result["data_schema"]({})["source"] == "Albums"
     result = await submit(hass, result, source="Keywords")
     result = await submit(hass, result, smart_query=" ")
     assert result["errors"] == {"base": "smart_query_required"}
-    result = await submit(hass, result, smart_query="beach")
-    result = await submit(hass, result, frame_name="Bedroom")
-    assert result["errors"] == {"frame_name": "name_in_use"}
     assert entry.data["source"] == "album"
     with patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await submit(hass, result, frame_name="Living room")
-        result = await finish_settings(hass.config_entries.options, result)
+        result = await submit(hass, result, smart_query="beach")
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
-    assert entry.title == "Living room"
-    assert entry.unique_id == "http://immich.test|Living room"
+    assert entry.title == entry.data["frame_name"] == "Kitchen"
+    assert entry.unique_id == "http://immich.test|Kitchen"
     assert entry.data["smart_query"] == "beach"
     assert entry.data["source"] == "smart"
     assert "album_id" not in entry.data
