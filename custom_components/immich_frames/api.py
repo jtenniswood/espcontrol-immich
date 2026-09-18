@@ -14,7 +14,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
-    OUTPUT_SIZE,
+    CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
 )
 from .rendering import background_colour
 
@@ -240,6 +240,8 @@ class ImmichApi:
         try:
             output, layout = await asyncio.get_running_loop().run_in_executor(
                 None, self._render, photos, image_data,
+                options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
+                options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
             )
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
@@ -254,19 +256,24 @@ class ImmichApi:
         return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 
     @staticmethod
-    def _render(photos: list[dict[str, Any]], payloads: list[bytes]) -> tuple[bytes, str]:
-        canvas_size = OUTPUT_SIZE
+    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, original_aspect_ratio: bool = False) -> tuple[bytes, str]:
+        canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
         images: list[Image.Image] = []
         for payload in payloads:
             image = ImageOps.exif_transpose(Image.open(BytesIO(payload))).convert("RGB")
             images.append(image)
         if len(images) == 1:
-            images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
-            canvas = Image.new("RGB", canvas_size, background_colour(images[0]))
-            canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
+            if original_aspect_ratio:
+                # Keep the photo proportions without padding, within the output limits.
+                canvas = images[0]
+                canvas.thumbnail(canvas_size, Image.Resampling.LANCZOS)
+            else:
+                images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
+                canvas = Image.new("RGB", canvas_size, background_colour(images[0]))
+                canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
             layout = "single"
         else:
-            # Pairs have a fixed 16:10 frame with one black pixel between tiles.
+            # Fill the selected frame with one black pixel between the two tiles.
             canvas = Image.new("RGB", canvas_size, "black")
             divider = canvas.width // 2
             tiles = ((0, divider), (divider + 1, canvas.width - divider - 1))

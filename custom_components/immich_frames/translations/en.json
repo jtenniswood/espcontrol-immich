@@ -74,7 +74,7 @@
       },
       "display": {
         "title": "Configure the display",
-        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings. Images use a 16:10 frame at 1280 × 800 pixels. Single photos keep their proportions with a dim photo-colour background where needed; pairs are cropped to fill the frame.",
+        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings.",
         "data": {
           "frame_name": "Frame name",
           "mode": "Display mode",
@@ -82,14 +82,18 @@
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "screen_shape": "Output size and aspect ratio",
+          "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
-          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill a 1280 × 800 (16:10) frame with a 1-pixel black divider.",
-          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the device screen shape. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
+          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill the selected output size with a 1-pixel black divider.",
+          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the output size and aspect ratio. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
+          "screen_shape": "Choose Landscape (16:10, 1280 × 800), Portrait (10:16, 800 × 1280), or Square (1:1, 720 × 720). Single photos keep their proportions with a dim photo-colour background where needed, or fit within these limits without padding when Keep original aspect ratio is enabled. Portrait pairs are cropped to fill the selected size with a 1-pixel black divider.",
+          "original_aspect_ratio": "On: supply each single photo without added borders, cropping or stretching, scaled down to fit within the selected output size. Image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected output size and aspect ratio."
         }
       }
     },
@@ -188,7 +192,7 @@
       },
       "display": {
         "title": "Configure the display",
-        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings. Images use a 16:10 frame at 1280 × 800 pixels. Single photos keep their proportions with a dim photo-colour background where needed; pairs are cropped to fill the frame.",
+        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings.",
         "data": {
           "frame_name": "Frame name",
           "mode": "Display mode",
@@ -196,14 +200,18 @@
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "screen_shape": "Output size and aspect ratio",
+          "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
-          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill a 1280 × 800 (16:10) frame with a 1-pixel black divider.",
-          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the device screen shape. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
+          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill the selected output size with a 1-pixel black divider.",
+          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the output size and aspect ratio. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
+          "screen_shape": "Choose Landscape (16:10, 1280 × 800), Portrait (10:16, 800 × 1280), or Square (1:1, 720 × 720). Single photos keep their proportions with a dim photo-colour background where needed, or fit within these limits without padding when Keep original aspect ratio is enabled. Portrait pairs are cropped to fill the selected size with a 1-pixel black divider.",
+          "original_aspect_ratio": "On: supply each single photo without added borders, cropping or stretching, scaled down to fit within the selected output size. Image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected output size and aspect ratio."
         }
       }
     },
