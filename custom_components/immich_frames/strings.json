@@ -111,8 +111,9 @@
       "mode": {
         "name": "Portrait images",
         "state": {
-          "single": "Single portrait images",
-          "pairs": "Pair portrait photos"
+          "single": "Single portrait photos only",
+          "pairs": "Single and Paired portrait photos",
+          "pairs_only": "Paired portrait photos only"
         }
       },
       "orientation": {

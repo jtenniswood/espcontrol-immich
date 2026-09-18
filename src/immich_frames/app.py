@@ -108,13 +108,17 @@ class FrameApp:
                     output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit, orientation=frame.orientation,
                 )
                 candidates = await select_candidates(client, fallback, size=1000)
+            if frame.mode == "pairs_only":
+                candidates = [photo for photo in candidates if photo.orientation != "portrait" or choose_companion(
+                    photo, candidates, frame.pair_window_days,
+                )]
             if not candidates:
                 LOG.warning("Frame %s has no matching photos", frame.name)
                 return
             recent_ids = {photo.id for old_slide in self.history.get(frame.frame_id, [])[-10:] for photo in old_slide.photos}
             primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
             photos: tuple[Photo, ...] = (primary,)
-            if frame.mode == "pairs":
+            if frame.mode in ("pairs", "pairs_only"):
                 companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days)
                 if companion:
                     photos = (primary, companion)
@@ -179,8 +183,8 @@ class FrameApp:
         if not isinstance(raw_filter, dict):
             raise ValueError("filter must be an object")
         mode = body.get("mode", "single")
-        if mode not in ("single", "pairs"):
-            raise ValueError("mode must be single or pairs")
+        if mode not in ("single", "pairs", "pairs_only"):
+            raise ValueError("mode must be single, pairs, or pairs_only")
         fit = body.get("fit", "cover")
         if fit not in ("cover", "contain"):
             raise ValueError("fit must be cover or contain")
@@ -225,7 +229,7 @@ class FrameApp:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
 <form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single portrait images</option><option value=pairs>Pair portrait photos</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=2></label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single portrait photos only</option><option value=pairs>Single and Paired portrait photos</option><option value=pairs_only>Paired portrait photos only</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=2></label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
 const out=document.querySelector('#frames');
 const form=document.querySelector('#f');

@@ -20,7 +20,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                            "mdi:aspect-ratio", config_key=CONF_SCREEN_SHAPE),
         FrameSettingSelect(coordinator, CONF_PHOTO_FIT, [PHOTO_FIT_CROP, PHOTO_FIT_FULL], PHOTO_FIT_FULL,
                            "mdi:image-size-select-large"),
-        FrameSettingSelect(coordinator, CONF_MODE, ["single", "pairs"], "single", "mdi:image-multiple"),
+        FrameSettingSelect(coordinator, CONF_MODE, ["single", "pairs", "pairs_only"], "single", "mdi:image-multiple"),
         FrameSettingSelect(coordinator, CONF_ORIENTATION, ["any", "portrait", "landscape"], "any",
                            "mdi:image-filter-center-focus"),
     ])

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-Mode = Literal["single", "pairs"]
+Mode = Literal["single", "pairs", "pairs_only"]
 OUTPUT_SIZE = (1280, 800)
 
 
