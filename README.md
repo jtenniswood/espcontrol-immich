@@ -1,42 +1,40 @@
-# EspControl Immich Companion for Home Assistant
+# EspControl Immich Companion
 
-Licensed under the [MIT License](LICENSE).
+Turn your Immich photo library into a slideshow for your EspControl display, managed through Home Assistant.
 
-EspControl Immich Companion is an original Home Assistant integration that turns an Immich 3.2+ library into native photo-frame devices. It creates the image, metadata, slideshow, and pair controls directly through Home Assistant's entity system; MQTT is not required.
+Choose **All photos**, combine **Albums**, revisit **Memories** from around this date, or use **Keywords** such as “beach at sunset”. Show photos individually or pair portrait photos side by side.
 
-Each config entry creates one persistent Home Assistant device. A frame can show all photos, select one or more Immich albums by name, use Memories, or use Keywords. Photo detail sensors always describe the single photo, or the left photo in a pair. The repository also contains the optional renderer app for supervised installations, but the native integration is the recommended user path.
+## What you need
 
-The native integration offers three output shapes: **Landscape (1280 × 800)**, **Portrait (800 × 1280)**, and **Square (720 × 720)**. Choose **Screen shape** on the frame’s device page after setup. Saved device presets automatically switch to the matching shape and use its new dimensions. The optional renderer uses a fixed 16:10 frame at 1280 × 800 pixels.
+- Home Assistant with [HACS](https://hacs.xyz/) installed.
+- An Immich server running version **3.2 or later**, accessible from Home Assistant.
+- Your Immich server address and a **read-only API key** — a key that lets Home Assistant access your photos. See the [required permissions](docs/installation.md#immich-connection-and-permissions).
 
-## Install with HACS
+## Get started
 
-Until this repository is accepted into the HACS default list, add it as a custom repository:
+1. In Home Assistant, open **HACS → ⋮ → Custom repositories**.
+2. Add `https://github.com/jtenniswood/espcontrol-immich` and choose **Integration**.
+3. Find **EspControl Immich Companion**, download it, and restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration** and select **EspControl Immich Companion**.
+5. Enter your Immich server address and API key, choose which photos to show, and name your frame.
+6. Open the new frame’s device page. Under **Configuration → Screen shape**, choose **Landscape (1280 × 800)**, **Portrait (800 × 1280)**, or **Square (720 × 720)**.
 
-1. Open **HACS → ⋮ → Custom repositories** in Home Assistant.
-2. Add `https://github.com/jtenniswood/espcontrol-immich` with type **Integration**.
-3. Find **EspControl Immich Companion** in HACS and download it, then restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
-5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source and frame name. Adjust the screen shape, photo fit, orientation and pairing afterwards in the device’s **Configuration** section.
+Each frame has its own photo image and slideshow controls in Home Assistant. To create another frame, add the integration again; you can reuse your saved Immich connection.
 
-See the [installation guide](docs/installation.md) for API-key permissions, manual installation, and updates. Each frame becomes a Home Assistant device with its own image and controls.
+## Make it yours
 
-## Development
+On the frame’s device page:
 
-```sh
-python -m venv .venv
-. .venv/bin/activate
-pip install -e '.[test]'
-pytest
-```
+- **Controls:** pause or resume the slideshow, or move to the next or previous photo.
+- **Slide interval:** choose how often photos change.
+- **Photo fit:** choose **Show full image** to keep the whole photo with a matching background, or **Crop to fit** to fill the screen by trimming the edges.
+- **Display mode:** show one photo or pair portrait photos taken around the same date.
+- **Photo orientation:** choose which photo shapes to include.
 
-Native integration tests run against Home Assistant 2026.9.2 with mocked Immich responses, including setup, entity registration, image rendering, and cache recovery. In a separate Python 3.14 environment, install `-e '.[test]' -r requirements-native-test.txt` and run `pytest -q tests_native`. CI runs both suites.
+To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame.
 
-The **HACS validation** workflow runs HACS and Hassfest on pushes, pull requests, and published releases, and can be run manually. See [HACS publishing](docs/hacs-publishing.md) for the remaining release and default-list submission steps.
+## Updates and help
 
-The integration stores the Immich URL and API key in a Home Assistant config entry. API keys are never exposed as entity state, image URLs, or logs.
+Update through HACS, then restart Home Assistant. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
 
-See [installation](docs/installation.md), the [native integration guide](docs/native-integration.md), the [entity contract](docs/entity-contract.md), and the [compatibility matrix](docs/compatibility.md).
-
-The ingress API exposes `GET /api/export` and `POST /api/import` for moving frame definitions between installations. Exports contain frame rules and connection identifiers only; API keys are never exported. Create the matching connection on the destination before importing.
-
-In the optional renderer app, choose **Albums** to load the selected connection’s album list. Search by name and tick one or more albums; their photos are combined in the frame. **Reload albums** refreshes the list after changes in Immich. Existing single-album frame definitions remain supported.
+See the [installation guide](docs/installation.md) for manual installation and connection help, or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
