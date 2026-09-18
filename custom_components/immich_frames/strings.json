@@ -36,7 +36,7 @@
       },
       "album": {
         "title": "Choose Immich albums",
-        "description": "Choose one or more albums from your Immich server. Photos from all selected albums will be shown together.",
+        "description": "Choose albums to show together.",
         "data": {
           "album_ids": "Albums",
           "navigation": "Next action"
@@ -205,7 +205,7 @@
       },
       "album": {
         "title": "Choose Immich albums",
-        "description": "Choose one or more albums from your Immich server. Photos from all selected albums will be shown together.",
+        "description": "Choose albums to show together.",
         "data": {
           "album_ids": "Albums",
           "navigation": "Next action"
