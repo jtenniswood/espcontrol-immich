@@ -78,10 +78,11 @@ async def test_option_saves_and_can_be_disabled_on_all_routes(hass, route):
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+    result = await manager.async_configure(result["flow_id"], {})
     assert result["data_schema"]({})["original_aspect_ratio"] is (route != "setup")
     # Navigate back with an edit, then verify the draft is retained.
     result = await manager.async_configure(result["flow_id"], {"original_aspect_ratio": route == "setup", "navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+    result = await manager.async_configure(result["flow_id"], {})
     assert result["data_schema"]({})["original_aspect_ratio"] is (route == "setup")
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {})
@@ -107,6 +108,7 @@ async def test_toggle_rejects_padded_cache_then_restores_unpadded_cache(hass, as
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
+        result = await manager.async_configure(result["flow_id"], {})
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
             await manager.async_configure(result["flow_id"], {"original_aspect_ratio": True})
             await hass.async_block_till_done()
