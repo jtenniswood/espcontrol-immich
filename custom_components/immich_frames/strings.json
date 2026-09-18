@@ -104,7 +104,7 @@
       },
       "pairing": {
         "title": "Configure portrait pairs",
-        "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
+        "description": "Choose how closely the dates of paired photos should match, then use the button below to save the frame.",
         "data": {
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Only show portraits in pairs",
@@ -127,7 +127,7 @@
       "albums_unavailable": "Could not load albums from Immich. Choose Albums to retry, or select another photo source.",
       "no_albums": "No albums are available to this Immich account. Create or share an album in Immich, then choose Albums to retry, or select All photos.",
       "album_unavailable": "One or more selected albums are no longer available. Check the updated list and select the albums to use.",
-      "album_required": "Choose at least one album to continue, or select Back to photo source.",
+      "album_required": "Choose at least one album to continue.",
       "name_required": "Enter a name for this frame.",
       "name_in_use": "Another frame on this server already uses this name. Choose a different name."
     },
