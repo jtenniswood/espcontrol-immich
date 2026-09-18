@@ -333,10 +333,7 @@ class ImmichFramesOptionsFlow(FrameSettingsFlow, config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         self._data = dict(self.config_entry.data)
         self._data.setdefault(CONF_FRAME_NAME, self.config_entry.title)
-        steps = ["source"]
-        if (source := self._data.get(CONF_SOURCE)) in SOURCE_FIELDS:
-            steps.append(source)
-        return self.async_show_menu(step_id="init", menu_options=steps)
+        return await self.async_step_source()
 
     async def _async_save_settings(self, data, name, unique_id):
         # Runtime controls and existing installations store settings in entry.data.

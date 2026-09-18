@@ -29,7 +29,6 @@ async def start(hass, route, source="All photos"):
         if route == "options":
             manager = hass.config_entries.options
             result = await manager.async_init(entry.entry_id)
-            result = await manager.async_configure(result["flow_id"], {"next_step_id": "source"})
         else:
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})

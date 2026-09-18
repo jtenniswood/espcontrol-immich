@@ -90,8 +90,6 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         before = dict(entry.data)
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
-        assert "display" not in result["menu_options"]
-        result = await manager.async_configure(result["flow_id"], {"next_step_id": "source"})
         result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
         result = await manager.async_configure(result["flow_id"], {})
         await hass.async_block_till_done()

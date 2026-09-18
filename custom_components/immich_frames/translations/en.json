@@ -144,16 +144,6 @@
   },
   "options": {
     "step": {
-      "init": {
-        "title": "Edit frame settings",
-        "description": "Choose what to change. Your current settings are filled in. Changes take effect only after you select Save frame on the final step.",
-        "menu_options": {
-          "source": "Change photo source",
-          "album": "Change albums",
-          "smart": "Change Keywords",
-          "memories": "Change memory settings"
-        }
-      },
       "source": {
         "title": "Choose a photo source",
         "description": "Choose how this frame should select photos. Your other settings are kept when you change the source.",

@@ -144,7 +144,7 @@ async def test_clearing_existing_album_selection_requires_an_album(hass):
     entry.add_to_hass(hass)
     with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]):
         result = await hass.config_entries.options.async_init(entry.entry_id)
-        result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "album"})
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {"source": "Albums"})
         assert result["data_schema"]({})["album_ids"] == ["a"]
         result = await hass.config_entries.options.async_configure(result["flow_id"], {"album_ids": []})
         assert result["errors"] == {"base": "album_required"}

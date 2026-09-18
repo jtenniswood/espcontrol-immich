@@ -26,16 +26,21 @@ async def submit(hass, result, **values):
 
 async def open_settings(hass, entry, step):
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] == "menu"
-    assert "display" not in result["menu_options"]
-    return await submit(hass, result, next_step_id=step)
+    assert result["type"] == "form"
+    assert result["step_id"] == "source"
+    if step == "source":
+        return result
+    return await submit(hass, result, source={"album": "Albums", "smart": "Keywords", "memories": "Memories"}[step])
 
 
-@pytest.mark.parametrize("source,shortcut", [("all", None), ("album", "album"), ("smart", "smart"), ("memories", "memories")])
-async def test_menu_offers_only_photo_sources(hass, source, shortcut):
+@pytest.mark.parametrize("source,label", [("all", "All photos"), ("album", "Albums"), ("smart", "Keywords"), ("memories", "Memories")])
+async def test_configure_opens_source_directly_with_current_selection(hass, source, label):
     entry = frame(hass, source)
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["menu_options"] == ["source", *([shortcut] if shortcut else [])]
+    assert result["type"] == "form"
+    assert result["step_id"] == "source"
+    assert result["data_schema"]({})["source"] == label
+    assert entry.data["source"] == source
 
 
 async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asset, jpeg):
@@ -77,7 +82,7 @@ async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asse
     ("smart", {"smart_query": "beach"}, {"smart_query": "mountains"}),
     ("memories", {"memory_window_days": 2, "fallback_to_all": False}, {"memory_window_days": 5, "fallback_to_all": True}),
 ])
-async def test_source_shortcuts_edit_saved_settings(hass, source, old, new):
+async def test_source_forms_edit_saved_settings(hass, source, old, new):
     entry = frame(hass, source, **old)
     with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[
         {"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"},
