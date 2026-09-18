@@ -120,9 +120,9 @@
         }
       },
       "mode": {
-        "name": "Display mode",
+        "name": "Portrait images",
         "state": {
-          "single": "Single image",
+          "single": "Single portrait images",
           "pairs": "Pair portrait photos"
         }
       },

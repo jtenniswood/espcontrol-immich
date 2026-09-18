@@ -1,5 +1,17 @@
-"""Photo-derived colours for the native frame renderer."""
+"""Image inspection and photo-derived colours for the native frame renderer."""
+from io import BytesIO
+
 from PIL import Image
+
+
+def image_size(payload: bytes) -> tuple[int, int]:
+    """Validate decoding and report displayed dimensions after EXIF rotation."""
+    with Image.open(BytesIO(payload)) as image:
+        image.load()
+        width, height = image.size
+        if image.getexif().get(274) in (5, 6, 7, 8):
+            return height, width
+        return width, height
 
 
 def background_colour(image: Image.Image) -> tuple[int, int, int]:
