@@ -28,6 +28,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         ("photo_tags", "Tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
         ("photo_rating", "Rating", lambda p, d: p.get("rating")),
         ("photo_camera", "Camera", lambda p, d: p.get("exif", {}).get("model")),
+        ("photo_favourite", "Favourite", lambda p, d: {True: "Yes", False: "No"}.get(p.get("favorite"))),
     )])
 
 
@@ -40,4 +41,5 @@ class PhotoSensor(ImmichFrameEntity, SensorEntity):
     @property
     def native_value(self):
         data = self.coordinator.data
-        return self._value(self.selected_photo, data) if data else None
+        value = self._value(self.selected_photo, data) if data else None
+        return "" if value is None else value
