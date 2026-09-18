@@ -11,7 +11,7 @@
       },
       "source": {
         "title": "Choose a photo source",
-        "description": "Choose how this frame should select photos. Your existing frame name and display settings are kept when you change the source.",
+        "description": "Choose how this frame should select photos.",
         "data": {
           "source": "Photo source"
         }
@@ -39,18 +39,6 @@
         "description": "Choose albums to show together.",
         "data": {
           "album_ids": "Albums"
-        }
-      },
-      "memories": {
-        "title": "Configure Memories",
-        "description": "Set the date range used to find memories around today.",
-        "data": {
-          "memory_window_days": "Memory window (days)",
-          "fallback_to_all": "Fall back to All photos when memories are empty"
-        },
-        "data_description": {
-          "memory_window_days": "How many days before and after today to check when using Memories.",
-          "fallback_to_all": "Use the All photos source if Immich has no matching memories."
         }
       },
       "smart": {
@@ -122,6 +110,21 @@
           "landscape": "Landscape photos only",
           "square": "Square photos only"
         }
+      },
+      "time_range": {
+        "name": "Time range",
+        "state": {
+          "all_time": "All time",
+          "1_month": "Last 1 month",
+          "3_months": "Last 3 months",
+          "6_months": "Last 6 months",
+          "1_year": "Last 1 year",
+          "2_years": "Last 2 years",
+          "3_years": "Last 3 years",
+          "4_years": "Last 4 years",
+          "5_years": "Last 5 years",
+          "10_years": "Last 10 years"
+        }
       }
     },
     "number": {
@@ -134,7 +137,7 @@
     "step": {
       "source": {
         "title": "Choose a photo source",
-        "description": "Choose how this frame should select photos. Your existing frame name and display settings are kept when you change the source.",
+        "description": "Choose how this frame should select photos.",
         "data": {
           "source": "Photo source"
         }
@@ -144,18 +147,6 @@
         "description": "Choose albums to show together.",
         "data": {
           "album_ids": "Albums"
-        }
-      },
-      "memories": {
-        "title": "Configure Memories",
-        "description": "Set the date range used to find memories around today.",
-        "data": {
-          "memory_window_days": "Memory window (days)",
-          "fallback_to_all": "Fall back to All photos when memories are empty"
-        },
-        "data_description": {
-          "memory_window_days": "How many days before and after today to check when using Memories.",
-          "fallback_to_all": "Use the All photos source if Immich has no matching memories."
         }
       },
       "smart": {

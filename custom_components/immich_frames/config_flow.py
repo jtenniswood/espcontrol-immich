@@ -40,11 +40,9 @@ class FrameSettingsFlow:
             if source == "album":
                 return await self.async_step_album()
             if source == "memories":
-                if self._settings_entry is None:
-                    self._data.setdefault(CONF_MEMORY_WINDOW, 2)
-                    self._data.setdefault(CONF_FALLBACK, False)
-                    return await self._async_finish_source()
-                return await self.async_step_memories()
+                self._data.setdefault(CONF_MEMORY_WINDOW, 2)
+                self._data.setdefault(CONF_FALLBACK, False)
+                return await self._async_finish_source()
             if source == "smart":
                 return await self.async_step_smart()
             return await self._async_finish_source()
@@ -90,15 +88,6 @@ class FrameSettingsFlow:
                 custom_value=False, multiple=True,
             )),
         }), errors=errors, last_step=self._settings_entry is not None)
-
-    async def async_step_memories(self, user_input: dict[str, Any] | None = None):
-        if user_input:
-            self._data.update(user_input)
-            return await self._async_finish_source()
-        return self.async_show_form(step_id="memories", data_schema=vol.Schema({
-            vol.Required(CONF_MEMORY_WINDOW, default=self._data.get(CONF_MEMORY_WINDOW, 2)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
-            vol.Required(CONF_FALLBACK, default=self._data.get(CONF_FALLBACK, False)): bool,
-        }), last_step=self._settings_entry is not None)
 
     async def async_step_smart(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}

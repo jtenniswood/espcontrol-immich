@@ -105,7 +105,7 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
 
 @pytest.mark.parametrize("domain,key,value", [
     ("select", "mode", "pairs"), ("select", "orientation", "landscape"),
-    ("select", "photo_fit", "crop"),
+    ("select", "photo_fit", "crop"), ("select", "time_range", "1_month"),
     ("number", "pair_window_days", 7),
 ])
 async def test_changed_settings_do_not_restore_incompatible_cached_photos(hass, asset, jpeg, domain, key, value):

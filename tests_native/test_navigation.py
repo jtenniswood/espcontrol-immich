@@ -53,7 +53,7 @@ async def test_continue_requires_source_selection(hass, label, error, setup):
 @pytest.mark.parametrize("label,values,active", [
     ("All photos", {}, set()),
     ("Albums", {"album_ids": ["b"]}, {"album_ids"}),
-    ("Memories", {"memory_window_days": 5, "fallback_to_all": True}, {"memory_window_days", "fallback_to_all"}),
+    ("Memories", {}, {"memory_window_days", "fallback_to_all"}),
     ("Keywords", {"smart_query": "sea"}, {"smart_query"}),
 ])
 async def test_source_edits_clear_inactive_filters_without_navigation(hass, label, values, active):

@@ -80,7 +80,6 @@ async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asse
 @pytest.mark.parametrize("source,old,new", [
     ("album", {"album_ids": ["a"]}, {"album_ids": ["a", "b"]}),
     ("smart", {"smart_query": "beach"}, {"smart_query": "mountains"}),
-    ("memories", {"memory_window_days": 2, "fallback_to_all": False}, {"memory_window_days": 5, "fallback_to_all": True}),
 ])
 async def test_source_forms_edit_saved_settings(hass, source, old, new):
     entry = frame(hass, source, **old)

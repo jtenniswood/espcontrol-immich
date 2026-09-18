@@ -58,7 +58,7 @@ async def test_source_edits_save_directly_and_keep_device_settings(hass, route, 
     display_settings = {
         "mode": "pairs" if pairs else "single", "screen_shape": "portrait",
         "photo_fit": "crop", "orientation": "landscape", "interval": 75,
-        "pair_window_days": 4,
+        "pair_window_days": 4, "time_range": "6_months",
     }
     hass.config_entries.async_update_entry(entry, data={**entry.data, **display_settings})
     before = dict(entry.data)
@@ -66,10 +66,9 @@ async def test_source_edits_save_directly_and_keep_device_settings(hass, route, 
     assert dict(entry.data) == before
     with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
         result = await manager.async_configure(result["flow_id"], {"source": source})
-        if source != "All photos":
+        if source in ("Albums", "Keywords"):
             step, values = {
                 "Albums": ("album", {"album_ids": ["a"]}),
-                "Memories": ("memories", {"memory_window_days": 3, "fallback_to_all": True}),
                 "Keywords": ("smart", {"smart_query": "beach"}),
             }[source]
             check_form(result, step, set(values), True, route)
@@ -143,3 +142,22 @@ async def test_new_setup_finishes_after_name_with_defaults(hass, source, extra):
     if source == "Memories":
         assert result["data"]["memory_window_days"] == 2
         assert result["data"]["fallback_to_all"] is False
+
+
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
+@pytest.mark.parametrize("saved", [{}, {"memory_window_days": 5, "fallback_to_all": True}])
+async def test_memories_matches_setup_and_preserves_existing_preferences(hass, route, saved):
+    manager, result, entry = await start(hass, route)
+    # Start a new edit after saving the existing Memories preferences.
+    manager.async_abort(result["flow_id"])
+    hass.config_entries.async_update_entry(entry, data={**entry.data, "source": "memories", **saved})
+    if route == "options":
+        result = await manager.async_init(entry.entry_id)
+    else:
+        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "Memories"})
+        await hass.async_block_till_done()
+    assert result["type"] == ("abort" if route == "reconfigure" else "create_entry")
+    assert entry.data["memory_window_days"] == saved.get("memory_window_days", 2)
+    assert entry.data["fallback_to_all"] == saved.get("fallback_to_all", False)
