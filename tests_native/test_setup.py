@@ -42,6 +42,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         coordinator.async_set_updated_data(replace(snapshot, photos=({"rating": 0},)))
         assert hass.states.get("sensor.immich_frame_rating").state == "0"
         coordinator.async_set_updated_data(replace(snapshot, photos=({},)))
+        assert "open_in_immich" not in hass.states.get("image.immich_frame_image").attributes
         for name in ("date", "location", "people", "tags", "rating", "camera", "favourite"):
             assert hass.states.get(f"sensor.immich_frame_{name}").state == ""
         coordinator.async_set_updated_data(replace(snapshot, photos=({"captured": "invalid"},)))
@@ -54,6 +55,9 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
+        assert hass.states.get("image.immich_frame_image").attributes["open_in_immich"] == (
+            "http://immich.test/photos/portrait-a"
+        )
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
         assert hass.states.get("sensor.immich_frame_favourite").state == expected

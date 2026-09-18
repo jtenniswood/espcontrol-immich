@@ -79,6 +79,19 @@
     }
   },
   "entity": {
+    "image": {
+      "image": {
+        "name": "Image",
+        "state_attributes": {
+          "open_in_immich": {
+            "name": "Open in Immich"
+          },
+          "open_second_photo_in_immich": {
+            "name": "Open second photo in Immich"
+          }
+        }
+      }
+    },
     "select": {
       "output_size": {
         "name": "Screen shape",
