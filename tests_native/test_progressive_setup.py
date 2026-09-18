@@ -12,7 +12,7 @@ from custom_components.immich_frames.const import DOMAIN
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
-async def start(hass, route):
+async def start(hass, route, source="All photos"):
     if route == "setup":
         manager = hass.config_entries.flow
         with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
@@ -29,34 +29,42 @@ async def start(hass, route):
         if route == "options":
             manager = hass.config_entries.options
             result = await manager.async_init(entry.entry_id)
-            result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-            return manager, result, entry
-        manager = hass.config_entries.flow
-        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+            result = await manager.async_configure(result["flow_id"], {"next_step_id": "source"})
+        else:
+            manager = hass.config_entries.flow
+            result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
+    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]):
+        result = await manager.async_configure(result["flow_id"], {"source": source})
+        if source != "All photos":
+            assert ("navigation" in result["data_schema"].schema) is (route != "setup")
+            values = {"Albums": {"album_ids": ["a"]}, "Memories": {}, "Keywords": {"smart_query": "beach"}}
+            result = await manager.async_configure(result["flow_id"], values[source])
     return manager, result, entry
 
 
 def check_form(result, step, fields, final, route):
     assert result["step_id"] == step
-    assert set(result["data_schema"].schema) == {*fields, "navigation"}
+    expected_fields = set(fields) if route == "setup" else {*fields, "navigation"}
+    assert set(result["data_schema"].schema) == expected_fields
     assert result["last_step"] is final
-    navigation = result["data_schema"].schema["navigation"]
-    assert navigation.config["mode"] == "dropdown"
-    assert navigation.config["options"][0]["label"] == ("Save frame" if final else "Continue")
+    if route != "setup":
+        navigation = result["data_schema"].schema["navigation"]
+        assert navigation.config["mode"] == "dropdown"
+        assert navigation.config["options"][0]["label"] == ("Save frame" if final else "Continue")
     # Catch untranslated raw identifiers in both setup and Configure forms.
     section = "options" if route == "options" else "config"
     component = Path(__file__).parents[1] / "custom_components" / DOMAIN
     for filename in ("strings.json", "translations/en.json"):
         labels = json.loads((component / filename).read_text())[section]["step"][step]["data"]
-        for key in (*fields, "navigation"):
+        for key in expected_fields:
             assert labels[key] and labels[key] != key
 
 
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("pairs", [False, True])
-async def test_short_steps_save_only_at_end(hass, route, pairs):
-    manager, result, entry = await start(hass, route)
+@pytest.mark.parametrize("source", ["All photos", "Albums", "Memories", "Keywords"])
+async def test_short_steps_save_only_at_end(hass, route, pairs, source):
+    manager, result, entry = await start(hass, route, source)
     before = dict(entry.data) if entry else None
     check_form(result, "display", {"frame_name", "screen_shape", "mode"}, False, route)
     result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos" if pairs else "Single image"})

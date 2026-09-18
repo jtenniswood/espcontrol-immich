@@ -107,12 +107,13 @@ async def test_fit_saves_and_retains_navigation_draft_on_all_routes(hass, route,
     assert result["step_id"] == "photos"
     assert result["data_schema"]({})["photo_fit"] == "show_full"
     assert "original_aspect_ratio" not in result["data_schema"]({})
-    # Navigate back with an edit, then verify the draft is retained.
-    result = await manager.async_configure(result["flow_id"], {"photo_fit": fit, "navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {})
-    assert result["data_schema"]({})["photo_fit"] == fit
-    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
+    if route != "setup":
+        # Navigate back with an edit, then verify the draft is retained.
+        result = await manager.async_configure(result["flow_id"], {"photo_fit": fit, "navigation": "back"})
         result = await manager.async_configure(result["flow_id"], {})
+        assert result["data_schema"]({})["photo_fit"] == fit
+    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"photo_fit": fit})
         await hass.async_block_till_done()
     saved = result["data"] if route == "setup" else entry.data
     assert saved["photo_fit"] == fit

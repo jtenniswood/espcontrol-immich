@@ -29,6 +29,4 @@ class ImmichFrameEntity(CoordinatorEntity[FrameCoordinator]):
         data = self.coordinator.data
         if data is None:
             return {}
-        if self.coordinator.metadata_role == "secondary" and data.secondary:
-            return data.secondary
         return data.primary

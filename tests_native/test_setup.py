@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.translation import async_translate_state
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.const import DOMAIN
@@ -74,7 +73,7 @@ async def test_failed_setup_closes_api(hass):
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass, asset, jpeg):
+async def test_pair_details_use_left_photo_and_interval_survives_reload(hass, asset, jpeg):
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
             return [{**asset, "isFavorite": False},
@@ -85,7 +84,7 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         "url": "http://immich.test", "api_key": "test-key", "mode": "pairs", "pairs_only": True,
     })
     entry.add_to_hass(hass)
-    # Simulate upgrading an existing frame: its entity ID and service options stay valid.
+    # Upgrading an existing frame removes even a renamed photo-details selector.
     registry = er.async_get(hass)
     registry.async_get_or_create(
         "select", DOMAIN, f"{entry.entry_id}_metadata_role", config_entry=entry,
@@ -94,20 +93,14 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        select_entry = registry.async_get("select.immich_frame_metadata_photo")
-        assert select_entry.original_name == "Show photo details for"
-        assert select_entry.translation_key == "metadata_role"
-        assert select_entry.entity_category == EntityCategory.CONFIG
+        assert registry.async_get("select.immich_frame_metadata_photo") is None
+        assert hass.states.get("select.immich_frame_metadata_photo") is None
         assert registry.async_get("number.immich_frame_slide_interval").entity_category == EntityCategory.CONFIG
-        label = async_translate_state(hass, "secondary", "select", DOMAIN, select_entry.translation_key, None)
-        assert label == "Right photo in a pair"
         assert hass.states.get("sensor.immich_frame_location").state == "Bath"
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        assert coordinator.data.secondary["filename"] == "b.jpg"
+        assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_favourite").state == "No"
-        await hass.services.async_call("select", "select_option", {
-            "entity_id": "select.immich_frame_metadata_photo", "option": "secondary",
-        }, blocking=True)
-        assert hass.states.get("sensor.immich_frame_location").state == "Bristol"
-        assert hass.states.get("sensor.immich_frame_favourite").state == "Yes"
         await hass.services.async_call("number", "set_value", {
             "entity_id": "number.immich_frame_slide_interval", "value": 90,
         }, blocking=True)
@@ -115,6 +108,9 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.states.get("number.immich_frame_slide_interval").state == "90"
+        assert hass.states.get("sensor.immich_frame_filename") is None
+        assert hass.states.get("sensor.immich_frame_favourite").state == "No"
+        assert registry.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_metadata_role") is None
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 

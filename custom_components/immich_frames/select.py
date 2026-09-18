@@ -13,7 +13,6 @@ from .entity import ImmichFrameEntity
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([
-        MetadataRoleSelect(coordinator),
         FrameSettingSelect(coordinator, "output_size", list(SCREEN_SIZES), DEFAULT_SCREEN_SHAPE,
                            "mdi:aspect-ratio", config_key=CONF_SCREEN_SHAPE),
         FrameSettingSelect(coordinator, CONF_PHOTO_FIT, [PHOTO_FIT_CROP, PHOTO_FIT_FULL], PHOTO_FIT_FULL,
@@ -44,29 +43,3 @@ class FrameSettingSelect(ImmichFrameEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         if option != self.current_option:
             self.coordinator.async_update_settings({self._config_key: option})
-
-
-class MetadataRoleSelect(ImmichFrameEntity, SelectEntity):
-    _attr_translation_key = "metadata_role"
-    _attr_entity_category = EntityCategory.CONFIG
-    _attr_icon = "mdi:image-text"
-    # Keep service values stable for existing automations; translate UI labels.
-    _attr_options = ["primary", "secondary"]
-    _attr_extra_state_attributes = {
-        "description": (
-            "Chooses which photo supplies the Date, Location, People, "
-            "Tags, Rating, Camera and Favourite sensors. For a pair, choose the left or right "
-            "photo. When only one photo is shown, its details are always used."
-        ),
-    }
-
-    def __init__(self, coordinator) -> None:
-        ImmichFrameEntity.__init__(self, coordinator, "metadata_role")
-
-    @property
-    def current_option(self):
-        return self.coordinator.metadata_role
-
-    async def async_select_option(self, option: str) -> None:
-        self.coordinator.metadata_role = option
-        self.coordinator.async_update_listeners()

@@ -84,7 +84,7 @@
         "data_description": {
           "screen_shape": "Choose your EspControl device to match its output resolution. The 10.1-inch and 7-inch choices cover all panel revisions. The 10.1-inch display also has a portrait option. This does not change which photo orientations are selected.",
           "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
-          "navigation": "Choose Save frame to finish setup, Back to review your photo source, or Continue when editing an existing frame."
+          "navigation": "When editing an existing frame, choose an action, then use the button below. Going back keeps your selections."
         }
       },
       "photos": {
@@ -104,7 +104,7 @@
       },
       "pairing": {
         "title": "Configure portrait pairs",
-        "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
+        "description": "Choose how closely the dates of paired photos should match, then use the button below to save the frame.",
         "data": {
           "pair_window_days": "Pair window (days)",
           "pairs_only": "Only show portraits in pairs",
@@ -127,7 +127,7 @@
       "albums_unavailable": "Could not load albums from Immich. Choose Albums to retry, or select another photo source.",
       "no_albums": "No albums are available to this Immich account. Create or share an album in Immich, then choose Albums to retry, or select All photos.",
       "album_unavailable": "One or more selected albums are no longer available. Check the updated list and select the albums to use.",
-      "album_required": "Choose at least one album to continue, or select Back to photo source.",
+      "album_required": "Choose at least one album to continue.",
       "name_required": "Enter a name for this frame.",
       "name_in_use": "Another frame on this server already uses this name. Choose a different name."
     },
@@ -138,18 +138,6 @@
   },
   "entity": {
     "select": {
-      "metadata_role": {
-        "name": "Show photo details for",
-        "state": {
-          "primary": "Single photo or left photo in a pair",
-          "secondary": "Right photo in a pair"
-        },
-        "state_attributes": {
-          "description": {
-            "name": "How this works"
-          }
-        }
-      },
       "output_size": {
         "name": "Target display",
         "state": {

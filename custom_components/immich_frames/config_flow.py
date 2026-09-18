@@ -42,6 +42,12 @@ def _navigation(back_label: str, *, save: bool = False, change_source: bool = Fa
 class FrameSettingsFlow:
     """Shared source and display forms for setup and later edits."""
 
+    def _navigation(self, back_label: str, *, save: bool = False, change_source: bool = False) -> dict:
+        # New frames advance with the form button; existing frames retain back/edit actions.
+        if self._settings_entry is None:
+            return {}
+        return _navigation(back_label, save=save, change_source=change_source)
+
     def _remember(self, user_input: dict[str, Any]) -> None:
         self._data.update({key: value for key, value in user_input.items() if key != "navigation"})
 
@@ -109,7 +115,7 @@ class FrameSettingsFlow:
                 options=options, mode=selector.SelectSelectorMode.DROPDOWN,
                 custom_value=False, multiple=True,
             )),
-            **_navigation("Back to photo source"),
+            **self._navigation("Back to photo source"),
         }), errors=errors)
 
     async def async_step_memories(self, user_input: dict[str, Any] | None = None):
@@ -121,7 +127,7 @@ class FrameSettingsFlow:
         return self.async_show_form(step_id="memories", data_schema=vol.Schema({
             vol.Required(CONF_MEMORY_WINDOW, default=self._data.get(CONF_MEMORY_WINDOW, 2)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_FALLBACK, default=self._data.get(CONF_FALLBACK, False)): bool,
-            **_navigation("Back to photo source"),
+            **self._navigation("Back to photo source"),
         }))
 
     async def async_step_smart(self, user_input: dict[str, Any] | None = None):
@@ -136,7 +142,7 @@ class FrameSettingsFlow:
                 return await self.async_step_display()
         return self.async_show_form(step_id="smart", data_schema=vol.Schema({
             vol.Optional(CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")): str,
-            **_navigation("Back to photo source"),
+            **self._navigation("Back to photo source"),
         }), errors=errors)
 
     async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
@@ -179,7 +185,7 @@ class FrameSettingsFlow:
                 vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
                 vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
             })
-        fields.update(_navigation(
+        fields.update(self._navigation(
             {"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(source_step, "Back to photo source"),
             change_source=source_step in SOURCE_FIELDS, save=initial_setup,
         ))
@@ -204,7 +210,7 @@ class FrameSettingsFlow:
                 ], mode=selector.SelectSelectorMode.DROPDOWN)),
             vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Mixed (landscapes and portraits)")): vol.In(list(ORIENTATION_LABELS.values())),
             vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-            **_navigation("Back to frame setup", save=not pairs),
+            **self._navigation("Back to frame setup", save=not pairs),
         }), last_step=not pairs)
 
     async def async_step_pairing(self, user_input: dict[str, Any] | None = None):
@@ -216,7 +222,7 @@ class FrameSettingsFlow:
         return self.async_show_form(step_id="pairing", data_schema=vol.Schema({
             vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
-            **_navigation("Back to photo display", save=True),
+            **self._navigation("Back to photo display", save=True),
         }), last_step=True)
 
     def _name_errors(self) -> dict[str, str]:

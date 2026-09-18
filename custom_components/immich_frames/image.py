@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from homeassistant.components.image import ImageEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import FrameCoordinator
 from .entity import ImmichFrameEntity
@@ -24,6 +23,16 @@ class FrameImage(ImmichFrameEntity, ImageEntity):
     @property
     def image_last_updated(self) -> datetime | None:
         return self.coordinator.data.created_at if self.coordinator.data else None
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Refresh entity-row thumbnails whenever the displayed frame changes."""
+        url = super().entity_picture
+        updated = self.image_last_updated
+        if url is None or updated is None:
+            return url
+        # Entity rows use this URL directly, without watching the image timestamp.
+        return f"{url}&v={updated.timestamp()}"
 
     async def async_image(self) -> bytes | None:
         return self.coordinator.data.image if self.coordinator.data else None

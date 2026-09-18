@@ -27,7 +27,6 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
         self.options = dict(entry.data)
         self.api = ImmichApi(self.options["url"], self.options["api_key"])
         self.paused = False
-        self.metadata_role = "primary"
         self.generation = 0
         self.history: list[FrameSnapshot] = []
         self.cache_path = Path(hass.config.path(".storage", f"immich_frames_{entry.entry_id}"))
