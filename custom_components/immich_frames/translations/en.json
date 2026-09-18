@@ -74,7 +74,7 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Choose a name and target display, then save the frame. Photo fit, display mode, photo orientation, pairing and slideshow interval can be changed afterwards on the device page. Existing frames can also continue through these settings here.",
+        "description": "Name your frame, then save. Target display, photo preferences, slideshow interval and Memories preferences can be changed afterwards in settings.",
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Target display",

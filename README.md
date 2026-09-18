@@ -6,7 +6,7 @@ EspControl Immich Companion is an original Home Assistant integration that turns
 
 Each config entry creates one persistent Home Assistant device. A frame can show all photos, select one or more Immich albums by name, use Memories, or use Keywords. Pair mode keeps primary and companion metadata separate so automations can choose either photo. The repository also contains the optional renderer app for supervised installations, but the native integration is the recommended user path.
 
-The native integration offers device-labelled output presets for EspControl displays: 1280 × 800 and 1024 × 600 landscape, 480 × 800 and 800 × 1280 portrait, and 480 × 480 or 720 × 720 square. Choose **Target display** during setup or change it later on the frame’s device page. The optional renderer uses a fixed 16:10 frame at 1280 × 800 pixels.
+The native integration offers device-labelled output presets for EspControl displays: 1280 × 800 and 1024 × 600 landscape, 480 × 800 and 800 × 1280 portrait, and 480 × 480 or 720 × 720 square. Choose **Target display** on the frame’s device page after setup. The optional renderer uses a fixed 16:10 frame at 1280 × 800 pixels.
 
 ## Install with HACS
 
@@ -16,7 +16,7 @@ Until this repository is accepted into the HACS default list, add it as a custom
 2. Add `https://github.com/jtenniswood/espcontrol-immich` with type **Integration**.
 3. Find **EspControl Immich Companion** in HACS and download it, then restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
-5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source, frame name and target display. Adjust photo fit, orientation and pairing afterwards in the device’s **Configuration** section.
+5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source and frame name. Adjust the target display, photo fit, orientation and pairing afterwards in the device’s **Configuration** section.
 
 See the [installation guide](docs/installation.md) for API-key permissions, manual installation, and updates. Each frame becomes a Home Assistant device with its own image and controls.
 

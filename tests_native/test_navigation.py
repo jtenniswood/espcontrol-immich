@@ -39,20 +39,19 @@ async def save(hass, result):
 async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result, frame_name="Kitchen",
-                          screen_shape="4-inch ESP32-P4 86 Panel (720 × 720, square)", navigation="back")
+    result = await submit(hass, result, frame_name="Kitchen", navigation="back")
     assert result["step_id"] == "album"
     assert result["data_schema"]({})["album_ids"] == ["a"]
     result = await submit(hass, result, album_ids=["a", "b"])
     assert result["data_schema"]({}) == {
-        "frame_name": "Kitchen", "screen_shape": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
+        "frame_name": "Kitchen",
         "navigation": "continue",
     }
     result = await save(hass, result)
     assert result["type"] == "create_entry"
     assert result["data"]["album_ids"] == ["a", "b"]
     assert result["data"]["mode"] == "single"
-    assert result["data"]["screen_shape"] == "square"
+    assert result["data"]["screen_shape"] == "landscape"
     assert result["data"]["api_key"] == "test-key"
     assert "navigation" not in result["data"]
 
@@ -81,7 +80,8 @@ async def test_changing_source_discards_inactive_filters_but_keeps_drafts(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a", "b"], navigation="back")
     result = await submit(hass, result, source="Memories")
-    result = await submit(hass, result, memory_window_days=5, fallback_to_all=True, navigation="back")
+    assert result["step_id"] == "display"
+    result = await submit(hass, result, navigation="back")
     result = await submit(hass, result, source="Keywords")
     result = await submit(hass, result, smart_query="beach", navigation="back")
     result = await submit(hass, result, source="Albums")
@@ -91,8 +91,8 @@ async def test_changing_source_discards_inactive_filters_but_keeps_drafts(hass):
     assert result["data_schema"]({})["smart_query"] == "beach"
     result = await submit(hass, result, navigation="back")
     result = await submit(hass, result, source="Memories")
-    assert result["data_schema"]({})["memory_window_days"] == 5
-    assert result["data_schema"]({})["fallback_to_all"] is True
+    assert result["step_id"] == "display"
+    assert "memory_window_days" not in result["data_schema"]({})
     result = await submit(hass, result, navigation="back")
     result = await submit(hass, result, source="All photos")
     result = await save(hass, result)
@@ -102,7 +102,7 @@ async def test_changing_source_discards_inactive_filters_but_keeps_drafts(hass):
 
 @pytest.mark.parametrize("label,step,values", [
     ("All photos", "source", {}),
-    ("Memories", "memories", {"memory_window_days": 4, "fallback_to_all": True}),
+    ("Memories", "source", {}),
     ("Keywords", "smart", {"smart_query": "sea"}),
 ])
 async def test_display_back_targets_previous_step(hass, label, step, values):

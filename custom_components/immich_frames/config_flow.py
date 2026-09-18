@@ -57,6 +57,10 @@ class FrameSettingsFlow:
             if source == "album":
                 return await self.async_step_album()
             if source == "memories":
+                if self._settings_entry is None:
+                    self._data.setdefault(CONF_MEMORY_WINDOW, 2)
+                    self._data.setdefault(CONF_FALLBACK, False)
+                    return await self.async_step_display()
                 return await self.async_step_memories()
             if source == "smart":
                 return await self.async_step_smart()
@@ -138,20 +142,22 @@ class FrameSettingsFlow:
     async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         errors = errors or {}
         initial_setup = self._settings_entry is None
+        source_step = self._data.get(CONF_SOURCE)
+        if initial_setup and source_step == "memories":
+            source_step = None
         if user_input and not initial_setup:
             user_input[CONF_MODE] = {
                 "Single image": "single",
                 "Pair portrait photos": "pairs",
             }.get(user_input[CONF_MODE], user_input[CONF_MODE])
-        if user_input:
             user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
+        if user_input:
             self._remember(user_input)
             if user_input.get("navigation") == "source":
                 return await self.async_step_source()
             if user_input.get("navigation") == "back":
-                source = self._data.get(CONF_SOURCE)
-                if source in SOURCE_FIELDS:
-                    return await getattr(self, f"async_step_{source}")()
+                if source_step in SOURCE_FIELDS:
+                    return await getattr(self, f"async_step_{source_step}")()
                 return await self.async_step_source()
             errors = self._name_errors()
             if not errors:
@@ -167,12 +173,18 @@ class FrameSettingsFlow:
         while name in names:
             name = f"Immich Frame {suffix}"
             suffix += 1
-        return self.async_show_form(step_id="display", data_schema=vol.Schema({
-            vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
-            vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
-            **({} if initial_setup else {vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values()))}),
-            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS, save=initial_setup),
-        }), errors=errors, last_step=initial_setup)
+        fields = {vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str}
+        if not initial_setup:
+            fields.update({
+                vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
+                vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
+            })
+        fields.update(_navigation(
+            {"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(source_step, "Back to photo source"),
+            change_source=source_step in SOURCE_FIELDS, save=initial_setup,
+        ))
+        return self.async_show_form(step_id="display", data_schema=vol.Schema(fields), errors=errors, last_step=initial_setup)
+
 
     async def async_step_photos(self, user_input: dict[str, Any] | None = None):
         pairs = self._data.get(CONF_MODE) == "pairs"
@@ -220,7 +232,8 @@ class FrameSettingsFlow:
         # Recheck in case another flow claimed this name while these steps were open.
         if errors := self._name_errors():
             return await self.async_step_display(errors=errors)
-        data = {**PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL: DEFAULT_INTERVAL, **self._data}
+        data = {**PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL: DEFAULT_INTERVAL,
+                CONF_SCREEN_SHAPE: DEFAULT_SCREEN_SHAPE, **self._data}
         data[CONF_PHOTO_FIT] = photo_fit(data)
         name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
         unique_id = f"{data[CONF_URL]}|{name}"

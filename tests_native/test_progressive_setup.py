@@ -135,9 +135,9 @@ async def test_orientation_and_portrait_pair_requirement_save_independently(hass
 
 @pytest.mark.parametrize("source,extra", [
     ("All photos", None), ("Albums", {"album_ids": ["a"]}),
-    ("Memories", {"memory_window_days": 3}), ("Keywords", {"smart_query": "beach"}),
+    ("Memories", None), ("Keywords", {"smart_query": "beach"}),
 ])
-async def test_new_setup_finishes_after_name_and_display_with_defaults(hass, source, extra):
+async def test_new_setup_finishes_after_name_with_defaults(hass, source, extra):
     manager = hass.config_entries.flow
     with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"), patch(
         "custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}],
@@ -148,7 +148,7 @@ async def test_new_setup_finishes_after_name_and_display_with_defaults(hass, sou
         result = await manager.async_configure(result["flow_id"], {"source": source})
         if extra:
             result = await manager.async_configure(result["flow_id"], extra)
-    check_form(result, "display", {"frame_name", "screen_shape"}, True, "setup")
+    check_form(result, "display", {"frame_name"}, True, "setup")
     assert not hass.config_entries.async_entries(DOMAIN)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen"})
@@ -156,6 +156,10 @@ async def test_new_setup_finishes_after_name_and_display_with_defaults(hass, sou
     assert result["type"] == "create_entry"
     for key, value in {
         "mode": "single", "photo_fit": "show_full", "orientation": "any",
-        "interval": 30, "pair_window_days": 0, "pairs_only": False,
+        "interval": 30, "pair_window_days": 0, "pairs_only": False, "screen_shape": "landscape",
     }.items():
         assert result["data"][key] == value
+
+    if source == "Memories":
+        assert result["data"]["memory_window_days"] == 2
+        assert result["data"]["fallback_to_all"] is False
