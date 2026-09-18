@@ -11,11 +11,11 @@ from typing import Any
 from PIL import Image
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError
-from .const import CONF_INTERVAL, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES, photo_fit
+from .const import CONF_INTERVAL, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES, PHOTO_SELECTION_DEFAULTS, photo_fit, photo_selection_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,8 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             if state.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE) != self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE):
                 return
             if state.get(CONF_PHOTO_FIT) != photo_fit(self.options):
+                return
+            if state.get("photo_settings", PHOTO_SELECTION_DEFAULTS) != photo_selection_settings(self.options):
                 return
             size = SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
             if state.get("output_size") != list(size):
@@ -101,11 +103,23 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             "output_size": SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE]),
             CONF_SCREEN_SHAPE: self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
             CONF_PHOTO_FIT: photo_fit(self.options),
+            "photo_settings": photo_selection_settings(self.options),
             "created_at": snapshot.created_at.isoformat(), "matching_assets": snapshot.matching_assets,
             "photos": [{key: value for key, value in photo.items() if key != "capture_dt"} for photo in snapshot.photos],
         }
         self.cache_path.with_suffix(".jpg").write_bytes(snapshot.image)
         self.cache_path.with_suffix(".json").write_text(json.dumps(state))
+
+    @callback
+    def async_update_settings(self, changes: dict[str, Any]) -> None:
+        """Persist device settings together, then rebuild with compatible cache only."""
+        if all(self.entry.data.get(key) == value for key, value in changes.items()):
+            return
+        # Preserve the displayed fit when changing mode on a legacy frame whose
+        # fit was previously inferred from its mode rather than explicitly saved.
+        data = {**self.entry.data, CONF_PHOTO_FIT: photo_fit(self.entry.data), **changes}
+        if self.hass.config_entries.async_update_entry(self.entry, data=data):
+            self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
     async def async_refresh_now(self) -> None:
         await self.async_refresh()

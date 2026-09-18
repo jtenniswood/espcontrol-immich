@@ -40,7 +40,7 @@ async def test_connection_checks_authenticated_search(hass, status):
         assert result["step_id"] == "display"
         with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {
-                "frame_name": "Test Frame", "mode": "Single image",
+                "frame_name": "Test Frame",
             })
             result = await finish_settings(hass.config_entries.flow, result)
             await hass.async_block_till_done()

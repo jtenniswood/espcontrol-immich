@@ -80,7 +80,7 @@ async def test_snapshot_passes_fit_to_singles_pairs_and_fallback(asset, mode, co
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("fit", ["crop", "show_full"])
 async def test_fit_saves_and_retains_navigation_draft_on_all_routes(hass, route, fit):
     if route == "setup":

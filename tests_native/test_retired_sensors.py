@@ -8,7 +8,7 @@ from custom_components.immich_frames.api import ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
 
 RETIRED = (
-    ("sensor", "photo_latitude"), ("sensor", "photo_longitude"),
+    ("sensor", "photo_latitude"), ("sensor", "photo_longitude"), ("sensor", "photo_filename"),
     ("sensor", "slide"), ("sensor", "status"), ("binary_sensor", "using_cache"),
     ("sensor", "matching_assets"), ("binary_sensor", "immich_connected"),
     ("select", "metadata_role"),

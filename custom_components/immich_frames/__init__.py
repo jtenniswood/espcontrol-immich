@@ -14,7 +14,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     retired_ids = {
         (domain, f"{entry.entry_id}_{key}")
         for domain, keys in {
-            "sensor": ("photo_latitude", "photo_longitude", "slide", "status", "matching_assets"),
+            "sensor": ("photo_latitude", "photo_longitude", "photo_filename", "slide", "status", "matching_assets"),
             "binary_sensor": ("using_cache", "immich_connected"),
             "select": ("metadata_role",),
         }.items()

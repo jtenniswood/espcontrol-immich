@@ -23,7 +23,6 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     async_add_entities([PhotoSensor(coordinator, key, name, value) for key, name, value in (
         ("photo_date", "Date", lambda p, d: _friendly_date(p.get("captured"))),
         ("photo_location", "Location", lambda p, d: ", ".join(x for x in (p.get("exif", {}).get("city"), p.get("exif", {}).get("state"), p.get("exif", {}).get("country")) if x) or None),
-        ("photo_filename", "Filename", lambda p, d: p.get("filename")),
         ("photo_people", "People", lambda p, d: ", ".join(p.get("people", [])) or None),
         ("photo_tags", "Tags", lambda p, d: ", ".join(p.get("tags", [])) or None),
         ("photo_rating", "Rating", lambda p, d: p.get("rating")),

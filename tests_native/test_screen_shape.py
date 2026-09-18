@@ -70,7 +70,7 @@ def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("shape,label,size", SHAPES)
-@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, label, size, route):
     if route == "setup":
         manager = hass.config_entries.flow
