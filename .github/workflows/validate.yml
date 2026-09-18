@@ -13,7 +13,7 @@ permissions:
 jobs:
   hacs:
     name: HACS
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     steps:
       - name: Validate HACS publishing requirements
         uses: hacs/action@main
@@ -23,7 +23,7 @@ jobs:
 
   hassfest:
     name: Hassfest
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     steps:
       - uses: actions/checkout@v7
       - name: Validate Home Assistant integration

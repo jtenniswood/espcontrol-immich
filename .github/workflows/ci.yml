@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     strategy:
       matrix:
         python: ['3.12', '3.13']
@@ -26,7 +26,7 @@ jobs:
       - run: python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('custom_components/immich_frames').glob('*.json')]"
 
   native-integration:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
@@ -37,7 +37,7 @@ jobs:
       - run: pytest -q tests_native
 
   container:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     needs: [tests, native-integration]
     strategy:
       matrix:
