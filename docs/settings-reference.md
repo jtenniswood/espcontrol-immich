@@ -10,7 +10,7 @@ Generated from `core/settings.py`. Run `python scripts/product_contract.py` afte
 | Portrait images | `single` — Single portrait photos only; `pairs` — Single and Paired portrait photos; `pairs_only` — Paired portrait photos only | `single` |
 | Photo orientation | `any` — Mixed (landscapes and portraits); `portrait` — Portrait photos only; `landscape` — Landscape photos only | `any` |
 | Pairing window | 0–7 | `2` |
-| Photo timer | 10–86400 | `30` |
+| Slideshow Timer | 10–86400 | `30` |
 
 Screen outputs are exactly Landscape 1280 × 800, Portrait 800 × 1280, and Square 720 × 720.
 

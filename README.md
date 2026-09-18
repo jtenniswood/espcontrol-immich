@@ -26,7 +26,7 @@ Each frame has its own photo image and slideshow controls in Home Assistant. To 
 On the frame’s device page:
 
 - **Controls:** pause or resume the slideshow, or move to the next or previous photo.
-- **Photo timer:** choose how often photos change.
+- **Slideshow Timer:** choose how often photos change.
 - **Photo fit:** choose **Show full image** to keep the whole photo with a matching background, or **Crop to fit** to fill the screen by trimming the edges.
 - **Portrait images:** show one photo or pair portrait photos taken around the same date. A portrait without a matching partner is shown in full with a colour-matched background, even when paired photos use **Crop to fit**.
 - **Photo orientation:** choose which photo shapes to include.

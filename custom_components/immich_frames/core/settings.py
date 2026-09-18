@@ -188,7 +188,7 @@ SETTINGS = (
         maximum=7,
         icon="mdi:calendar-range",
     ),
-    Setting(CONF_INTERVAL, DEFAULT_INTERVAL, "Photo timer", minimum=10, maximum=86400),
+    Setting(CONF_INTERVAL, DEFAULT_INTERVAL, "Slideshow Timer", minimum=10, maximum=86400),
 )
 SETTING_BY_KEY = {setting.key: setting for setting in SETTINGS}
 
