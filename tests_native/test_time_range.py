@@ -130,7 +130,7 @@ async def test_control_labels_persistence_reload_and_filtering(hass, asset, jpeg
         entity_id = er.async_get(hass).async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_time_range")
         entity = er.async_get(hass).async_get(entity_id)
         assert entity.entity_category == EntityCategory.CONFIG
-        assert entity.original_name == "Time range"
+        assert entity.original_name == "Photo time range"
         assert hass.states.get(entity_id).state == "all_time"
         assert hass.states.get(entity_id).attributes["options"] == [choice[0] for choice in CHOICES]
         assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == "older"

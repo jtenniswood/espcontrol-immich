@@ -20,9 +20,9 @@ Use the frame device page for display and timing settings. See [the settings ref
 - **Photo fit:** Crop to fit fills the screen by trimming edges. Show full image retains the photo's proportions and fills empty space with a dim colour sampled from that photo.
 - **Portrait images:** Single portrait photos only; Single and Paired portrait photos; or Paired portrait photos only. Landscapes and square photos can still appear individually when permitted by the independent orientation filter.
 - **Photo orientation:** Mixed includes landscapes, portraits and square photos. Portrait-only and landscape-only choices restrict the source. Older square-only saved settings remain supported, but are not offered as a new choice.
-- **Pairing window:** 0–7 calendar days, default 2. Zero pairs photos captured on the same date. A pair stays side by side with a one-pixel black divider; each tile has its own fit and sampled background.
-- **Time range:** All time, or a rolling month/year range. It applies to every source, both photos in pairs, and the All photos fallback for Memories. Calendar ranges are measured in UTC.
-- **Photo timer:** 10–86,400 seconds between slides. Changing this updates the timer without a reload.
+- **Portrait image window:** 0–7 calendar days, default 2. Zero pairs photos captured on the same date. A pair stays side by side with a one-pixel black divider; each tile has its own fit and sampled background.
+- **Photo time range:** All time, or a rolling month/year range. It applies to every source, both photos in pairs, and the All photos fallback for Memories. Calendar ranges are measured in UTC.
+- **Slideshow Timer:** in the **Controls** panel alongside pause/resume and photo navigation; 10–86,400 seconds between slides. Changing this updates the timer without a reload.
 
 In mixed pairing mode, an unmatched portrait is shown in full with a sampled background even if Photo fit is Crop to fit. Paired-only mode skips unmatched and undated portraits. Combine paired-only mode with portrait-only orientation for exclusively portrait pairs.
 
@@ -32,7 +32,7 @@ Crop to fit requests a full-size photo only when the preview is too small for th
 
 ## Navigation and photo details
 
-The device provides pause/resume, Next, Previous, Refresh and Clear cache controls. Metadata sensors describe the single photo or the left photo in a pair. Dates use the photo's recorded date, displayed as **14 May, 2007**. Missing details remain blank; a rating of zero remains 0.
+The device provides pause/resume, Next, Previous and Clear cache controls. Metadata sensors describe the single photo or the left photo in a pair. Dates use the photo's recorded date, displayed as **14 May, 2007**. Missing details remain blank; a rating of zero remains 0.
 
 To open a photo, expand the Image entity's Attributes and follow **Open in Immich**. Paired slides also expose **Open second photo in Immich**. Image, metadata and links follow the same displayed snapshot, including Previous navigation and cached slides. Links contain no API key. Your browser must reach the configured Immich server and may require sign-in.
 

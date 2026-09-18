@@ -10,7 +10,6 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     async_add_entities([FrameButton(coordinator, key, name, action) for key, name, action in (
         ("next", "Next", coordinator.async_next),
         ("previous", "Previous", coordinator.async_previous),
-        ("refresh", "Refresh", coordinator.async_refresh_now),
         ("clear_cache", "Clear cache", coordinator.async_clear_cache),
     )])
 

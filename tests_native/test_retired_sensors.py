@@ -11,7 +11,7 @@ RETIRED = (
     ("sensor", "photo_latitude"), ("sensor", "photo_longitude"), ("sensor", "photo_filename"),
     ("sensor", "slide"), ("sensor", "status"), ("binary_sensor", "using_cache"),
     ("sensor", "matching_assets"), ("binary_sensor", "immich_connected"),
-    ("select", "metadata_role"), ("switch", "pairs_only"),
+    ("select", "metadata_role"), ("switch", "pairs_only"), ("button", "refresh"),
 )
 
 

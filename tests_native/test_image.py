@@ -15,7 +15,7 @@ from custom_components.immich_frames.const import DOMAIN
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-@pytest.mark.parametrize("action", ["automatic", "next", "refresh"])
+@pytest.mark.parametrize("action", ["automatic", "next"])
 async def test_thumbnail_follows_frame_and_previous(hass, hass_client_no_auth, asset, action):
     """A new frame changes the public thumbnail URL and serves matching bytes."""
     snapshots = []

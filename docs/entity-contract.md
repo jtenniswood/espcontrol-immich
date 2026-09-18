@@ -11,11 +11,11 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Screen shape | Select (Configuration) | Choose Landscape (1280 × 800), Portrait (800 × 1280), or Square (720 × 720); saves the choice and reloads the frame |
 | Photo fit | Select (Configuration) | Crop to fit or Show full image |
 | Portrait images | Select (Configuration) | Single portrait photos only; Single and Paired portrait photos; Paired portrait photos only |
-| Time range | Select (Configuration) | All time, or the last 1, 3 or 6 months; 1, 2, 3, 4, 5 or 10 years |
+| Photo time range | Select (Configuration) | All time, or the last 1, 3 or 6 months; 1, 2, 3, 4, 5 or 10 years |
 | Photo orientation | Select (Configuration) | Mixed, portrait or landscape photos; legacy square-only values are retained |
-| Pairing window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
-| Photo timer | Number (Configuration) | 10–86,400 seconds |
-| Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
+| Portrait image window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
+| Slideshow Timer | Number (Controls) | 10–86,400 seconds |
+| Next, Previous, Clear cache | Buttons | Manual frame controls |
 
 The Image entity exposes `open_in_immich` for the single/left photo and `open_second_photo_in_immich` only when a right photo exists. Each is an Immich web URL (`/photos/<asset-id>`) without the API key. Links use the same snapshot as the image, including cached slides and Previous navigation.
 

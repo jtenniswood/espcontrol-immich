@@ -123,7 +123,7 @@ SETTINGS = (
     Setting(
         CONF_TIME_RANGE,
         DEFAULT_TIME_RANGE,
-        "Time range",
+        "Photo time range",
         tuple(
             zip(
                 TIME_RANGE_MONTHS,
@@ -183,12 +183,12 @@ SETTINGS = (
     Setting(
         CONF_PAIR_WINDOW,
         DEFAULT_PAIR_WINDOW,
-        "Pairing window",
+        "Portrait image window",
         minimum=0,
         maximum=7,
         icon="mdi:calendar-range",
     ),
-    Setting(CONF_INTERVAL, DEFAULT_INTERVAL, "Photo timer", minimum=10, maximum=86400),
+    Setting(CONF_INTERVAL, DEFAULT_INTERVAL, "Slideshow Timer", minimum=10, maximum=86400),
 )
 SETTING_BY_KEY = {setting.key: setting for setting in SETTINGS}
 

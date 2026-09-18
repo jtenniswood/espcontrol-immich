@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity import EntityCategory
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.const import DOMAIN
@@ -100,7 +99,7 @@ async def test_pair_details_use_left_photo_and_interval_survives_reload(hass, as
         assert registry.async_get("select.immich_frame_metadata_photo") is None
         assert hass.states.get("select.immich_frame_metadata_photo") is None
         timer_entity_id = registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_interval")
-        assert registry.async_get(timer_entity_id).entity_category == EntityCategory.CONFIG
+        assert registry.async_get(timer_entity_id).entity_category is None
         assert hass.states.get("sensor.immich_frame_location").state == "Bath"
         coordinator = hass.data[DOMAIN][entry.entry_id]
         assert coordinator.data.secondary["filename"] == "b.jpg"

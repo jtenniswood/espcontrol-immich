@@ -126,7 +126,7 @@
         }
       },
       "time_range": {
-        "name": "Time range",
+        "name": "Photo time range",
         "state": {
           "all_time": "All time",
           "1_month": "Last 1 month",
@@ -143,7 +143,7 @@
     },
     "number": {
       "pair_window_days": {
-        "name": "Pairing window"
+        "name": "Portrait image window"
       }
     }
   },
