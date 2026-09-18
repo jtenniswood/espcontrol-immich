@@ -11,12 +11,13 @@ RETIRED = (
     ("sensor", "photo_latitude"), ("sensor", "photo_longitude"),
     ("sensor", "slide"), ("sensor", "status"), ("binary_sensor", "using_cache"),
     ("sensor", "matching_assets"), ("binary_sensor", "immich_connected"),
+    ("select", "metadata_role"),
 )
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("online", [True, False])
-async def test_upgrade_removes_only_this_frames_retired_sensors(hass, asset, jpeg, online):
+async def test_upgrade_removes_only_this_frames_retired_entities(hass, asset, jpeg, online):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "key"})
     entry.add_to_hass(hass)
     registry = er.async_get(hass)

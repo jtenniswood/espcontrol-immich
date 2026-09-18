@@ -138,18 +138,6 @@
   },
   "entity": {
     "select": {
-      "metadata_role": {
-        "name": "Show photo details for",
-        "state": {
-          "primary": "Single photo or left photo in a pair",
-          "secondary": "Right photo in a pair"
-        },
-        "state_attributes": {
-          "description": {
-            "name": "How this works"
-          }
-        }
-      },
       "output_size": {
         "name": "Target display",
         "state": {

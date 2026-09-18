@@ -9,7 +9,7 @@ from .entity import ImmichFrameEntity
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([MetadataRoleSelect(coordinator), OutputSizeSelect(coordinator)])
+    async_add_entities([OutputSizeSelect(coordinator)])
 
 
 class OutputSizeSelect(ImmichFrameEntity, SelectEntity):
@@ -35,29 +35,3 @@ class OutputSizeSelect(ImmichFrameEntity, SelectEntity):
         # Use the same reload path as Configure: discard old-size history and
         # reject incompatible cached JPEGs before rendering the new frame.
         self.hass.config_entries.async_schedule_reload(entry.entry_id)
-
-
-class MetadataRoleSelect(ImmichFrameEntity, SelectEntity):
-    _attr_translation_key = "metadata_role"
-    _attr_entity_category = EntityCategory.CONFIG
-    _attr_icon = "mdi:image-text"
-    # Keep service values stable for existing automations; translate UI labels.
-    _attr_options = ["primary", "secondary"]
-    _attr_extra_state_attributes = {
-        "description": (
-            "Chooses which photo supplies the Date, Location, Filename, People, "
-            "Tags, Rating, Camera and Favourite sensors. For a pair, choose the left or right "
-            "photo. When only one photo is shown, its details are always used."
-        ),
-    }
-
-    def __init__(self, coordinator) -> None:
-        ImmichFrameEntity.__init__(self, coordinator, "metadata_role")
-
-    @property
-    def current_option(self):
-        return self.coordinator.metadata_role
-
-    async def async_select_option(self, option: str) -> None:
-        self.coordinator.metadata_role = option
-        self.coordinator.async_update_listeners()
