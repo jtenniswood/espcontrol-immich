@@ -34,7 +34,7 @@ async def test_snapshot_uses_screen_shape_without_filtering_photos(asset, jpeg, 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
 @pytest.mark.parametrize("paired", [False, True])
 def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, size, paired):
-    # Wide photos leave visible black padding, even when placed into a portrait tile.
+    # Single photos have a dim photo-derived fill; pairs fill their tiles.
     payloads = []
     for color in (["red", "blue"] if paired else ["red"]):
         output = BytesIO()
@@ -53,7 +53,9 @@ def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, 
             assert image.getpixel((center[0], height - 1))[0 if index == 0 else 2] > 240
         else:
             scaled_height = min(400, tile_width // 2)
-            assert max(image.getpixel((center[0], (height - scaled_height) // 2 - 10))) < 10
+            padding = image.getpixel((center[0], (height - scaled_height) // 2 - 10))
+            assert 120 <= padding[0] <= 135
+            assert max(padding[1:]) < 10
     if paired:
         for y in range(height):
             assert max(image.getpixel((width // 2, y))) < 10
