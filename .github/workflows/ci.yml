@@ -29,7 +29,7 @@ jobs:
     runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - run: python -m pip install -e '.[test]' -r requirements-native-test.txt
