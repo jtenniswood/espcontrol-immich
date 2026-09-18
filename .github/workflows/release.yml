@@ -1,8 +1,18 @@
 name: Publish Immich Frames
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag matching the native integration manifest (for example v0.2.14)
+        required: true
+        type: string
   release:
     types: [published]
+
+concurrency:
+  group: immich-release
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -10,6 +20,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
   validation:
@@ -30,8 +41,32 @@ jobs:
         with:
           python-version: '3.13'
       - run: python scripts/check_release.py
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+      - name: Check manual release target
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            const repo = context.repo;
+            try {
+              let {data: ref} = await github.rest.git.getRef({...repo, ref: `tags/${tag}`});
+              let object = ref.object;
+              while (object.type === 'tag') {
+                const {data} = await github.rest.git.getTag({...repo, tag_sha: object.sha});
+                object = data.object;
+              }
+              if (object.type !== 'commit' || object.sha !== context.sha) {
+                throw new Error('Existing tag does not identify this checked commit');
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            try {
+              await github.rest.repos.getReleaseByTag({...repo, tag});
+              throw new Error('A release already exists for this tag; choose a new version');
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
 
   publish:
     needs: [validation, hacs, release-contract]
@@ -61,7 +96,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: BUILD_FROM=${{ matrix.base }}
           push: true
-          tags: ${{ env.IMAGE }}:${{ github.event.release.tag_name }}-${{ matrix.name }}
+          tags: ${{ env.IMAGE }}:${{ env.RELEASE_TAG }}-${{ matrix.name }}
 
   manifest:
     runs-on: [self-hosted, Linux, X64, espcontrol-immich]
@@ -76,6 +111,25 @@ jobs:
       - name: Create multi-architecture manifest
         run: |
           docker buildx imagetools create \
-            --tag "${IMAGE}:${{ github.event.release.tag_name }}" \
-            "${IMAGE}:${{ github.event.release.tag_name }}-amd64" \
-            "${IMAGE}:${{ github.event.release.tag_name }}-arm64"
+            --tag "${IMAGE}:${RELEASE_TAG}" \
+            "${IMAGE}:${RELEASE_TAG}-amd64" \
+            "${IMAGE}:${RELEASE_TAG}-arm64"
+
+  github-release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [manifest]
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the checked commit after both container images are available
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const {data} = await github.rest.repos.createRelease({
+              ...context.repo,
+              tag_name: process.env.RELEASE_TAG,
+              target_commitish: context.sha,
+              generate_release_notes: true,
+            });
+            core.notice(`Published ${data.html_url}`);

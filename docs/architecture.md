@@ -51,7 +51,9 @@ Generate a repeatable visual acceptance sheet with `python scripts/render_exampl
 
 Run `python scripts/product_contract.py --check` to check generated content, or omit `--check` to regenerate it after a settings change. Run `python scripts/check_release.py` to verify package/container versions. Native integration and container versions are separate; a release tag must match the native manifest and identifies the exact source commit used for both container images.
 
-The release workflow reuses validation before publishing container images. Publish a GitHub release only after the intended commit's PR and default-branch checks pass: a published release is already visible to HACS while release-triggered checks run. This automation does not undo or hide a GitHub release that someone publishes manually.
+The supported release path is **Actions → Publish Immich Frames → Run workflow**: select the reviewed ref and supply its matching version tag. It validates the exact commit, checks for conflicting tags/releases, publishes both container architectures and their manifest, and only then creates the public GitHub release. No release is created if a prerequisite fails. Container images are published in the same workflow because releases created with the workflow token do not start a second release-triggered run.
+
+The existing `release: published` trigger remains for releases created outside that path; it validates before publishing container images. A manually published GitHub release is already visible to HACS while those checks run. This automation cannot prevent a repository administrator from bypassing the supported release path.
 
 Hassfest copies the integration into its validation container. It does not bind-mount a runner path, which may be invisible to the Docker daemon on a self-hosted runner.
 
