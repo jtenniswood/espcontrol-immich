@@ -60,7 +60,11 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
             entity = registry.async_get(registry.async_get_entity_id(domain, DOMAIN, f"{entry.entry_id}_{key}"))
             assert entity.entity_category == EntityCategory.CONFIG
             assert entity.original_name == name
-        assert async_translate_state(hass, "pairs", "select", DOMAIN, "mode", None) == "Pair portrait photos"
+        mode_id = registry.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_mode")
+        assert hass.states.get(mode_id).attributes["options"] == ["single", "pairs", "pairs_only"]
+        assert async_translate_state(hass, "single", "select", DOMAIN, "mode", None) == "Single portrait photos only"
+        assert async_translate_state(hass, "pairs_only", "select", DOMAIN, "mode", None) == "Paired portrait photos only"
+        assert async_translate_state(hass, "pairs", "select", DOMAIN, "mode", None) == "Single and Paired portrait photos"
         assert async_translate_state(hass, "crop", "select", DOMAIN, "photo_fit", None) == "Crop to fit"
         assert async_translate_state(hass, "any", "select", DOMAIN, "orientation", None) == "Mixed (landscapes and portraits)"
 
@@ -104,7 +108,7 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
 
 
 @pytest.mark.parametrize("domain,key,value", [
-    ("select", "mode", "pairs"), ("select", "orientation", "landscape"),
+    ("select", "mode", "pairs"), ("select", "mode", "pairs_only"), ("select", "orientation", "landscape"),
     ("select", "photo_fit", "crop"), ("select", "time_range", "1_month"),
     ("number", "pair_window_days", 7),
 ])
@@ -139,4 +143,32 @@ async def test_legacy_mode_change_preserves_fit_and_invalid_window_is_rejected(h
             with pytest.raises(HomeAssistantError):
                 await set_value(hass, entry, "number", "pair_window_days", invalid)
         assert "pair_window_days" not in entry.data
+        assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_pairs_only_device_setting_skips_single_cache_and_survives_reload(hass, asset, jpeg):
+    entry = frame(hass, mode="pairs", orientation="portrait")
+    assets = [{**asset, "id": "unmatched", "localDateTime": None}, asset, {**asset, "id": "b"}]
+
+    async def request(_api, method, path, **kwargs):
+        return assets if path == "/api/search/random" else jpeg
+
+    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        assert hass.data[DOMAIN][entry.entry_id].data.layout == "single"
+        entity_id = await set_value(hass, entry, "select", "mode", "pairs_only")
+        assert entry.data["mode"] == "pairs_only"
+        assert hass.states.get(entity_id).state == "pairs_only"
+        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        assert [photo["id"] for photo in snapshot.photos] == ["portrait-a", "b"]
+        assert snapshot.layout == "side_by_side"
+        assert await hass.config_entries.async_unload(entry.entry_id)
+    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        assert snapshot.using_cache
+        assert snapshot.layout == "side_by_side"
+        assert hass.states.get(entity_id).state == "pairs_only"
         assert await hass.config_entries.async_unload(entry.entry_id)

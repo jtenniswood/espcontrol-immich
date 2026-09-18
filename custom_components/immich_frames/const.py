@@ -79,7 +79,7 @@ def photo_fit(options: dict) -> str:
     """Use the explicit choice, or preserve the closest legacy display behavior."""
     if options.get(CONF_PHOTO_FIT) in (PHOTO_FIT_CROP, PHOTO_FIT_FULL):
         return options[CONF_PHOTO_FIT]
-    if options.get(CONF_ORIGINAL_ASPECT_RATIO) or options.get(CONF_MODE) != "pairs":
+    if options.get(CONF_ORIGINAL_ASPECT_RATIO) or options.get(CONF_MODE) not in ("pairs", "pairs_only"):
         return PHOTO_FIT_FULL
     return PHOTO_FIT_CROP
 

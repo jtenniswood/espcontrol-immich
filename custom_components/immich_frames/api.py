@@ -276,11 +276,18 @@ class ImmichApi:
             candidates = await self.search(filter_value, random=True)
         orientation = options.get(CONF_ORIENTATION, "any")
         candidates = [item for item in candidates if orientation == "any" or item["orientation"] == orientation]
+        if options.get(CONF_MODE) == "pairs_only":
+            # This setting controls portraits; landscapes and squares still
+            # follow the independent orientation filter.
+            candidates = [item for item in candidates if item["orientation"] != "portrait" or self._companion(
+                item, [other for other in candidates if other["id"] != item["id"]],
+                int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)),
+            )]
         if not candidates:
             raise ImmichApiError("No photos match this frame")
         primary = next((item for item in candidates if item["id"] not in recent_ids), candidates[0])
         photos = [primary]
-        if options.get(CONF_MODE) == "pairs":
+        if options.get(CONF_MODE) in ("pairs", "pairs_only"):
             companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)))
             if companion:
                 photos.append(companion)
