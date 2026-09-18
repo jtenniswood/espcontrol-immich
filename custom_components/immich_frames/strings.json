@@ -77,7 +77,7 @@
         "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },
@@ -215,7 +215,7 @@
         "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },
