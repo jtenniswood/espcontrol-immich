@@ -5,7 +5,7 @@ The integration supports HACS custom-repository installation. Inclusion in the d
 ## Repository requirements
 
 - Keep the repository public and active, with issues enabled and a description explaining the integration.
-- Add an owner-approved, OSI-approved licence in a root `LICENSE` file. HACS checks GitHub's detected repository licence, so this must also be present on the default branch before that check can pass. A noncommercial-only licence is not accepted by the current validator. The licence choice is still outstanding for this repository.
+- Keep the owner-approved [MIT licence](../LICENSE) in the root `LICENSE` file. HACS checks GitHub's detected repository licence, so this must also be present on the default branch before that check can pass.
 - Keep relevant GitHub topics configured, including `hacs`, `home-assistant`, `custom-component`, `immich`, and `espcontrol`. Topics are repository settings, not files in a release.
 - Keep the installation and usage instructions in the root README and linked guides current.
 - Ship exactly one integration under `custom_components/immich_frames`, including all its runtime files and the local `brand/icon.png` asset.
