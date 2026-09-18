@@ -99,7 +99,8 @@ def _photo(asset: dict[str, Any]) -> dict[str, Any]:
         orientation = "square"
     else:
         orientation = "unknown"
-    people = [person.get("name") or person.get("id", "") for person in asset.get("people") or []]
+    people = [name.strip() for person in asset.get("people") or []
+              if isinstance(name := person.get("name"), str) and name.strip()]
     tags = [tag.get("name") or tag.get("id", "") for tag in asset.get("tags") or []]
     return {
         "id": asset["id"], "filename": asset.get("originalFileName", asset["id"]),
