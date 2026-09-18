@@ -5,6 +5,7 @@ from homeassistant import config_entries
 
 from custom_components.immich_frames.api import ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -39,9 +40,9 @@ async def test_connection_checks_authenticated_search(hass, status):
         assert result["step_id"] == "display"
         with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {
-                "frame_name": "Test Frame", "mode": "Single image", "orientation": "Any orientation",
-                "pair_window_days": 0, "pairs_only": False, "interval": 30,
+                "frame_name": "Test Frame", "mode": "Single image",
             })
+            result = await finish_settings(hass.config_entries.flow, result)
             await hass.async_block_till_done()
         assert result["type"] == "create_entry"
         assert result["data"]["source"] == "album"

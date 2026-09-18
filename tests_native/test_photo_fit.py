@@ -103,11 +103,13 @@ async def test_fit_saves_and_retains_navigation_draft_on_all_routes(hass, route,
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+    result = await manager.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "photos"
     assert result["data_schema"]({})["photo_fit"] == "show_full"
     assert "original_aspect_ratio" not in result["data_schema"]({})
     # Navigate back with an edit, then verify the draft is retained.
     result = await manager.async_configure(result["flow_id"], {"photo_fit": fit, "navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
+    result = await manager.async_configure(result["flow_id"], {})
     assert result["data_schema"]({})["photo_fit"] == fit
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {})
@@ -134,6 +136,7 @@ async def test_fit_change_rejects_old_cache_then_restores_matching_cache(hass, a
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
+        result = await manager.async_configure(result["flow_id"], {})
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
             await manager.async_configure(result["flow_id"], {"photo_fit": "crop"})
             await hass.async_block_till_done()

@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 SHAPES = [("landscape", "Landscape (16:10, 1280 × 800)", (1280, 800)),
           ("portrait", "Portrait (10:16, 800 × 1280)", (800, 1280)),
@@ -91,6 +92,7 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
     assert result["data_schema"]({})["screen_shape"] == ("Landscape (16:10, 1280 × 800)" if route == "setup" else label)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
+        result = await finish_settings(manager, result)
         await hass.async_block_till_done()
     saved = result["data"] if route == "setup" else entry.data
     assert saved["screen_shape"] == shape
@@ -115,7 +117,8 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
         # A failing server must not bring back the old landscape cache after saving portrait.
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (10:16, 800 × 1280)"})
+            result = await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (10:16, 800 × 1280)"})
+            await finish_settings(manager, result)
             await hass.async_block_till_done()
             assert entry.entry_id not in hass.data[DOMAIN]
         assert await hass.config_entries.async_reload(entry.entry_id)

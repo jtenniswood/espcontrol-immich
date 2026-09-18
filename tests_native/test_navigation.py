@@ -6,6 +6,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 ALBUMS = [{"id": "a", "albumName": "Family"}, {"id": "b", "albumName": "Trips"}]
@@ -30,7 +31,7 @@ async def submit(hass, result, **values):
 
 async def save(hass, result):
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
-        result = await submit(hass, result, **result["data_schema"]({}))
+        result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()
     return result
 
@@ -39,16 +40,24 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
     result = await submit(hass, result, frame_name="Kitchen", mode="Matching portrait pairs",
-                          orientation="Portrait photos only", screen_shape="Square (1:1, 720 × 720)", pair_window_days=3, pairs_only=True,
-                          interval=75, navigation="back")
+                          screen_shape="Square (1:1, 720 × 720)")
+    result = await submit(hass, result, orientation="Portrait photos only", interval=75)
+    result = await submit(hass, result, pair_window_days=3, pairs_only=True, navigation="back")
+    result = await submit(hass, result, navigation="back")
+    result = await submit(hass, result, navigation="back")
     assert result["step_id"] == "album"
     assert result["data_schema"]({})["album_ids"] == ["a"]
     assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_ids=["a", "b"])
     defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1, 720 × 720)", "photo_fit": "show_full", "mode": "Matching portrait pairs",
-                        "orientation": "Portrait photos only", "pair_window_days": 3,
-                        "pairs_only": True, "interval": 75, "navigation": "continue"}
+    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1, 720 × 720)",
+                        "mode": "Matching portrait pairs", "navigation": "continue"}
+    result = await submit(hass, result)
+    assert result["data_schema"]({})["interval"] == 75
+    assert result["data_schema"]({})["orientation"] == "Portrait photos only"
+    result = await submit(hass, result)
+    assert result["data_schema"]({})["pair_window_days"] == 3
+    assert result["data_schema"]({})["pairs_only"] is True
     result = await save(hass, result)
     assert result["type"] == "create_entry"
     assert result["data"]["album_ids"] == ["a", "b"]
@@ -119,9 +128,12 @@ async def test_display_back_targets_previous_step(hass, label, step, values):
 async def test_display_can_change_source_directly(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result, navigation="source", interval=120)
+    result = await submit(hass, result)
+    result = await submit(hass, result, interval=120, navigation="back")
+    result = await submit(hass, result, navigation="source")
     assert result["step_id"] == "source"
     result = await submit(hass, result, source="All photos")
+    result = await submit(hass, result)
     assert result["data_schema"]({})["interval"] == 120
     result = await save(hass, result)
     assert "album_id" not in result["data"]
@@ -149,6 +161,7 @@ async def test_reconfigure_cancel_leaves_entry_unchanged(hass):
     assert result["data_schema"]({})["source"] == "Albums"
     result = await submit(hass, result, source="All photos")
     assert result["data_schema"]({})["frame_name"] == "Frame"
+    result = await submit(hass, result)
     assert result["data_schema"]({})["interval"] == 90
     result = await submit(hass, result, navigation="back", interval=120)
     assert dict(entry.data) == before
@@ -176,7 +189,7 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         assert result["data_schema"]({})["album_ids"] == ["a"]
         result = await submit(hass, result, album_ids=["a", "b"])
         assert entry.data["album_id"] == "a"
-        result = await submit(hass, result, **result["data_schema"]({}))
+        result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()
         assert result["type"] == "abort"
         assert result["reason"] == "reconfigure_successful"
@@ -193,13 +206,14 @@ async def test_duplicate_frame_name_can_be_corrected_without_losing_choices(hass
     original = existing_frame(hass)
     existing_frame(hass, "Kitchen")
     result = await submit(hass, await reconfigure(hass, original), source="All photos")
-    result = await submit(hass, result, frame_name="Kitchen", interval=120)
+    result = await submit(hass, result, frame_name="Kitchen")
     assert result["step_id"] == "display"
     assert result["errors"] == {"frame_name": "name_in_use"}
-    assert result["data_schema"]({})["interval"] == 120
+    assert result["data_schema"]({})["frame_name"] == "Kitchen"
     assert original.data["source"] == "album"
     with patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await submit(hass, result, frame_name="Living room")
+        result = await submit(hass, result, interval=120)
         await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
     assert original.title == "Living room"
