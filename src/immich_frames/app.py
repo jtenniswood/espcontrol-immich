@@ -115,13 +115,18 @@ class FrameApp:
             primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
             photos: tuple[Photo, ...] = (primary,)
             if frame.mode == "pairs":
-                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days)
-                if companion:
-                    photos = (primary, companion)
-                elif frame.pairs_only:
-                    LOG.info("Frame %s has no complete pair", frame.name)
+                for candidate in sorted(candidates, key=lambda photo: photo.id in recent_ids):
+                    companion = choose_companion(candidate, [photo for photo in candidates if photo.id != candidate.id], frame.pair_window_days)
+                    if companion:
+                        photos = (candidate, companion)
+                        break
+                    if candidate.orientation != "portrait" or not frame.pairs_only:
+                        photos = (candidate,)
+                        break
+                else:
+                    LOG.info("Frame %s has no matching portrait pair", frame.name)
                     return
-            payloads = tuple(await client.thumbnail(photo.id) for photo in photos)
+            payloads = tuple(await asyncio.gather(*(client.thumbnail(photo.id) for photo in photos)))
             generation = self.generation.get(frame.frame_id, 0) + 1
             slide = render_slide(frame.frame_id, generation, photos, payloads, frame.output_width, frame.output_height, frame.fit)
             self.generation[frame.frame_id] = generation
@@ -228,7 +233,7 @@ class FrameApp:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
 <form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Any orientation</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Matching portrait pairs</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Require complete pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Pair portrait photos</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Only show portraits in pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
 const out=document.querySelector('#frames');
 const form=document.querySelector('#f');

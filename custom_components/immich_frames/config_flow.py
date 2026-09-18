@@ -19,8 +19,8 @@ from .const import (
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
 SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:10, 1280 × 800)", "portrait": "Portrait (10:16, 800 × 1280)", "square": "Square (1:1, 720 × 720)"}
-MODE_LABELS = {"single": "Single image", "pairs": "Matching portrait pairs"}
-ORIENTATION_LABELS = {"any": "Any orientation", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
+MODE_LABELS = {"single": "Single image", "pairs": "Pair portrait photos"}
+ORIENTATION_LABELS = {"any": "Mixed (landscapes and portraits)", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
 SOURCE_FIELDS = {
     "album": (CONF_ALBUM_ID, CONF_ALBUM_IDS),
     "memories": (CONF_MEMORY_WINDOW, CONF_FALLBACK),
@@ -141,7 +141,7 @@ class FrameSettingsFlow:
         if user_input:
             user_input[CONF_MODE] = {
                 "Single image": "single",
-                "Matching portrait pairs": "pairs",
+                "Pair portrait photos": "pairs",
             }.get(user_input[CONF_MODE], user_input[CONF_MODE])
             user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
             self._remember(user_input)
@@ -187,7 +187,7 @@ class FrameSettingsFlow:
                     {"value": PHOTO_FIT_CROP, "label": "Crop to fit"},
                     {"value": PHOTO_FIT_FULL, "label": "Show full image"},
                 ], mode=selector.SelectSelectorMode.DROPDOWN)),
-            vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
+            vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Mixed (landscapes and portraits)")): vol.In(list(ORIENTATION_LABELS.values())),
             vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
             **_navigation("Back to frame setup", save=not pairs),
         }), last_step=not pairs)
