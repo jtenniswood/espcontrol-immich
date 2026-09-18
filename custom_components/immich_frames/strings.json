@@ -153,7 +153,7 @@
       "mode": {
         "name": "Display mode",
         "state": {
-          "single": "Single image",
+          "single": "Single portrait images",
           "pairs": "Pair portrait photos"
         }
       },

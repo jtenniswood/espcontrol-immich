@@ -67,7 +67,7 @@ async def test_short_steps_save_only_at_end(hass, route, pairs, source):
     manager, result, entry = await start(hass, route, source)
     before = dict(entry.data) if entry else None
     check_form(result, "display", {"frame_name", "screen_shape", "mode"}, False, route)
-    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos" if pairs else "Single image"})
+    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos" if pairs else "Single portrait images"})
     check_form(result, "photos", {"photo_fit", "orientation", "interval"}, not pairs, route)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
         if pairs:
@@ -99,7 +99,7 @@ async def test_switching_to_single_skips_pairing_and_cancel_preserves_entry(hass
     result = await manager.async_configure(result["flow_id"], {"interval": 120})
     result = await manager.async_configure(result["flow_id"], {"pair_window_days": 5, "navigation": "back"})
     result = await manager.async_configure(result["flow_id"], {"navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"mode": "Single image"})
+    result = await manager.async_configure(result["flow_id"], {"mode": "Single portrait images"})
     check_form(result, "photos", {"photo_fit", "orientation", "interval"}, True, route)
     assert result["data_schema"]({})["interval"] == 120
     # Changing back to pairs restores the pairing draft.
