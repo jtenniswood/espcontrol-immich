@@ -31,6 +31,7 @@ Enter the Immich server URL and a read-only API key with these permissions:
 |---|---|
 | `asset.read` | Search and metadata |
 | `asset.view` | Preview images |
+| `asset.download` | Optional full-size originals for sharper crops |
 | `album.read` | Album catalog and album filters |
 | `person.read` | People catalog and people filters |
 | `tag.read` | Tag catalog and tag filters |
@@ -40,5 +41,17 @@ Enter the Immich server URL and a read-only API key with these permissions:
 The integration checks `/api/server/version` for Immich 3.2 or later, then performs an authenticated metadata search to verify the API key and its `asset.read` permission before continuing. An empty library can pass this connection check. TLS verification remains enabled by default; using an `http://` URL is an explicit local-network choice.
 
 The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available.
+
+## Image quality
+
+The native integration checks each photo's preview against the space it fills when **Crop to fit** is selected, including each half of a paired photo. If it would need enlarging, the integration requests Immich's full-size image and uses it when it provides more detail. An original that is already no larger than its preview is skipped. The selected screen dimensions and crop stay the same.
+
+Allow `asset.download` on your read-only API key to let Immich serve originals. Full-size downloads use more bandwidth. For formats such as HEIC or RAW, Immich may need full-size image generation enabled to provide a compatible converted image. Missing permissions, unavailable full-size images and unsupported formats fall back to the preview without interrupting the slideshow.
+
+Both the native integration and optional renderer app save JPEGs at quality 95 with full colour detail. Existing cached photos remain available offline; the improved quality takes effect as new slides are rendered. No cache clearing is needed.
+
+You can also raise preview resolution and quality in Immich under **Administration → Settings → Image Settings**, then regenerate existing previews. This can help photos that cannot use a full-size image. See [Immich's image settings](https://docs.immich.app/administration/system-settings/).
+
+## Optional renderer app
 
 For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **EspControl Immich Companion**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.

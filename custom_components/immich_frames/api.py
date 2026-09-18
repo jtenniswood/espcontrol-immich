@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -16,7 +17,9 @@ from .const import (
     CONF_ORIENTATION, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
-from .rendering import background_colour
+from .rendering import background_colour, image_size
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ImmichApiError(RuntimeError):
@@ -196,6 +199,33 @@ class ImmichApi:
     async def thumbnail(self, asset_id: str) -> bytes:
         return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": "preview"})
 
+    async def crop_image(self, photo: dict[str, Any], size: tuple[int, int]) -> bytes:
+        """Upgrade an undersized preview without making full-size access mandatory."""
+        preview = await self.thumbnail(photo["id"])
+        loop = asyncio.get_running_loop()
+        width, height = await loop.run_in_executor(None, image_size, preview)
+        resolution = min(width / size[0], height / size[1])
+        if resolution >= 1:
+            return preview
+        # Avoid downloading an original that is itself no larger than the preview.
+        # Compare sorted dimensions because metadata may precede EXIF rotation.
+        original = (photo.get("width"), photo.get("height"))
+        if all(isinstance(value, (int, float)) and value > 0 for value in original):
+            if all(a <= b for a, b in zip(sorted(original), sorted((width, height)))):
+                return preview
+        try:
+            # Immich serves the original, or a full-resolution converted image
+            # for formats such as HEIC when full-size generation is enabled.
+            fullsize = await self._request(
+                "GET", f"/api/assets/{photo['id']}/thumbnail", params={"size": "fullsize"},
+            )
+            full_width, full_height = await loop.run_in_executor(None, image_size, fullsize)
+            if min(full_width / size[0], full_height / size[1]) > resolution:
+                return fullsize
+        except (ImmichApiError, OSError, ValueError, Image.DecompressionBombError):
+            LOGGER.debug("Full-size photo unavailable; using the preview")
+        return preview
+
     async def snapshot(self, options: dict[str, Any], generation: int, recent_ids: set[str]) -> FrameSnapshot:
         source = options.get(CONF_SOURCE, "all")
         filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
@@ -229,12 +259,18 @@ class ImmichApi:
             companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)))
             if companion:
                 photos.append(companion)
-        image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
+            shape = options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE)
+            fit = photo_fit(options)
+            size = SCREEN_SIZES.get(shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
+            sizes = [size] if len(photos) == 1 else [(size[0] // 2, size[1]), (size[0] - size[0] // 2 - 1, size[1])]
+            image_data = await asyncio.gather(*(
+                self.crop_image(item, tile_size) if fit == PHOTO_FIT_CROP else self.thumbnail(item["id"])
+                for item, tile_size in zip(photos, sizes)
+            ))
             output, layout = await asyncio.get_running_loop().run_in_executor(
                 None, self._render, photos, image_data,
-                options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
-                photo_fit(options),
+                shape, fit,
             )
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
@@ -277,9 +313,8 @@ class ImmichApi:
                 canvas.paste(tile(image, (width, canvas.height)), (left, 0))
             layout = "side_by_side"
         output = BytesIO()
-        # Avoid chroma bleeding across the narrow divider in paired output.
-        canvas.save(output, "JPEG", quality=95 if len(images) == 2 else 85,
-                    subsampling=0 if len(images) == 2 else -1, optimize=True)
+        # Preserve fine colour detail as well as the narrow divider in pairs.
+        canvas.save(output, "JPEG", quality=95, subsampling=0, optimize=True)
         return output.getvalue(), layout
 
 

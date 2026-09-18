@@ -33,6 +33,8 @@ On the frame’s device page:
 
 To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame.
 
+**Crop to fit** automatically requests a full-size photo when the preview is too small for the crop. Photos are saved at high JPEG quality, keeping fine colour detail. Full-size photos use more bandwidth; if one is unavailable, the slideshow continues using the preview. See [image quality and permissions](docs/installation.md#image-quality).
+
 ## Updates and help
 
 Update through HACS, then restart Home Assistant. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
