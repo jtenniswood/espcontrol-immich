@@ -4,25 +4,18 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import (
-    CONF_MODE, CONF_ORIENTATION, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE,
-    CONF_TIME_RANGE, DEFAULT_TIME_RANGE, TIME_RANGE_MONTHS,
-    DEFAULT_SCREEN_SHAPE, DOMAIN, PHOTO_FIT_CROP, PHOTO_FIT_FULL, SCREEN_SIZES, photo_fit,
+    CONF_PHOTO_FIT, DOMAIN, photo_fit,
 )
+from .core.settings import SETTINGS
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([
-        FrameSettingSelect(coordinator, CONF_TIME_RANGE, list(TIME_RANGE_MONTHS), DEFAULT_TIME_RANGE,
-                           "mdi:calendar-range"),
-        FrameSettingSelect(coordinator, "output_size", list(SCREEN_SIZES), DEFAULT_SCREEN_SHAPE,
-                           "mdi:aspect-ratio", config_key=CONF_SCREEN_SHAPE),
-        FrameSettingSelect(coordinator, CONF_PHOTO_FIT, [PHOTO_FIT_CROP, PHOTO_FIT_FULL], PHOTO_FIT_FULL,
-                           "mdi:image-size-select-large"),
-        FrameSettingSelect(coordinator, CONF_MODE, ["single", "pairs", "pairs_only"], "single", "mdi:image-multiple"),
-        FrameSettingSelect(coordinator, CONF_ORIENTATION, ["any", "portrait", "landscape"], "any",
-                           "mdi:image-filter-center-focus"),
+        FrameSettingSelect(coordinator, spec.entity_key or spec.key,
+                           list(dict(spec.choices)), spec.default, spec.icon, config_key=spec.key)
+        for spec in SETTINGS if spec.choices
     ])
 
 

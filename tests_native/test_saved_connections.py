@@ -69,7 +69,8 @@ async def test_saved_connection_creates_independent_second_frame(hass):
     assert result["data"]["interval"] == 30
     assert "album_id" not in result["data"]
     assert "connection_id" not in result["data"]
-    assert dict(original.data) == original_data
+    from custom_components.immich_frames.core.settings import migrate_settings
+    assert dict(original.data) == migrate_settings(original_data)
     await hass.config_entries.async_remove(original.entry_id)
     assert result["result"].data["api_key"] == "saved-secret"
 

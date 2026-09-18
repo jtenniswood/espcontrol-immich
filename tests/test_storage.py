@@ -50,7 +50,7 @@ def test_retired_pairs_only_setting_does_not_break_saved_frames(tmp_path):
     storage.db.execute("INSERT INTO frames VALUES (?, ?, ?)", ("old", "Old frame", json.dumps(config)))
     storage.db.commit()
     frame = storage.list_frames()[0]
-    assert frame == FrameConfig("old", "Old frame", mode="pairs")
+    assert frame == FrameConfig("old", "Old frame", mode="pairs", fit="cover", photo_fit="crop")
     storage.save_frame(frame)
     saved = json.loads(storage.db.execute("SELECT config FROM frames").fetchone()[0])
     assert "pairs_only" not in saved

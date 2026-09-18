@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Any, Literal
 
 Mode = Literal["single", "pairs", "pairs_only"]
-OUTPUT_SIZE = (1280, 800)
+from custom_components.immich_frames.core.settings import SCREEN_SIZES, FrameSettings
+OUTPUT_SIZE = SCREEN_SIZES["landscape"]
 
 
 def parse_datetime(value: str | None) -> datetime | None:
@@ -53,6 +54,20 @@ class Photo:
             exif=exif, people=people, tags=tags, checksum=value.get("checksum"), thumbhash=value.get("thumbhash"),
         )
 
+    def record(self) -> dict:
+        capture = self.capture_time
+        return {"id": self.id, "filename": self.original_file_name, "width": self.width,
+                "height": self.height, "orientation": self.orientation, "captured": capture.isoformat() if capture else None,
+                "capture_dt": capture, "exif": self.exif, "people": list(self.people), "tags": list(self.tags),
+                "favorite": self.is_favorite, "rating": self.exif.get("rating"), "checksum": self.checksum}
+
+    @classmethod
+    def from_record(cls, photo):
+        return cls(photo["id"], photo.get("width"), photo.get("height"),
+                   parse_datetime(photo.get("captured")), parse_datetime(photo.get("captured")),
+                   photo.get("filename", photo["id"]), is_favorite=photo.get("favorite"),
+                   exif=photo.get("exif", {}), people=tuple(photo.get("people", ())), tags=tuple(photo.get("tags", ())), checksum=photo.get("checksum"))
+
     @property
     def capture_time(self) -> datetime | None:
         return self.local_date_time or self.file_created_at
@@ -91,17 +106,36 @@ class FrameConfig:
     smart_query: str | None = None
     smart_reference_asset_id: str | None = None
     order_field: Literal["fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"] = "fileCreatedAt"
-    order_direction: Literal["asc", "desc"] = "desc"
+    order_direction: Literal["asc", "desc", "random"] = "desc"
     output_width: int = OUTPUT_SIZE[0]
     output_height: int = OUTPUT_SIZE[1]
-    fit: Literal["cover", "contain"] = "cover"
+    fit: Literal["cover", "contain"] = "contain"
     orientation: Literal["any", "portrait", "landscape", "square"] = "any"
     album_ids: list[str] | None = None
 
+    screen_shape: str = "landscape"
+    photo_fit: str | None = None
+    time_range: str = "all_time"
+    settings_version: int = 2
+
+    def settings(self) -> dict:
+        data = asdict(self)
+        data["interval"] = self.slideshow_interval
+        # Legacy app cover/contain preferences migrate to the common fit policy.
+        data["photo_fit"] = self.photo_fit or ("show_full" if self.fit == "contain" else "crop")
+        data["smart_query"] = self.smart_query or ""
+        if self.album_ids is None:
+            data.pop("album_ids")
+        return FrameSettings.from_options(data).options()
+
     def __post_init__(self) -> None:
-        # Normalize saved/imported legacy dimensions to the fixed device frame.
-        object.__setattr__(self, "output_width", OUTPUT_SIZE[0])
-        object.__setattr__(self, "output_height", OUTPUT_SIZE[1])
+        if self.settings_version != 2:
+            raise ValueError("Unsupported frame settings version")
+        if self.screen_shape not in SCREEN_SIZES:
+            raise ValueError("Unsupported screen_shape")
+        # Explicit shapes use the common dimensions; old size arguments remain ignored.
+        object.__setattr__(self, "output_width", SCREEN_SIZES[self.screen_shape][0])
+        object.__setattr__(self, "output_height", SCREEN_SIZES[self.screen_shape][1])
 
 
 @dataclass(slots=True, frozen=True)

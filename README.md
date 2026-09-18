@@ -26,9 +26,9 @@ Each frame has its own photo image and slideshow controls in Home Assistant. To 
 On the frame’s device page:
 
 - **Controls:** pause or resume the slideshow, or move to the next or previous photo.
-- **Slide interval:** choose how often photos change.
+- **Photo timer:** choose how often photos change.
 - **Photo fit:** choose **Show full image** to keep the whole photo with a matching background, or **Crop to fit** to fill the screen by trimming the edges.
-- **Display mode:** show one photo or pair portrait photos taken around the same date. A portrait without a matching partner is shown in full with a colour-matched background, even when paired photos use **Crop to fit**.
+- **Portrait images:** show one photo or pair portrait photos taken around the same date. A portrait without a matching partner is shown in full with a colour-matched background, even when paired photos use **Crop to fit**.
 - **Photo orientation:** choose which photo shapes to include.
 
 To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame. This opens the photo source editor directly, with the current source selected. As in setup, Albums opens the album picker and Keywords opens the keyword field. All photos and Memories save without another source screen. Your frame name is kept. Display settings are managed on the device page.
@@ -40,3 +40,5 @@ To change albums, keywords or other photo sources, open **Settings → Devices &
 Update through HACS, then restart Home Assistant. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
 
 See the [installation guide](docs/installation.md) for manual installation and connection help, or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
+
+Development and upgrade details are in [the architecture guide](docs/architecture.md). The shared-engine upgrade regenerates old image caches; Immich must be reachable for the first image after updating. Frame settings and entity identities are preserved.

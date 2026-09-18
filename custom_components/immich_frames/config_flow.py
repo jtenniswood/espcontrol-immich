@@ -169,7 +169,7 @@ class FrameSettingsFlow:
 
 
 class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @callback

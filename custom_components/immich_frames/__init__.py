@@ -1,23 +1,15 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-
-from .const import CONF_SCREEN_SHAPE, DOMAIN, LEGACY_SCREEN_SHAPES, PLATFORMS, screen_shape
-from .coordinator import FrameCoordinator
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # Upgrade device presets before rendering or restoring a cached image.
-    if entry.data.get(CONF_SCREEN_SHAPE) in LEGACY_SCREEN_SHAPES:
-        hass.config_entries.async_update_entry(entry, data={
-            **entry.data, CONF_SCREEN_SHAPE: screen_shape(entry.data[CONF_SCREEN_SHAPE]),
-        })
-    if "pairs_only" in entry.data:
-        data = dict(entry.data)
-        data.pop("pairs_only")
-        hass.config_entries.async_update_entry(entry, data=data)
+    from homeassistant.helpers import entity_registry as er
+    from .const import DOMAIN, PLATFORMS
+    from .coordinator import FrameCoordinator
     # Remove retired entities even when Immich is offline during this upgrade.
     registry = er.async_get(hass)
     retired_ids = {
@@ -46,8 +38,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    from .const import DOMAIN, PLATFORMS
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
         await coordinator.async_close()
     return unloaded
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    from .core.settings import migrate_settings, SETTINGS_VERSION
+    try:
+        data = migrate_settings(dict(entry.data), entry.version)
+    except (TypeError, ValueError):
+        return False
+    hass.config_entries.async_update_entry(entry, data=data, version=SETTINGS_VERSION)
+    return True

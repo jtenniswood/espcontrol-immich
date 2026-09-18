@@ -81,7 +81,7 @@ async def test_each_source_sends_range_before_selection(asset, jpeg, source, pai
             return photos if path.endswith("random") else {"assets": {"items": photos}}
         return jpeg
 
-    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.api.datetime") as clock:
+    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.core.engine.datetime") as clock:
         clock.now.return_value = NOW
         clock.fromisoformat = datetime.fromisoformat
         snapshot = await ImmichApi("http://immich.test", "key").snapshot({
@@ -122,7 +122,7 @@ async def test_control_labels_persistence_reload_and_filtering(hass, asset, jpeg
                     datetime.fromisoformat(query["takenAt"]["gte"]) <= datetime.fromisoformat(photo["localDateTime"]) <= datetime.fromisoformat(query["takenAt"]["lte"])]
         return jpeg
 
-    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.api.datetime") as clock:
+    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.core.engine.datetime") as clock:
         clock.now.return_value = NOW
         clock.fromisoformat = datetime.fromisoformat
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -168,8 +168,8 @@ def test_range_moves_forward_on_later_refreshes():
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-@pytest.mark.parametrize("option,restores", [("all_time", True), ("1_month", False)])
-async def test_old_cache_defaults_to_all_time(hass, asset, jpeg, option, restores):
+@pytest.mark.parametrize("option,restores", [("all_time", False), ("1_month", False)])
+async def test_cache_without_provenance_is_rejected(hass, asset, jpeg, option, restores):
     import json
     entry = frame(hass)
     async def request(_api, method, path, **kwargs):
@@ -181,7 +181,7 @@ async def test_old_cache_defaults_to_all_time(hass, asset, jpeg, option, restore
         state_path = hass.data[DOMAIN][entry.entry_id].cache_path.with_suffix(".json")
         assert await hass.config_entries.async_unload(entry.entry_id)
     state = json.loads(state_path.read_text())
-    state["photo_settings"].pop("time_range")
+    state.pop("signature")
     state_path.write_text(json.dumps(state))
     hass.config_entries.async_update_entry(entry, data={**entry.data, "time_range": option})
     with patch.object(ImmichApi, "_request", side_effect=ImmichApiError("Offline")):

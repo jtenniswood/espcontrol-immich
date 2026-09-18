@@ -68,18 +68,14 @@ async def test_cache_records_effective_fit_and_rejects_old_portrait_crop(hass, o
     state_path = coordinator.cache_path.with_suffix(".json")
     state_path.write_text(json.dumps(state))
     await hass.async_add_executor_job(coordinator._load_cache)
-    fallback = orientation == "portrait" and not paired
-    assert (coordinator.data is None) is fallback
-    if fallback:
-        state["photo_fit"] = "show_full"
-        state_path.write_text(json.dumps(state))
-        await hass.async_add_executor_job(coordinator._load_cache)
-    assert coordinator.data is not None
-    await coordinator._save_cache(coordinator.data)
-    saved = json.loads(state_path.read_text())
-    assert saved["photo_fit"] == ("show_full" if fallback else "crop")
-    coordinator.data = None
+    assert coordinator.data is None  # Old fit metadata cannot establish provenance.
+    from datetime import datetime, timezone
+    from custom_components.immich_frames.api import FrameSnapshot
+    rendered, layout = ImmichApi._render(photos, [coordinator.cache_path.with_suffix(".jpg").read_bytes()] * len(photos), fit="show_full" if orientation == "portrait" and not paired else "crop")
+    snapshot = FrameSnapshot(rendered, 1, tuple(photos), layout, datetime.now(timezone.utc), len(photos))
+    await coordinator._save_cache(snapshot)
     await hass.async_add_executor_job(coordinator._load_cache)
     assert coordinator.data is not None
+    assert coordinator.data.image == rendered
     assert coordinator.data.using_cache
     await coordinator.async_close()
