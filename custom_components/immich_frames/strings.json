@@ -77,7 +77,7 @@
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Screen shape",
-          "mode": "Display mode",
+          "mode": "Portrait images",
           "navigation": "Next action"
         },
         "data_description": {
@@ -151,7 +151,7 @@
         }
       },
       "mode": {
-        "name": "Display mode",
+        "name": "Portrait images",
         "state": {
           "single": "Single portrait images",
           "pairs": "Pair portrait photos"
@@ -236,7 +236,7 @@
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Screen shape",
-          "mode": "Display mode",
+          "mode": "Portrait images",
           "navigation": "Next action"
         },
         "data_description": {
