@@ -45,6 +45,8 @@ Old two-file caches cannot prove their source or account and are discarded. The 
 
 ## Development and release checks
 
+Install test dependencies with `python -m pip install '.[test]'` (plus `-r requirements-native-test.txt` for native tests). Use a normal package installation: editable namespace hooks are incompatible with Home Assistant’s filesystem integration scanner. Pytest explicitly loads the checkout’s `src` and integration directories so tests still exercise the current source.
+
 Run app/core tests with `pytest -q`; run the Home Assistant suite separately with `pytest -q tests_native` using `requirements-native-test.txt` and Python 3.14. CI also checks generated references, isolated wheel and HACS installation contents, Hassfest, HACS publishing requirements, and both container architectures.
 
 Generate a repeatable visual acceptance sheet with `python scripts/render_examples.py /tmp/immich-examples.png`.

@@ -20,7 +20,7 @@ packages = ["immich_frames", "custom_components.immich_frames", "custom_componen
 package-dir = {"immich_frames" = "src/immich_frames", "custom_components.immich_frames" = "custom_components/immich_frames"}
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["src", "."]
 asyncio_mode = "auto"
 testpaths = ["tests", "tests_core"]
 
