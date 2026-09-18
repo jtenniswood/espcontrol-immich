@@ -19,7 +19,7 @@ from .const import (
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
 MODE_LABELS = {"single": "Single image", "pairs": "Pair portrait photos"}
-ORIENTATION_LABELS = {"any": "Mixed (landscapes and portraits)", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
+ORIENTATION_LABELS = {"any": "Mixed (landscapes and portraits)", "portrait": "Portrait photos only", "landscape": "Landscape photos only"}
 SOURCE_FIELDS = {
     "album": (CONF_ALBUM_ID, CONF_ALBUM_IDS),
     "memories": (CONF_MEMORY_WINDOW, CONF_FALLBACK),
