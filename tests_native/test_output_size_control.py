@@ -31,7 +31,7 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
         return jpeg
 
     registry = er.async_get(hass)
-    # Renaming the control to Target display must preserve existing dashboard references.
+    # Renaming the control to Screen shape must preserve existing dashboard references.
     registry.async_get_or_create(
         "select", DOMAIN, f"{entry.entry_id}_output_size", config_entry=entry,
         suggested_object_id="frame_target_output_size", original_name="Target output size",
@@ -43,11 +43,11 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
         assert entity_id == "select.frame_target_output_size"
         entity = registry.async_get(entity_id)
         assert entity.entity_category == EntityCategory.CONFIG
-        assert entity.original_name == "Target display"
+        assert entity.original_name == "Screen shape"
         device_id = entity.device_id
         assert hass.states.get(entity_id).state == "landscape"
         assert hass.states.get(entity_id).attributes["options"] == [
-            "landscape", "jc1060p470", "jc4880p443", "square", "4848s040", "portrait",
+            "landscape", "portrait", "square",
         ]
 
         # Exercise actual service calls, including changing back to landscape.
@@ -75,7 +75,7 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             assert result["data_schema"]({})["screen_shape"] == label
             hass.config_entries.options.async_abort(result["flow_id"])
 
-            # Each device preset must restore its own image after an offline restart.
+            # Each shape must restore its own image after an offline restart.
             assert await hass.config_entries.async_unload(entry.entry_id)
             with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
                 assert await hass.config_entries.async_setup(entry.entry_id)
@@ -104,9 +104,8 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("old,new,size", [
     ("landscape", "portrait", (800, 1280)),
-    ("square", "4848s040", (480, 480)),
-    ("landscape", "jc1060p470", (1024, 600)),
-    ("portrait", "jc4880p443", (480, 800)),
+    ("portrait", "square", (720, 720)),
+    ("square", "landscape", (1280, 800)),
 ])
 async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, jpeg, old, new, size):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
@@ -134,4 +133,56 @@ async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, j
         await hass.async_block_till_done()
         assert hass.states.get(entity_id).state == new
         assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == size
+        assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize("legacy,shape,old_size,size", [
+    ("jc1060p470", "landscape", (1024, 600), (1280, 800)),
+    ("jc4880p443", "portrait", (480, 800), (800, 1280)),
+    ("4848s040", "square", (480, 480), (720, 720)),
+])
+async def test_saved_device_preset_upgrades_and_rebuilds_cache(hass, asset, jpeg, legacy, shape, old_size, size):
+    import json
+    from custom_components.immich_frames.coordinator import FrameCoordinator
+
+    original = {
+        "url": "http://immich.test", "api_key": "key", "source": "all",
+        "screen_shape": legacy, "photo_fit": "show_full", "interval": 90,
+    }
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data=original)
+    entry.add_to_hass(hass)
+    old = FrameCoordinator(hass, entry)
+    old.cache_path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", old_size).save(old.cache_path.with_suffix(".jpg"), "JPEG")
+    old.cache_path.with_suffix(".json").write_text(json.dumps({
+        "generation": 1, "created_at": "2026-09-18T12:00:00+00:00", "layout": "single",
+        "photos": [{"id": asset["id"]}], "screen_shape": legacy,
+        "photo_fit": "show_full", "output_size": old_size,
+    }))
+    await old.async_close()
+
+    # Migration persists even offline; an obsolete image cannot pass as the new size.
+    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        assert entry.data == {**original, "screen_shape": shape}
+        assert entry.entry_id not in hass.data.get(DOMAIN, {})
+
+    async def request(_api, method, path, **kwargs):
+        return [asset] if path == "/api/search/random" else jpeg
+
+    with patch("custom_components.immich_frames.api.ImmichApi._request", request):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+        entity_id = er.async_get(hass).async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_output_size")
+        assert hass.states.get(entity_id).state == shape
+        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == size
+        assert await hass.config_entries.async_unload(entry.entry_id)
+    with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        assert snapshot.using_cache
+        assert Image.open(BytesIO(snapshot.image)).size == size
         assert await hass.config_entries.async_unload(entry.entry_id)

@@ -14,7 +14,7 @@ from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
     CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
-    PHOTO_FIT_CROP, PHOTO_FIT_FULL, PHOTO_SELECTION_DEFAULTS, SCREEN_SHAPE_LABELS, photo_fit,
+    PHOTO_FIT_CROP, PHOTO_FIT_FULL, PHOTO_SELECTION_DEFAULTS, SCREEN_SHAPE_LABELS, photo_fit, screen_shape,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
@@ -182,7 +182,7 @@ class FrameSettingsFlow:
         fields = {vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str}
         if not initial_setup:
             fields.update({
-                vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
+                vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS[screen_shape(self._data.get(CONF_SCREEN_SHAPE))]): vol.In(list(SCREEN_SHAPE_LABELS.values())),
                 vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
             })
         fields.update(self._navigation(
@@ -239,6 +239,7 @@ class FrameSettingsFlow:
             return await self.async_step_display(errors=errors)
         data = {**PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL: DEFAULT_INTERVAL,
                 CONF_SCREEN_SHAPE: DEFAULT_SCREEN_SHAPE, **self._data}
+        data[CONF_SCREEN_SHAPE] = screen_shape(data.get(CONF_SCREEN_SHAPE))
         data[CONF_PHOTO_FIT] = photo_fit(data)
         name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
         unique_id = f"{data[CONF_URL]}|{name}"

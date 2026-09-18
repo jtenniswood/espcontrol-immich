@@ -17,7 +17,7 @@ Choose **All photos**, combine **Albums**, revisit **Memories** from around this
 3. Find **EspControl Immich Companion**, download it, and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration** and select **EspControl Immich Companion**.
 5. Enter your Immich server address and API key, choose which photos to show, and name your frame.
-6. Open the new frame’s device page. Under **Configuration → Target display**, choose your EspControl display to match its size and orientation.
+6. Open the new frame’s device page. Under **Configuration → Screen shape**, choose **Landscape (1280 × 800)**, **Portrait (800 × 1280)**, or **Square (720 × 720)**.
 
 Each frame has its own photo image and slideshow controls in Home Assistant. To create another frame, add the integration again; you can reuse your saved Immich connection.
 
@@ -35,6 +35,6 @@ To change albums, keywords or other photo sources, open **Settings → Devices &
 
 ## Updates and help
 
-Update through HACS, then restart Home Assistant. Your frame settings are kept.
+Update through HACS, then restart Home Assistant. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
 
 See the [installation guide](docs/installation.md) for manual installation and connection help, or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).

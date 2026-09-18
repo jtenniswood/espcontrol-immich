@@ -73,10 +73,10 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Name your frame, then save. Target display, photo preferences, slideshow interval and Memories preferences can be changed afterwards in settings.",
+        "description": "Name your frame, then save. Screen shape, photo preferences, slideshow interval and Memories preferences can be changed afterwards in settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Target display",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },
@@ -136,14 +136,11 @@
   "entity": {
     "select": {
       "output_size": {
-        "name": "Target display",
+        "name": "Screen shape",
         "state": {
-          "landscape": "10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)",
-          "jc1060p470": "7-inch Guition JC1060P470 (1024 × 600, landscape)",
-          "jc4880p443": "4.3-inch Guition JC4880P443 (480 × 800, portrait)",
-          "square": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
-          "4848s040": "4-inch Guition 4848S040 (480 × 480, square)",
-          "portrait": "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)"
+          "landscape": "Landscape (1280 × 800)",
+          "portrait": "Portrait (800 × 1280)",
+          "square": "Square (720 × 720)"
         }
       },
       "photo_fit": {
@@ -235,10 +232,10 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Choose a name, target display and display mode. Continue to photo display settings.",
+        "description": "Choose a name, screen shape and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Target display",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },

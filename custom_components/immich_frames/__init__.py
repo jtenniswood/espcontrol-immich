@@ -4,11 +4,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_SCREEN_SHAPE, DOMAIN, LEGACY_SCREEN_SHAPES, PLATFORMS, screen_shape
 from .coordinator import FrameCoordinator
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # Upgrade device presets before rendering or restoring a cached image.
+    if entry.data.get(CONF_SCREEN_SHAPE) in LEGACY_SCREEN_SHAPES:
+        hass.config_entries.async_update_entry(entry, data={
+            **entry.data, CONF_SCREEN_SHAPE: screen_shape(entry.data[CONF_SCREEN_SHAPE]),
+        })
     if "pairs_only" in entry.data:
         data = dict(entry.data)
         data.pop("pairs_only")
