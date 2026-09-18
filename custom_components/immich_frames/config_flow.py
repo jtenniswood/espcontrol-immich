@@ -43,11 +43,11 @@ class FrameSettingsFlow:
                 if self._settings_entry is None:
                     self._data.setdefault(CONF_MEMORY_WINDOW, 2)
                     self._data.setdefault(CONF_FALLBACK, False)
-                    return await self.async_step_display()
+                    return await self._async_finish_source()
                 return await self.async_step_memories()
             if source == "smart":
                 return await self.async_step_smart()
-            return await self.async_step_display()
+            return await self._async_finish_source()
         return self.async_show_form(step_id="source", data_schema=vol.Schema({
             vol.Required(CONF_SOURCE, default=SOURCE_LABELS.get(self._data.get(CONF_SOURCE), "All photos")): vol.In(list(SOURCE_LABELS.values())),
         }), errors=errors or {})
@@ -81,7 +81,7 @@ class FrameSettingsFlow:
             else:
                 self._data[CONF_ALBUM_IDS] = album_ids
                 self._data.pop(CONF_ALBUM_ID, None)
-                return await self.async_step_display()
+                return await self._async_finish_source()
         saved_albums = [album_id for album_id in selected_album_ids(user_input if user_input is not None else self._data) if album_id in names]
         album_field = vol.Optional(CONF_ALBUM_IDS, default=saved_albums)
         return self.async_show_form(step_id="album", data_schema=vol.Schema({
@@ -89,16 +89,16 @@ class FrameSettingsFlow:
                 options=options, mode=selector.SelectSelectorMode.DROPDOWN,
                 custom_value=False, multiple=True,
             )),
-        }), errors=errors)
+        }), errors=errors, last_step=self._settings_entry is not None)
 
     async def async_step_memories(self, user_input: dict[str, Any] | None = None):
         if user_input:
             self._data.update(user_input)
-            return await self.async_step_display()
+            return await self._async_finish_source()
         return self.async_show_form(step_id="memories", data_schema=vol.Schema({
             vol.Required(CONF_MEMORY_WINDOW, default=self._data.get(CONF_MEMORY_WINDOW, 2)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_FALLBACK, default=self._data.get(CONF_FALLBACK, False)): bool,
-        }))
+        }), last_step=self._settings_entry is not None)
 
     async def async_step_smart(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
@@ -107,10 +107,15 @@ class FrameSettingsFlow:
             if not str(user_input.get(CONF_SMART_QUERY, "")).strip():
                 errors["base"] = "smart_query_required"
             else:
-                return await self.async_step_display()
+                return await self._async_finish_source()
         return self.async_show_form(step_id="smart", data_schema=vol.Schema({
             vol.Optional(CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")): str,
-        }), errors=errors)
+        }), errors=errors, last_step=self._settings_entry is not None)
+
+    async def _async_finish_source(self):
+        if self._settings_entry is not None:
+            return await self._async_finish_settings()
+        return await self.async_step_display()
 
     async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         errors = errors or {}
@@ -141,12 +146,14 @@ class FrameSettingsFlow:
         return {}
 
     async def _async_finish_settings(self):
-        # Recheck in case another flow claimed this name while these steps were open.
-        if errors := self._name_errors():
-            return await self.async_step_display(errors=errors)
+        entry = self._settings_entry
+        if entry is None:
+            # New frames still need a valid, available name.
+            if errors := self._name_errors():
+                return await self.async_step_display(errors=errors)
         # Keep the latest device-page preferences, including edits made while this form was open.
         settings = dict(self._data)
-        if (entry := self._settings_entry) is not None:
+        if entry is not None:
             for field in (*PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL, CONF_SCREEN_SHAPE,
                           CONF_PHOTO_FIT, CONF_ORIGINAL_ASPECT_RATIO):
                 settings.pop(field, None)
@@ -156,8 +163,12 @@ class FrameSettingsFlow:
                 CONF_SCREEN_SHAPE: DEFAULT_SCREEN_SHAPE, **settings}
         data[CONF_SCREEN_SHAPE] = screen_shape(data.get(CONF_SCREEN_SHAPE))
         data[CONF_PHOTO_FIT] = photo_fit(data)
-        name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
-        unique_id = f"{data[CONF_URL]}|{name}"
+        if entry is None:
+            name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
+            unique_id = f"{data[CONF_URL]}|{name}"
+        else:
+            data[CONF_FRAME_NAME] = entry.data.get(CONF_FRAME_NAME, entry.title)
+            name, unique_id = entry.title, entry.unique_id
         # Save only the active source's filters.
         for source, fields in SOURCE_FIELDS.items():
             if source != data.get(CONF_SOURCE):

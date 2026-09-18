@@ -11,7 +11,7 @@
       },
       "source": {
         "title": "Choose a photo source",
-        "description": "Choose how this frame should select photos. Your other settings are kept when you change the source.",
+        "description": "Choose how this frame should select photos. Your existing frame name and display settings are kept when you change the source.",
         "data": {
           "source": "Photo source"
         }
@@ -134,7 +134,7 @@
     "step": {
       "source": {
         "title": "Choose a photo source",
-        "description": "Choose how this frame should select photos. Your other settings are kept when you change the source.",
+        "description": "Choose how this frame should select photos. Your existing frame name and display settings are kept when you change the source.",
         "data": {
           "source": "Photo source"
         }
@@ -166,13 +166,6 @@
         },
         "data_description": {
           "smart_query": "Enter a description such as “beach at sunset”."
-        }
-      },
-      "display": {
-        "title": "Set up the frame",
-        "description": "Name your frame, then save. Display settings are available on the frame’s device page.",
-        "data": {
-          "frame_name": "Frame name"
         }
       }
     },

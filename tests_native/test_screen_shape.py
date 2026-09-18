@@ -80,9 +80,8 @@ async def test_source_edit_preserves_screen_shape(hass, shape, label, size, rout
     else:
         manager = hass.config_entries.flow
         result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert "screen_shape" not in result["data_schema"].schema
     with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
         await finish_settings(manager, result)
         await hass.async_block_till_done()
     assert entry.data["screen_shape"] == shape
@@ -210,9 +209,8 @@ async def test_edit_legacy_preset_before_setup(hass, legacy, label, shape, route
     else:
         manager = hass.config_entries.flow
         result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert "screen_shape" not in result["data_schema"].schema
     with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
         await finish_settings(manager, result)
         await hass.async_block_till_done()
     assert entry.data["screen_shape"] == shape

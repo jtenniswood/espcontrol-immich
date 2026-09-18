@@ -90,11 +90,10 @@ async def test_source_forms_edit_saved_settings(hass, source, old, new):
         result = await open_settings(hass, entry, source)
         defaults = result["data_schema"]({})
         assert all(defaults[k] == v for k, v in old.items())
-        result = await submit(hass, result, **new)
-        assert result["step_id"] == "display"
+        assert result["last_step"] is True
         assert all(entry.data[k] == v for k, v in old.items())
         with patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
-            result = await finish_settings(hass.config_entries.options, result)
+            result = await submit(hass, result, **new)
             await hass.async_block_till_done()
         reload.assert_awaited_once_with(entry.entry_id)
     assert result["type"] == "create_entry"
@@ -107,32 +106,26 @@ async def test_cancel_discards_source_changes(hass):
     entry = frame(hass, "smart", smart_query="beach")
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
-    result = await submit(hass, result, smart_query="mountains")
-    assert result["step_id"] == "display"
-    assert set(result["data_schema"].schema) == {"frame_name"}
+    assert result["step_id"] == "smart"
+    assert set(result["data_schema"].schema) == {"smart_query"}
     hass.config_entries.options.async_abort(result["flow_id"])
     assert dict(entry.data) == before
 
 
-async def test_change_source_clears_old_filters_and_validates_name(hass):
+async def test_change_source_validates_keywords_and_preserves_identity(hass):
     entry = frame(hass, album_id="a")
-    frame(hass, "all", title="Bedroom")
     result = await open_settings(hass, entry, "source")
     assert result["data_schema"]({})["source"] == "Albums"
     result = await submit(hass, result, source="Keywords")
     result = await submit(hass, result, smart_query=" ")
     assert result["errors"] == {"base": "smart_query_required"}
-    result = await submit(hass, result, smart_query="beach")
-    result = await submit(hass, result, frame_name="Bedroom")
-    assert result["errors"] == {"frame_name": "name_in_use"}
     assert entry.data["source"] == "album"
     with patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await submit(hass, result, frame_name="Living room")
-        result = await finish_settings(hass.config_entries.options, result)
+        result = await submit(hass, result, smart_query="beach")
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
-    assert entry.title == "Living room"
-    assert entry.unique_id == "http://immich.test|Living room"
+    assert entry.title == entry.data["frame_name"] == "Kitchen"
+    assert entry.unique_id == "http://immich.test|Kitchen"
     assert entry.data["smart_query"] == "beach"
     assert entry.data["source"] == "smart"
     assert "album_id" not in entry.data

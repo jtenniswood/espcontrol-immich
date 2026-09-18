@@ -62,12 +62,13 @@ async def test_source_edits_clear_inactive_filters_without_navigation(hass, labe
         **entry.data, "album_ids": ["a"], "memory_window_days": 2,
         "fallback_to_all": False, "smart_query": "beach",
     })
-    result = await submit(hass, await reconfigure(hass, entry), source=label)
-    if values:
-        assert "navigation" not in result["data_schema"].schema
-        result = await submit(hass, result, **values)
-    assert set(result["data_schema"].schema) == {"frame_name"}
-    saved = await save(hass, result)
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await submit(hass, await reconfigure(hass, entry), source=label)
+        if values:
+            assert "navigation" not in result["data_schema"].schema
+            assert result["last_step"] is True
+            result = await submit(hass, result, **values)
+        saved = await save(hass, result)
     fields = {"album_id", "album_ids", "smart_query", "memory_window_days", "fallback_to_all"}
     assert fields & saved.keys() == active
     assert all(saved[key] == value for key, value in values.items())
@@ -94,8 +95,8 @@ async def test_reconfigure_cancel_leaves_entry_unchanged(hass):
     before = dict(entry.data)
     result = await reconfigure(hass, entry)
     assert result["data_schema"]({})["source"] == "Albums"
-    result = await submit(hass, result, source="All photos")
-    assert result["data_schema"]({})["frame_name"] == "Frame"
+    result = await submit(hass, result, source="Keywords")
+    assert result["step_id"] == "smart"
     assert dict(entry.data) == before
     hass.config_entries.flow.async_abort(result["flow_id"])
     assert dict(entry.data) == before
@@ -119,8 +120,8 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         old_coordinator = hass.data[DOMAIN][entry.entry_id]
         result = await submit(hass, await reconfigure(hass, entry), source="Albums")
         assert result["data_schema"]({})["album_ids"] == ["a"]
-        result = await submit(hass, result, album_ids=["a", "b"])
         assert entry.data["album_id"] == "a"
+        result = await submit(hass, result, album_ids=["a", "b"])
         result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()
         assert result["type"] == "abort"
@@ -134,21 +135,17 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
-async def test_duplicate_frame_name_can_be_corrected_without_losing_choices(hass):
+async def test_reconfigure_preserves_existing_name_title_and_unique_id(hass):
     original = existing_frame(hass)
-    existing_frame(hass, "Kitchen")
-    result = await submit(hass, await reconfigure(hass, original), source="All photos")
-    result = await submit(hass, result, frame_name="Kitchen")
-    assert result["step_id"] == "display"
-    assert result["errors"] == {"frame_name": "name_in_use"}
-    assert result["data_schema"]({})["frame_name"] == "Kitchen"
-    assert original.data["source"] == "album"
+    # A renamed display title must not change the stored identity during source edits.
+    hass.config_entries.async_update_entry(original, title="Living room", unique_id="legacy-frame-id")
     with patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await submit(hass, result, frame_name="Living room")
+        result = await submit(hass, await reconfigure(hass, original), source="All photos")
         await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
     assert original.title == "Living room"
-    assert original.unique_id == "http://immich.test|Living room"
+    assert original.data["frame_name"] == "Frame"
+    assert original.unique_id == "legacy-frame-id"
     assert original.data["source"] == "all"
     assert original.data["interval"] == 90
     assert "album_id" not in original.data

@@ -12,7 +12,7 @@ from custom_components.immich_frames.const import DOMAIN
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
-async def start(hass, route, source="All photos"):
+async def start(hass, route):
     if route == "setup":
         manager = hass.config_entries.flow
         with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
@@ -32,12 +32,6 @@ async def start(hass, route, source="All photos"):
         else:
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]):
-        result = await manager.async_configure(result["flow_id"], {"source": source})
-        if source != "All photos":
-            assert "navigation" not in result["data_schema"].schema
-            values = {"Albums": {"album_ids": ["a"]}, "Memories": {}, "Keywords": {"smart_query": "beach"}}
-            result = await manager.async_configure(result["flow_id"], values[source])
     return manager, result, entry
 
 
@@ -58,8 +52,8 @@ def check_form(result, step, fields, final, route):
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("pairs", [False, True])
 @pytest.mark.parametrize("source", ["All photos", "Albums", "Memories", "Keywords"])
-async def test_source_edits_save_after_name_and_keep_device_settings(hass, route, pairs, source):
-    manager, result, entry = await start(hass, route, source)
+async def test_source_edits_save_directly_and_keep_device_settings(hass, route, pairs, source):
+    manager, result, entry = await start(hass, route)
     # Simulate device controls being changed while the source dialog is open.
     display_settings = {
         "mode": "pairs" if pairs else "single", "screen_shape": "portrait",
@@ -68,10 +62,19 @@ async def test_source_edits_save_after_name_and_keep_device_settings(hass, route
     }
     hass.config_entries.async_update_entry(entry, data={**entry.data, **display_settings})
     before = dict(entry.data)
-    check_form(result, "display", {"frame_name"}, True, route)
+    check_form(result, "source", {"source"}, None, route)
     assert dict(entry.data) == before
-    with patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
-        result = await manager.async_configure(result["flow_id"], {})
+    with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
+        result = await manager.async_configure(result["flow_id"], {"source": source})
+        if source != "All photos":
+            step, values = {
+                "Albums": ("album", {"album_ids": ["a"]}),
+                "Memories": ("memories", {"memory_window_days": 3, "fallback_to_all": True}),
+                "Keywords": ("smart", {"smart_query": "beach"}),
+            }[source]
+            check_form(result, step, set(values), True, route)
+            assert dict(entry.data) == before
+            result = await manager.async_configure(result["flow_id"], values)
         await hass.async_block_till_done()
     assert result["type"] == ("abort" if route == "reconfigure" else "create_entry")
     if source == "All photos" and route == "options":
@@ -81,31 +84,33 @@ async def test_source_edits_save_after_name_and_keep_device_settings(hass, route
     assert entry.data["source"] == {"All photos": "all", "Albums": "album", "Memories": "memories", "Keywords": "smart"}[source]
     assert all(entry.data[key] == value for key, value in display_settings.items())
     assert "navigation" not in entry.data
+    assert entry.title == entry.data["frame_name"] == "Frame"
+    assert entry.unique_id == "http://immich.test|Frame"
 
 
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
 async def test_cancel_preserves_entry(hass, route):
     manager, result, entry = await start(hass, route)
     before = dict(entry.data)
-    check_form(result, "display", {"frame_name"}, True, route)
-    assert result["data_schema"]({})["frame_name"] == "Frame"
+    result = await manager.async_configure(result["flow_id"], {"source": "Keywords"})
+    check_form(result, "smart", {"smart_query"}, True, route)
     manager.async_abort(result["flow_id"])
     assert dict(entry.data) == before
 
 
-async def test_name_claimed_before_save_can_be_corrected(hass):
-    manager, result, entry = await start(hass, "options")
+async def test_new_frame_still_validates_duplicate_names(hass):
+    manager, result, _ = await start(hass, "setup")
+    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     other = MockConfigEntry(domain=DOMAIN, title="Kitchen", unique_id="http://immich.test|Kitchen", data={})
     other.add_to_hass(hass)
     result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen"})
     assert result["step_id"] == "display"
     assert result["errors"] == {"frame_name": "name_in_use"}
-    assert entry.title == "Frame"
-    with patch.object(hass.config_entries, "async_reload", return_value=True):
+    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"frame_name": "Bedroom"})
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
-    assert entry.title == "Bedroom"
+    assert result["title"] == "Bedroom"
 
 
 @pytest.mark.parametrize("source,extra", [

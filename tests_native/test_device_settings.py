@@ -91,7 +91,6 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         manager = hass.config_entries.options
         result = await manager.async_init(entry.entry_id)
         result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-        result = await manager.async_configure(result["flow_id"], {})
         await hass.async_block_till_done()
         assert result["type"] == "create_entry"
         assert all(entry.data[key] == value for key, value in before.items())

@@ -95,8 +95,8 @@ async def test_source_edit_preserves_photo_fit(hass, route, fit):
     else:
         manager = hass.config_entries.flow
         result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
         await finish_settings(manager, result)
         await hass.async_block_till_done()
     assert entry.data["photo_fit"] == fit
