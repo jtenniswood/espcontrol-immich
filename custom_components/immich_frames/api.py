@@ -17,7 +17,7 @@ from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_TIME_RANGE, DEFAULT_TIME_RANGE, TIME_RANGE_MONTHS,
-    CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
+    CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, slide_photo_fit,
 )
 from .rendering import background_colour, image_size
 
@@ -286,7 +286,7 @@ class ImmichApi:
                 photos.append(companion)
         try:
             shape = options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE)
-            fit = photo_fit(options)
+            fit = slide_photo_fit(options, photos)
             size = SCREEN_SIZES.get(shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
             sizes = [size] if len(photos) == 1 else [(size[0] // 2, size[1]), (size[0] - size[0] // 2 - 1, size[1])]
             image_data = await asyncio.gather(*(

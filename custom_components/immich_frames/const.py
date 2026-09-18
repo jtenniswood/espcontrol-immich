@@ -82,3 +82,10 @@ def photo_fit(options: dict) -> str:
     if options.get(CONF_ORIGINAL_ASPECT_RATIO) or options.get(CONF_MODE) != "pairs":
         return PHOTO_FIT_FULL
     return PHOTO_FIT_CROP
+
+
+def slide_photo_fit(options: dict, photos: list[dict] | tuple[dict, ...]) -> str:
+    """Keep an unmatched portrait whole when falling back from paired mode."""
+    if options.get(CONF_MODE) == "pairs" and len(photos) == 1 and photos[0].get("orientation") == "portrait":
+        return PHOTO_FIT_FULL
+    return photo_fit(options)

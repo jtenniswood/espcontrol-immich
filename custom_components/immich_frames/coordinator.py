@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError
-from .const import CONF_INTERVAL, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES, PHOTO_SELECTION_DEFAULTS, photo_fit, photo_selection_settings
+from .const import CONF_INTERVAL, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES, PHOTO_SELECTION_DEFAULTS, photo_fit, photo_selection_settings, slide_photo_fit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +53,6 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             # A cached image must fit the currently configured device screen.
             if state.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE) != self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE):
                 return
-            if state.get(CONF_PHOTO_FIT) != photo_fit(self.options):
-                return
             cached_settings = state.get("photo_settings", PHOTO_SELECTION_DEFAULTS)
             if not isinstance(cached_settings, dict):
                 return
@@ -65,6 +63,10 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
                 return
             photos = tuple(state["photos"])
             if not photos or any(not isinstance(photo, dict) or not photo.get("id") for photo in photos):
+                return
+            # Compare the actual slide fit so old cropped portrait fallbacks
+            # cannot be restored after switching to full-photo padding.
+            if state.get(CONF_PHOTO_FIT) != slide_photo_fit(self.options, photos):
                 return
             # Verify actual JPEG dimensions as well as saved settings.
             image_data = image_path.read_bytes()
@@ -105,7 +107,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             "generation": snapshot.generation, "layout": snapshot.layout,
             "output_size": SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE]),
             CONF_SCREEN_SHAPE: self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
-            CONF_PHOTO_FIT: photo_fit(self.options),
+            CONF_PHOTO_FIT: slide_photo_fit(self.options, snapshot.photos),
             "photo_settings": photo_selection_settings(self.options),
             "created_at": snapshot.created_at.isoformat(), "matching_assets": snapshot.matching_assets,
             "photos": [{key: value for key, value in photo.items() if key != "capture_dt"} for photo in snapshot.photos],
