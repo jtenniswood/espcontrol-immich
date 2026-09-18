@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 from homeassistant.components.number import NumberEntity, NumberMode
-
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DOMAIN
@@ -17,6 +16,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 class IntervalNumber(ImmichFrameEntity, NumberEntity):
     _attr_name = "Slide interval"
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = 10
     _attr_native_max_value = 86400
     _attr_native_step = 1

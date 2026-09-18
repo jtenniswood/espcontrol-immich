@@ -6,15 +6,16 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 |---|---|---|
 | Image | Image | Final rendered single image or pair |
 | Date/Location/People/Tags/Rating/Camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
+| Favourite | Sensor | Yes if the selected photo is a favourite in Immich, No if it is not; blank when the status is missing |
 | Slideshow | Switch | Pause or resume automatic advancement |
-| Show photo details for | Select | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
+| Show photo details for | Select (Configuration) | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
 | Target display | Select (Configuration) | Choose the EspControl device and its resolution: 1280 × 800, 1024 × 600, 480 × 800, 720 × 720, 480 × 480, or 800 × 1280; saves the choice and reloads the frame |
 | Photo fit | Select (Configuration) | Crop to fit or Show full image |
 | Display mode | Select (Configuration) | Single image or Pair portrait photos |
 | Photo orientation | Select (Configuration) | Mixed, portrait, landscape or square photos |
 | Only show portraits in pairs | Switch (Configuration) | Skip unmatched portraits in pair mode; landscapes and squares remain eligible |
 | Pairing window | Number (Configuration) | 0–7 days between paired portraits; 0 means the same date |
-| Slide interval | Number | 10–86,400 seconds |
+| Slide interval | Number (Configuration) | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 
 The image and metadata entities update from the same coordinator snapshot. The image is replaced only after every selected photo has been downloaded and rendered. During a temporary Immich outage the last complete cached slide remains available.

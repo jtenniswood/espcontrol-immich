@@ -1,7 +1,9 @@
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.translation import async_translate_state
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -10,7 +12,11 @@ from custom_components.immich_frames.api import ImmichApiError
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg):
+@pytest.mark.parametrize("favourite,expected", [(True, "Yes"), (False, "No"), (None, "")])
+async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg, favourite, expected):
+    if favourite is not None:
+        asset = {**asset, "isFavorite": favourite}
+
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
             return [asset]
@@ -31,6 +37,18 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert hass.states.get("image.immich_frame_image") is not None
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
+        assert hass.states.get("sensor.immich_frame_favourite").state == expected
+        # Check the states published to Home Assistant, including valid zero ratings.
+        snapshot = coordinator.data
+        coordinator.async_set_updated_data(replace(snapshot, photos=({"rating": 0},)))
+        assert hass.states.get("sensor.immich_frame_rating").state == "0"
+        coordinator.async_set_updated_data(replace(snapshot, photos=({},)))
+        for name in ("date", "location", "people", "tags", "rating", "camera", "favourite"):
+            assert hass.states.get(f"sensor.immich_frame_{name}").state == ""
+        coordinator.async_set_updated_data(replace(snapshot, photos=({"captured": "invalid"},)))
+        assert hass.states.get("sensor.immich_frame_date").state == ""
+        coordinator.async_set_updated_data(snapshot)
+        assert hass.states.get("sensor.immich_frame_filename") is None
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
@@ -39,6 +57,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
+        assert hass.states.get("sensor.immich_frame_favourite").state == expected
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -58,7 +77,8 @@ async def test_failed_setup_closes_api(hass):
 async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass, asset, jpeg):
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
-            return [asset, {**asset, "id": "portrait-b", "originalFileName": "b.jpg", "exifInfo": {"city": "Bristol"}}]
+            return [{**asset, "isFavorite": False},
+                    {**asset, "id": "portrait-b", "originalFileName": "b.jpg", "isFavorite": True, "exifInfo": {"city": "Bristol"}}]
         return jpeg
 
     entry = MockConfigEntry(domain=DOMAIN, title="Immich Frame", data={
@@ -77,13 +97,17 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         select_entry = registry.async_get("select.immich_frame_metadata_photo")
         assert select_entry.original_name == "Show photo details for"
         assert select_entry.translation_key == "metadata_role"
+        assert select_entry.entity_category == EntityCategory.CONFIG
+        assert registry.async_get("number.immich_frame_slide_interval").entity_category == EntityCategory.CONFIG
         label = async_translate_state(hass, "secondary", "select", DOMAIN, select_entry.translation_key, None)
         assert label == "Right photo in a pair"
         assert hass.states.get("sensor.immich_frame_location").state == "Bath"
+        assert hass.states.get("sensor.immich_frame_favourite").state == "No"
         await hass.services.async_call("select", "select_option", {
             "entity_id": "select.immich_frame_metadata_photo", "option": "secondary",
         }, blocking=True)
         assert hass.states.get("sensor.immich_frame_location").state == "Bristol"
+        assert hass.states.get("sensor.immich_frame_favourite").state == "Yes"
         await hass.services.async_call("number", "set_value", {
             "entity_id": "number.immich_frame_slide_interval", "value": 90,
         }, blocking=True)

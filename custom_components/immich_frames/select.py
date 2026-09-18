@@ -48,13 +48,14 @@ class FrameSettingSelect(ImmichFrameEntity, SelectEntity):
 
 class MetadataRoleSelect(ImmichFrameEntity, SelectEntity):
     _attr_translation_key = "metadata_role"
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:image-text"
     # Keep service values stable for existing automations; translate UI labels.
     _attr_options = ["primary", "secondary"]
     _attr_extra_state_attributes = {
         "description": (
             "Chooses which photo supplies the Date, Location, People, "
-            "Tags, Rating and Camera sensors. For a pair, choose the left or right "
+            "Tags, Rating, Camera and Favourite sensors. For a pair, choose the left or right "
             "photo. When only one photo is shown, its details are always used."
         ),
     }
