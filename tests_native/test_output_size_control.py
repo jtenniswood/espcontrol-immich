@@ -69,12 +69,6 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             with Image.open(coordinator.cache_path.with_suffix(".jpg")) as image:
                 assert image.size == size
 
-            # The Configure form reads the same persisted choice.
-            result = await hass.config_entries.options.async_init(entry.entry_id)
-            result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "display"})
-            assert result["data_schema"]({})["screen_shape"] == label
-            hass.config_entries.options.async_abort(result["flow_id"])
-
             # Each shape must restore its own image after an offline restart.
             assert await hass.config_entries.async_unload(entry.entry_id)
             with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):

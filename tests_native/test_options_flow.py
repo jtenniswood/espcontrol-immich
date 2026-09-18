@@ -27,45 +27,42 @@ async def submit(hass, result, **values):
 async def open_settings(hass, entry, step):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == "menu"
-    assert "display" in result["menu_options"]
+    assert "display" not in result["menu_options"]
     return await submit(hass, result, next_step_id=step)
 
 
 @pytest.mark.parametrize("source,shortcut", [("all", None), ("album", "album"), ("smart", "smart"), ("memories", "memories")])
-async def test_menu_offers_current_source_and_display(hass, source, shortcut):
+async def test_menu_offers_only_photo_sources(hass, source, shortcut):
     entry = frame(hass, source)
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["menu_options"] == ["source", *([shortcut] if shortcut else []), "display"]
+    assert result["menu_options"] == ["source", *([shortcut] if shortcut else [])]
 
 
-async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, asset, jpeg):
+async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asset, jpeg):
     entry = frame(hass, album_id="a")
 
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
-            assert kwargs["json"]["filter"]["albumIds"] == {"any": ["a"]}
             return [asset]
         return jpeg
 
     with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.api.ImmichApi.albums", side_effect=AssertionError("Display edits must not fetch albums")
+        "custom_components.immich_frames.api.ImmichApi.albums", side_effect=AssertionError("Switching to All photos must not fetch albums")
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         entities = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}
         devices = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
         coordinator = hass.data[DOMAIN][entry.entry_id]
-        result = await open_settings(hass, entry, "display")
-        result = await submit(hass, result, mode="Pair portrait photos")
-        assert result["data_schema"]({})["interval"] == 90
-        result = await submit(hass, result, interval=120)
-        result = await submit(hass, result, pair_window_days=3)
+        result = await open_settings(hass, entry, "source")
+        result = await submit(hass, result, source="All photos")
+        result = await finish_settings(hass.config_entries.options, result)
         await hass.async_block_till_done()
         assert result["type"] == "create_entry"
-        assert entry.data["interval"] == 120
-        assert entry.data["mode"] == "pairs"
-        assert entry.data["pair_window_days"] == 3
-        assert entry.data["album_id"] == "a"
+        assert entry.data["interval"] == 90
+        assert entry.data["mode"] == "single"
+        assert entry.data["source"] == "all"
+        assert "album_id" not in entry.data
         assert entry.data["api_key"] == "test-key"
         assert not entry.options
         assert len(hass.config_entries.async_entries(DOMAIN)) == 1
@@ -106,7 +103,7 @@ async def test_cancel_discards_changes_and_back_preserves_draft(hass):
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
     result = await submit(hass, result, smart_query="mountains")
-    result = await submit(hass, result, screen_shape="Portrait (800 × 1280)", navigation="back")
+    result = await submit(hass, result, frame_name="Draft", navigation="back")
     assert result["step_id"] == "smart"
     assert result["data_schema"]({})["smart_query"] == "mountains"
     hass.config_entries.options.async_abort(result["flow_id"])

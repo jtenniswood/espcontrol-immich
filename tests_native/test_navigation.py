@@ -43,29 +43,16 @@ async def save(hass, result):
 async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result, frame_name="Kitchen", mode="Pair portrait photos",
-                          screen_shape="Square (720 × 720)")
-    result = await submit(hass, result, orientation="Portrait photos only", interval=75)
-    result = await submit(hass, result, pair_window_days=3, navigation="back")
-    result = await submit(hass, result, navigation="back")
-    result = await submit(hass, result, navigation="back")
+    result = await submit(hass, result, frame_name="Kitchen", navigation="back")
     assert result["step_id"] == "album"
     assert result["data_schema"]({})["album_ids"] == ["a"]
-    assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_ids=["a", "b"])
-    defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (720 × 720)",
-                        "mode": "Pair portrait photos", "navigation": "continue"}
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["interval"] == 75
-    assert result["data_schema"]({})["orientation"] == "Portrait photos only"
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["pair_window_days"] == 3
-    assert "pairs_only" not in result["data_schema"]({})
+    assert result["data_schema"]({}) == {"frame_name": "Kitchen", "navigation": "continue"}
+    assert result["last_step"] is True
     result = await save(hass, result)
     assert result["album_ids"] == ["a", "b"]
-    assert result["mode"] == "pairs"
-    assert result["screen_shape"] == "square"
+    assert result["mode"] == "single"
+    assert result["interval"] == 90
     assert result["api_key"] == "test-key"
     assert "navigation" not in result
 
@@ -132,13 +119,9 @@ async def test_display_back_targets_previous_step(hass, label, step, values):
 async def test_display_can_change_source_directly(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result)
-    result = await submit(hass, result, interval=120, navigation="back")
     result = await submit(hass, result, navigation="source")
     assert result["step_id"] == "source"
     result = await submit(hass, result, source="All photos")
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["interval"] == 120
     result = await save(hass, result)
     assert "album_id" not in result
 
@@ -165,9 +148,7 @@ async def test_reconfigure_cancel_leaves_entry_unchanged(hass):
     assert result["data_schema"]({})["source"] == "Albums"
     result = await submit(hass, result, source="All photos")
     assert result["data_schema"]({})["frame_name"] == "Frame"
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["interval"] == 90
-    result = await submit(hass, result, navigation="back", interval=120)
+    result = await submit(hass, result, navigation="back", frame_name="Draft")
     assert dict(entry.data) == before
     hass.config_entries.flow.async_abort(result["flow_id"])
     assert dict(entry.data) == before
@@ -217,11 +198,10 @@ async def test_duplicate_frame_name_can_be_corrected_without_losing_choices(hass
     assert original.data["source"] == "album"
     with patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await submit(hass, result, frame_name="Living room")
-        result = await submit(hass, result, interval=120)
         await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
     assert original.title == "Living room"
     assert original.unique_id == "http://immich.test|Living room"
     assert original.data["source"] == "all"
-    assert original.data["interval"] == 120
+    assert original.data["interval"] == 90
     assert "album_id" not in original.data

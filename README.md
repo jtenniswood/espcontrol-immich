@@ -31,7 +31,7 @@ On the frame’s device page:
 - **Display mode:** show one photo or pair portrait photos taken around the same date.
 - **Photo orientation:** choose which photo shapes to include.
 
-To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame.
+To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame. Choose a source, then save on the frame name step. Display settings are managed on the device page.
 
 ## Updates and help
 
