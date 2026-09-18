@@ -129,7 +129,11 @@ class FrameConfig:
         return FrameSettings.from_options(data).options()
 
     def __post_init__(self) -> None:
-        # Normalize saved/imported legacy dimensions to the fixed device frame.
+        if self.settings_version != 2:
+            raise ValueError("Unsupported frame settings version")
+        if self.screen_shape not in SCREEN_SIZES:
+            raise ValueError("Unsupported screen_shape")
+        # Explicit shapes use the common dimensions; old size arguments remain ignored.
         object.__setattr__(self, "output_width", SCREEN_SIZES[self.screen_shape][0])
         object.__setattr__(self, "output_height", SCREEN_SIZES[self.screen_shape][1])
 

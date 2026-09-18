@@ -68,3 +68,14 @@ def test_multiple_albums_take_precedence_over_legacy_selection() -> None:
 def test_invalid_multiple_album_selection_is_rejected(album_ids) -> None:
     with pytest.raises(ValueError, match="album_ids"):
         FrameApp._frame_from_body({"name": "Albums", "source": "album", "album_ids": album_ids, "album_id": "old"})
+
+
+def test_container_form_uses_shared_settings_contract():
+    from immich_frames.ui import home_page
+    from custom_components.immich_frames.core.settings import SETTINGS
+    page = home_page()
+    for spec in SETTINGS:
+        key = "slideshow_interval" if spec.key == "interval" else spec.key
+        assert f'name="{key}"' in page
+    assert "Landscape (1280 × 800)" in page
+    assert "{{display_controls}}" not in page

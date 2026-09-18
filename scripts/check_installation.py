@@ -50,6 +50,10 @@ modules = ["custom_components.immich_frames.core." + name for name in
            ("client", "engine", "cache", "history", "models", "settings", "rendering")]
 modules += ["immich_frames.app"] if kind == "wheel" else ["custom_components.immich_frames." + name for name in
            ("config_flow", "coordinator", "image", "select", "number", "button", "sensor", "switch")]
+if kind == "wheel":
+    from immich_frames.ui import home_page
+    page = home_page()
+    assert "Landscape (1280 × 800)" in page and "{{display_controls}}" not in page
 for name in modules:
     module = importlib.import_module(name)
     assert Path(module.__file__).is_relative_to(root), module.__file__

@@ -10,11 +10,11 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Slideshow | Switch | Pause or resume automatic advancement |
 | Screen shape | Select (Configuration) | Choose Landscape (1280 × 800), Portrait (800 × 1280), or Square (720 × 720); saves the choice and reloads the frame |
 | Photo fit | Select (Configuration) | Crop to fit or Show full image |
-| Display mode | Select (Configuration) | Single image or Pair portrait photos |
+| Portrait images | Select (Configuration) | Single portrait photos only; Single and Paired portrait photos; Paired portrait photos only |
 | Time range | Select (Configuration) | All time, or the last 1, 3 or 6 months; 1, 2, 3, 4, 5 or 10 years |
-| Photo orientation | Select (Configuration) | Mixed, portrait, landscape or square photos |
+| Photo orientation | Select (Configuration) | Mixed, portrait or landscape photos; legacy square-only values are retained |
 | Pairing window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
-| Slide interval | Number (Configuration) | 10–86,400 seconds |
+| Photo timer | Number (Configuration) | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 
 The Image entity exposes `open_in_immich` for the single/left photo and `open_second_photo_in_immich` only when a right photo exists. Each is an Immich web URL (`/photos/<asset-id>`) without the API key. Links use the same snapshot as the image, including cached slides and Previous navigation.
@@ -26,3 +26,5 @@ Photo detail sensors always use the single photo or the left photo in a pair. Ex
 Screen shape offers the service values `landscape`, `portrait`, and `square`. The existing entity ID is preserved. Saved device presets migrate automatically: `jc1060p470` becomes `landscape`, `jc4880p443` becomes `portrait`, and `4848s040` becomes `square`. Automations that select a retired device value must use its corresponding shape value. See the [screen shapes](native-integration.md) for output dimensions.
 
 Photo and pairing settings save immediately and reload the frame. The interval updates the slideshow timer directly. All settings share the same saved values as Configure and survive Home Assistant restarts. Cached photos are restored only when their photo rules and rendering settings still match.
+
+The exact control values and order are checked against [the generated settings reference](settings-reference.md). Cache restoration also requires matching source/account rules and a complete verified slide record.

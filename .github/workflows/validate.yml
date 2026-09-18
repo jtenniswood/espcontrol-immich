@@ -1,6 +1,7 @@
 name: HACS validation
 
 on:
+  workflow_call:
   push:
   pull_request:
   release:
@@ -20,11 +21,3 @@ jobs:
         with:
           category: integration
           comment: false
-
-  hassfest:
-    name: Hassfest
-    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
-    steps:
-      - uses: actions/checkout@v7
-      - name: Validate Home Assistant integration
-        run: bash scripts/hassfest.sh

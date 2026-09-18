@@ -167,6 +167,8 @@ class FrameApp:
 
     @staticmethod
     def _frame_from_body(body: dict[str, Any], frame_id: str | None = None) -> FrameConfig:
+        if body.get("settings_version", 2) not in (1, 2):
+            raise ValueError("Unsupported frame settings version")
         raw_filter = body.get("filter", {})
         if isinstance(raw_filter, str):
             raw_filter = json.loads(raw_filter)
@@ -220,84 +222,8 @@ class FrameApp:
         return frame
 
     async def home(self, _: web.Request) -> web.Response:
-        return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
-<h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
-<form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single portrait photos only</option><option value=pairs>Single and Paired portrait photos</option><option value=pairs_only>Paired portrait photos only</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=2></label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
-<pre id=frames>Loading…</pre><script>
-const out=document.querySelector('#frames');
-const form=document.querySelector('#f');
-const connections=document.querySelector('#connections');
-const picker=document.querySelector('#album-picker');
-const albumOptions=document.querySelector('#album-options');
-const albumStatus=document.querySelector('#album-status');
-let albumRequest=0;
-function filterAlbums(){
-  const query=document.querySelector('#album-search').value.toLocaleLowerCase();
-  for(const label of albumOptions.children) label.style.display=label.textContent.toLocaleLowerCase().includes(query)?'block':'none';
-}
-async function loadAlbums(){
-  const request=++albumRequest;
-  const selected=new Set([...albumOptions.querySelectorAll('input:checked')].map(input=>input.value));
-  albumOptions.replaceChildren();
-  picker.hidden=form.elements.source.value!=='album';
-  if(picker.hidden) return;
-  if(!connections.value){albumStatus.textContent='Connect to Immich to load albums.';return;}
-  albumStatus.textContent='Loading albums…';
-  try{
-    const response=await fetch('/api/catalog/albums?connection_id='+encodeURIComponent(connections.value));
-    if(!response.ok) throw new Error('Could not load albums. Check the connection and album.read permission, then reload.');
-    const albums=await response.json();
-    if(!Array.isArray(albums)||albums.some(album=>!album||typeof album.id!=='string'||typeof album.albumName!=='string')) throw new Error('Immich returned an invalid album list. Try reloading.');
-    if(request!==albumRequest) return;
-    const names=new Map();
-    for(const album of albums) names.set(album.id,album.albumName.trim()||'Untitled album');
-    const counts=new Map();
-    for(const name of names.values()) counts.set(name.toLocaleLowerCase(),(counts.get(name.toLocaleLowerCase())||0)+1);
-    for(const [id,name] of [...names].sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]))){
-      const label=document.createElement('label');
-      label.style.display='block';
-      const input=document.createElement('input');
-      input.type='checkbox';input.name='album_ids';input.value=id;input.checked=selected.has(id);
-      label.append(input,document.createTextNode(counts.get(name.toLocaleLowerCase())>1?`${name} (${id})`:name));
-      albumOptions.append(label);
-    }
-    albumStatus.textContent=names.size?'Select one or more albums. Photos from all selected albums will be shown together.':'No albums are available. Create or share an album in Immich, then reload.';
-    filterAlbums();
-  }catch(error){if(request===albumRequest) albumStatus.textContent=error.message;}
-}
-async function load(){
-  out.textContent=JSON.stringify(await (await fetch('/api/frames')).json(),null,2);
-  const saved=connections.value;
-  const values=await (await fetch('/api/connections')).json();
-  connections.replaceChildren(...values.map(connection=>new Option(connection.name,connection.id)));
-  if(values.some(connection=>connection.id===saved)) connections.value=saved;
-  await loadAlbums();
-}
-connections.onchange=()=>{albumOptions.replaceChildren();loadAlbums();};
-form.elements.source.onchange=loadAlbums;
-document.querySelector('#reload-albums').onclick=loadAlbums;
-document.querySelector('#album-search').oninput=filterAlbums;
-document.querySelector('#c').onsubmit=async e=>{
-  e.preventDefault();
-  const response=await fetch('/api/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});
-  if(!response.ok){alert(await response.text());return;}
-  e.target.reset();await load();
-};
-form.onsubmit=async e=>{
-  e.preventDefault();
-  const fields=new FormData(form);
-  const data=Object.fromEntries(fields);
-  data.album_ids=fields.getAll('album_ids');
-  if(data.source==='album'&&!data.album_ids.length){albumStatus.textContent='Choose at least one album to continue.';return;}
-  data.fallback_to_all=form.elements.fallback_to_all.checked;
-  for(const key of ['pair_window_days','memory_window_days']) data[key]=Number(data[key]||0);
-  const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
-  if(!response.ok){alert(await response.text());return;}
-  form.reset();await load();
-};
-load();
-</script>""", content_type="text/html")
+        from .ui import home_page
+        return web.Response(text=home_page(), content_type="text/html")
 
     async def list_frames(self, _: web.Request) -> web.Response:
         return web.json_response([{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "orientation": f.orientation} for f in self.storage.list_frames()])

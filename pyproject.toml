@@ -23,3 +23,6 @@ package-dir = {"immich_frames" = "src/immich_frames", "custom_components.immich_
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests", "tests_core"]
+
+[tool.setuptools.package-data]
+immich_frames = ["web/*.html"]

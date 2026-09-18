@@ -12,7 +12,29 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
+  validation:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  hacs:
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+
+  release-contract:
+    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python scripts/check_release.py
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
   publish:
+    needs: [validation, hacs, release-contract]
     runs-on: [self-hosted, Linux, X64, espcontrol-immich]
     strategy:
       matrix:
