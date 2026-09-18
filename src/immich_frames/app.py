@@ -407,7 +407,7 @@ class FrameApp:
         return sum(path.stat().st_size for path in self.cache_dir.iterdir() if path.is_file())
 
     def enforce_cache_limit(self) -> int:
-        files = sorted((path for path in self.cache_dir.iterdir() if path.is_file()), key=lambda path: path.stat().st_mtime)
+        files = sorted((path for path in self.cache_dir.iterdir() if path.is_file() and not path.name.startswith(".")), key=lambda path: path.stat().st_mtime)
         total = self.cache_size()
         for path in files:
             if total <= self.cache_limit_bytes:

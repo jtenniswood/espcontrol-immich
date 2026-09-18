@@ -106,7 +106,7 @@ class FrameConfig:
     smart_query: str | None = None
     smart_reference_asset_id: str | None = None
     order_field: Literal["fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"] = "fileCreatedAt"
-    order_direction: Literal["asc", "desc"] = "desc"
+    order_direction: Literal["asc", "desc", "random"] = "desc"
     output_width: int = OUTPUT_SIZE[0]
     output_height: int = OUTPUT_SIZE[1]
     fit: Literal["cover", "contain"] = "contain"

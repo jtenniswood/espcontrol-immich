@@ -260,10 +260,15 @@ def companion(
         min(
             eligible,
             key=lambda item: (
-                abs((item["capture_dt"] - capture).total_seconds()),
+                abs((_utc(item["capture_dt"]) - _utc(capture)).total_seconds()),
                 item["id"],
             ),
         )
         if eligible
         else None
     )
+
+
+def _utc(value: datetime) -> datetime:
+    """Compare mixed timestamp formats without changing their pairing dates."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)

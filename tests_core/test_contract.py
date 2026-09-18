@@ -244,3 +244,10 @@ def test_native_migration_preserves_effective_legacy_filter_rules():
     old = {"source": "smart", "smart_query": "beach", "filter": {"visibility": {"eq": "archive"}}}
     assert migrate_settings(old)["filter"]["visibility"] == {"eq": "timeline"}
     assert old["filter"]["visibility"] == {"eq": "archive"}
+
+
+def test_pairing_accepts_mixed_timestamp_formats():
+    from custom_components.immich_frames.core.engine import companion
+    primary = {"id": "a", "orientation": "portrait", "capture_dt": datetime(2026, 9, 18, 12)}
+    other = {"id": "b", "orientation": "portrait", "capture_dt": datetime(2026, 9, 18, 13, tzinfo=timezone.utc)}
+    assert companion(primary, [other], 0)["id"] == "b"

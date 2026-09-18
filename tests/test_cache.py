@@ -42,3 +42,12 @@ def test_old_cache_dimensions_are_rejected(tmp_path, size):
     (app.cache_dir / "frame.json").write_text("{}")
     app.restore_cached(frame)
     assert "frame" not in app.slides
+
+
+def test_cache_eviction_leaves_inflight_atomic_write_alone(tmp_path):
+    app = FrameApp({}, tmp_path)
+    app.cache_limit_bytes = 1
+    temporary = app.cache_dir / ".frame.json.inflight"
+    temporary.write_bytes(b"pending")
+    app.enforce_cache_limit()
+    assert temporary.read_bytes() == b"pending"
