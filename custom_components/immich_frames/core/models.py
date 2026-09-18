@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+
 @dataclass(frozen=True, slots=True)
 class FrameSnapshot:
     image: bytes
@@ -22,5 +23,3 @@ class FrameSnapshot:
     @property
     def secondary(self) -> dict[str, Any] | None:
         return self.photos[1] if len(self.photos) > 1 else None
-
-

@@ -1,4 +1,7 @@
 """Immich Frames application."""
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = "0.1.0"
-
+try:
+    __version__ = version("immich-frames")
+except PackageNotFoundError:
+    __version__ = "development"

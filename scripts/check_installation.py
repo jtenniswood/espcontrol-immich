@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Smoke-test the actual wheel or HACS directory outside the checkout."""
+
 import argparse
 from pathlib import Path
 import shutil
@@ -28,13 +29,39 @@ def main():
             for name in ("pyproject.toml", "README.md", "LICENSE"):
                 shutil.copy(ROOT / name, source / name)
             for name in ("src", "custom_components"):
-                shutil.copytree(ROOT / name, source / name, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"))
-            run("-m", "pip", "wheel", "--no-deps", "--wheel-dir", str(root / "wheels"), str(source), cwd=root)
+                shutil.copytree(
+                    ROOT / name,
+                    source / name,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"),
+                )
+            run(
+                "-m",
+                "pip",
+                "wheel",
+                "--no-deps",
+                "--wheel-dir",
+                str(root / "wheels"),
+                str(source),
+                cwd=root,
+            )
             wheel = next((root / "wheels").glob("immich_frames-*.whl"))
-            run("-m", "pip", "install", "--no-deps", "--target", str(installed), str(wheel), cwd=root)
+            run(
+                "-m",
+                "pip",
+                "install",
+                "--no-deps",
+                "--target",
+                str(installed),
+                str(wheel),
+                cwd=root,
+            )
         else:
-            shutil.copytree(ROOT / "custom_components/immich_frames", installed / "custom_components/immich_frames", ignore=shutil.ignore_patterns("__pycache__"))
-        code = '''
+            shutil.copytree(
+                ROOT / "custom_components/immich_frames",
+                installed / "custom_components/immich_frames",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        code = """
 import importlib, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
@@ -66,7 +93,7 @@ for shape, size in (("landscape", (1280,800)), ("portrait", (800,1280)), ("squar
     rendered, _ = render([], [raw.getvalue()], shape, "show_full")
     assert Image.open(BytesIO(rendered)).size == size
 print(kind + " isolated installation and rendering passed")
-'''
+"""
         run("-I", "-c", code, str(installed), args.kind, cwd=root)
 
 

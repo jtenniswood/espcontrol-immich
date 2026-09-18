@@ -1,4 +1,5 @@
 """Image inspection and photo-derived colours for the native frame renderer."""
+
 from io import BytesIO
 
 from PIL import Image, ImageOps
@@ -40,9 +41,16 @@ def background_colour(image: Image.Image) -> tuple[int, int, int]:
         blue // total_weight // 2,
     )
 
+
 from .settings import DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_FULL, PHOTO_FIT_CROP
 
-def render(photos: list[dict], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, fit: str | None = None) -> tuple[bytes, str]:
+
+def render(
+    photos: list[dict],
+    payloads: list[bytes],
+    screen_shape: str = DEFAULT_SCREEN_SHAPE,
+    fit: str | None = None,
+) -> tuple[bytes, str]:
     canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
     images: list[Image.Image] = []
     for payload in payloads:
@@ -55,7 +63,10 @@ def render(photos: list[dict], payloads: list[bytes], screen_shape: str = DEFAUL
             return ImageOps.fit(image, size, Image.Resampling.LANCZOS)
         contained = ImageOps.contain(image, size, Image.Resampling.LANCZOS)
         result = Image.new("RGB", size, background_colour(image))
-        result.paste(contained, ((size[0] - contained.width) // 2, (size[1] - contained.height) // 2))
+        result.paste(
+            contained,
+            ((size[0] - contained.width) // 2, (size[1] - contained.height) // 2),
+        )
         return result
 
     if len(images) == 1:

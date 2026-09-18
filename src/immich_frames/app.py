@@ -19,8 +19,9 @@ from custom_components.immich_frames.core.engine import snapshot
 from dataclasses import asdict, replace
 from custom_components.immich_frames.core.history import SlideHistory
 from custom_components.immich_frames.core.errors import NoMatchingPhotos
-from custom_components.immich_frames.core.cache import SnapshotStore, connection_identity, signature
+from custom_components.immich_frames.core.cache import SnapshotStore, connection_identity, signature, finish_write
 from .storage import Storage
+from . import __version__
 
 LOG = logging.getLogger("immich_frames")
 
@@ -33,6 +34,7 @@ class FrameApp:
             self.storage.save_connection("default", "Default Immich", config["immich_url"], config["immich_api_key"])
         self.generation: dict[str, int] = {}
         self.active_settings: dict[str, str] = {}
+        self.update_locks: dict[str, asyncio.Lock] = {}
         self.slides: dict[str, Any] = {}
         self.clients: dict[str, ImmichClient] = {}
         self.client = self._client_for("default") if self.storage.get_connection("default") else None
@@ -101,25 +103,29 @@ class FrameApp:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
 
     async def refresh_frame(self, frame: FrameConfig, force: bool = False) -> None:
+        async with self.update_locks.setdefault(frame.frame_id, asyncio.Lock()):
+            await self._refresh_frame(frame, force)
+
+    async def _refresh_frame(self, frame: FrameConfig, force: bool = False) -> None:
         try:
             if frame.frame_id in self.paused and not force:
                 return
             client = self._client_for(frame.connection_id)
             account_identity = self._connection_identity(frame)
             settings_key = signature(frame.settings(), account_identity)
-            if self.active_settings.get(frame.frame_id) != settings_key:
-                self.slides.pop(frame.frame_id, None)
-                self.history.pop(frame.frame_id, None)
-                self.active_settings[frame.frame_id] = settings_key
+            if self.active_settings.setdefault(frame.frame_id, settings_key) != settings_key:
+                return  # This request belongs to settings replaced while it was queued.
             generation = self.generation.get(frame.frame_id, 0) + 1
             recent_ids = self.history.get(frame.frame_id, SlideHistory()).recent_ids
             result = await snapshot(ClientAdapter(client), frame.settings(), generation, recent_ids)
+            if self.active_settings.get(frame.frame_id) != settings_key:
+                return
             slide = Slide(frame.frame_id, generation, tuple(Photo.from_record(p) for p in result.photos), result.image, result.layout, result.created_at)
             self.generation[frame.frame_id] = generation
             self.slides[frame.frame_id] = slide
             self.history.setdefault(frame.frame_id, SlideHistory()).append(slide)
             try:
-                await asyncio.to_thread(self._store(frame).write, result, frame.settings(), account_identity)
+                await finish_write(asyncio.to_thread(self._store(frame).write, result, frame.settings(), account_identity))
             except OSError:
                 LOG.warning("Could not save the frame cache", exc_info=True)
             cache_size = self.enforce_cache_limit()
@@ -131,7 +137,7 @@ class FrameApp:
                 status = "no_matching_photos" if isinstance(exc, NoMatchingPhotos) else "invalid_api_key" if isinstance(exc, ImmichError) and exc.status in (401, 403) else "upstream_unavailable"
                 cached = self.slides.get(frame.frame_id)
                 if cached:
-                    self.publisher.publish_frame(frame, cached, paused=frame.frame_id in self.paused, using_cache=True, status=status, connected=False, role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=self.cache_size())
+                    self.publisher.publish_frame(frame, cached, paused=frame.frame_id in self.paused, using_cache=True, status=status, connected=isinstance(exc, NoMatchingPhotos), role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=self.cache_size())
                 else:
                     self.publisher.publish_error(frame, status)
 
@@ -146,6 +152,7 @@ class FrameApp:
             self.paused.discard(frame.frame_id)
             self.slides.pop(frame.frame_id, None)
             self.history.pop(frame.frame_id, None)
+        self.active_settings[frame.frame_id] = key
         old = self.tasks.pop(frame.frame_id, None)
         if old:
             old.cancel()
@@ -252,6 +259,9 @@ class FrameApp:
             await old_client.close()
         client = ImmichClient(url, api_key)
         self.clients[connection_id] = client
+        for frame in self.storage.list_frames():
+            if frame.connection_id == connection_id:
+                self.start_frame(frame)
         return web.json_response({"id": connection_id, "name": name, "url": url, "version": version}, status=201)
 
     async def delete_connection(self, request: web.Request) -> web.Response:
@@ -330,7 +340,7 @@ class FrameApp:
         return web.Response(status=204)
 
     async def health(self, _: web.Request) -> web.Response:
-        return web.json_response({"status": "ok", "version": "0.1.0"})
+        return web.json_response({"status": "ok", "version": __version__})
 
     async def capabilities(self, request: web.Request) -> web.Response:
         try:

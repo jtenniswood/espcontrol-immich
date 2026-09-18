@@ -16,26 +16,70 @@ def safe_filter(user_filter: dict[str, Any]) -> dict[str, Any]:
     else:
         # Never permit a user rule to widen the query to locked assets.
         if "in" in requested_visibility:
-            visible = [item for item in requested_visibility["in"] if item in ALLOWED_VISIBILITY]
+            visible = [
+                item
+                for item in requested_visibility["in"]
+                if item in ALLOWED_VISIBILITY
+            ]
             result["visibility"] = {"in": visible or ["timeline"]}
         elif requested_visibility.get("eq") not in ALLOWED_VISIBILITY:
             result["visibility"] = {"eq": "timeline"}
     return result
 
 
-
-
 FILTER_FIELDS = {
-    "albumIds", "checksum", "city", "country", "createdAt", "description", "fileSizeInBytes",
-    "hasAlbums", "hasPeople", "hasTags", "id", "isEncoded", "isFavorite", "isMotion", "isOffline",
-    "lensModel", "libraryId", "make", "model", "ocr", "originalFileName", "originalPath", "personIds",
-    "rating", "state", "tagIds", "takenAt", "trashedAt", "type", "updatedAt", "visibility",
+    "albumIds",
+    "checksum",
+    "city",
+    "country",
+    "createdAt",
+    "description",
+    "fileSizeInBytes",
+    "hasAlbums",
+    "hasPeople",
+    "hasTags",
+    "id",
+    "isEncoded",
+    "isFavorite",
+    "isMotion",
+    "isOffline",
+    "lensModel",
+    "libraryId",
+    "make",
+    "model",
+    "ocr",
+    "originalFileName",
+    "originalPath",
+    "personIds",
+    "rating",
+    "state",
+    "tagIds",
+    "takenAt",
+    "trashedAt",
+    "type",
+    "updatedAt",
+    "visibility",
 }
 ID_FIELDS = {"albumIds", "personIds", "tagIds"}
-BOOL_FIELDS = {"hasAlbums", "hasPeople", "hasTags", "isEncoded", "isFavorite", "isMotion", "isOffline"}
+BOOL_FIELDS = {
+    "hasAlbums",
+    "hasPeople",
+    "hasTags",
+    "isEncoded",
+    "isFavorite",
+    "isMotion",
+    "isOffline",
+}
 DATE_FIELDS = {"createdAt", "takenAt", "trashedAt", "updatedAt"}
 NUMBER_FIELDS = {"fileSizeInBytes", "rating"}
-STRING_FIELDS = FILTER_FIELDS - ID_FIELDS - BOOL_FIELDS - DATE_FIELDS - NUMBER_FIELDS - {"type", "or"}
+STRING_FIELDS = (
+    FILTER_FIELDS
+    - ID_FIELDS
+    - BOOL_FIELDS
+    - DATE_FIELDS
+    - NUMBER_FIELDS
+    - {"type", "or"}
+)
 COMMON_OPERATORS = {"eq", "ne", "in", "notIn"}
 
 
@@ -54,7 +98,9 @@ def validate_filter(value: Any, path: str = "filter") -> dict[str, Any]:
                 validate_filter(branch, f"{path}.or[{index}]")
             continue
         if field not in FILTER_FIELDS:
-            raise FilterValidationError(f"{path}.{field} is not supported by Immich 3.2")
+            raise FilterValidationError(
+                f"{path}.{field} is not supported by Immich 3.2"
+            )
         if not isinstance(condition, dict):
             raise FilterValidationError(f"{path}.{field} must be an operator object")
         operators = COMMON_OPERATORS
@@ -76,7 +122,9 @@ def validate_filter(value: Any, path: str = "filter") -> dict[str, Any]:
             operators = COMMON_OPERATORS
         unknown = set(condition) - operators
         if unknown:
-            raise FilterValidationError(f"{path}.{field} has unsupported operators: {', '.join(sorted(unknown))}")
+            raise FilterValidationError(
+                f"{path}.{field} has unsupported operators: {', '.join(sorted(unknown))}"
+            )
     return value
 
 

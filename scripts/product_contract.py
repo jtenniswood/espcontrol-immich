@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate the small product reference; --check never changes files."""
+
 import argparse
 import json
 from pathlib import Path
@@ -20,17 +21,40 @@ def outputs():
             states = dict(spec.choices)
             if spec.key == "orientation":
                 states["square"] = "Square photos only"
-            strings["entity"]["select"][spec.entity_key or spec.key] = {**old, "name": spec.label, "state": states}
+            strings["entity"]["select"][spec.entity_key or spec.key] = {
+                **old,
+                "name": spec.label,
+                "state": states,
+            }
         elif spec.key == "pair_window_days":
             strings["entity"]["number"][spec.key] = {"name": spec.label}
     encoded = json.dumps(strings, indent=2, ensure_ascii=False) + "\n"
     yield component / "strings.json", encoded
     yield component / "translations/en.json", encoded
-    rows = ["# Frame settings reference", "", "Generated from `core/settings.py`. Run `python scripts/product_contract.py` after changing the contract.", "", "| Control | Service values, in order | Default |", "|---|---|---|"]
+    rows = [
+        "# Frame settings reference",
+        "",
+        "Generated from `core/settings.py`. Run `python scripts/product_contract.py` after changing the contract.",
+        "",
+        "| Control | Service values, in order | Default |",
+        "|---|---|---|",
+    ]
     for spec in SETTINGS:
-        values = "; ".join(f"`{value}` — {label}" for value, label in spec.choices) if spec.choices else f"{spec.minimum}–{spec.maximum}"
+        values = (
+            "; ".join(f"`{value}` — {label}" for value, label in spec.choices)
+            if spec.choices
+            else f"{spec.minimum}–{spec.maximum}"
+        )
         rows.append(f"| {spec.label} | {values} | `{spec.default}` |")
-    rows += ["", "Screen outputs are exactly Landscape 1280 × 800, Portrait 800 × 1280, and Square 720 × 720.", "", "Square-only photo selection is retained for old saved configurations, but is not offered as a new native control choice. Square photos remain included in Mixed.", "", "Setup and Configure edit the photo source; the device page owns these display and timing controls.", ""]
+    rows += [
+        "",
+        "Screen outputs are exactly Landscape 1280 × 800, Portrait 800 × 1280, and Square 720 × 720.",
+        "",
+        "Square-only photo selection is retained for old saved configurations, but is not offered as a new native control choice. Square photos remain included in Mixed.",
+        "",
+        "Setup and Configure edit the photo source; the device page owns these display and timing controls.",
+        "",
+    ]
     yield ROOT / "docs/settings-reference.md", "\n".join(rows)
 
 

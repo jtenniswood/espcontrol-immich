@@ -4,6 +4,5 @@ class ImmichApiError(RuntimeError):
         self.status = status
 
 
-
 class NoMatchingPhotos(ImmichApiError):
     """The source query completed but returned no eligible photos."""

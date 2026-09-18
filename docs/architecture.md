@@ -47,6 +47,8 @@ Old two-file caches cannot prove their source or account and are discarded. The 
 
 Run app/core tests with `pytest -q`; run the Home Assistant suite separately with `pytest -q tests_native` using `requirements-native-test.txt` and Python 3.14. CI also checks generated references, isolated wheel and HACS installation contents, Hassfest, HACS publishing requirements, and both container architectures.
 
+Generate a repeatable visual acceptance sheet with `python scripts/render_examples.py /tmp/immich-examples.png`.
+
 Run `python scripts/product_contract.py --check` to check generated content, or omit `--check` to regenerate it after a settings change. Run `python scripts/check_release.py` to verify package/container versions. Native integration and container versions are separate; a release tag must match the native manifest and identifies the exact source commit used for both container images.
 
 The release workflow reuses validation before publishing container images. Publish a GitHub release only after the intended commit's PR and default-branch checks pass: a published release is already visible to HACS while release-triggered checks run. This automation does not undo or hide a GitHub release that someone publishes manually.

@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError, NoMatchingPhotos
-from .core.cache import SnapshotStore, connection_identity
+from .core.cache import SnapshotStore, connection_identity, finish_write
 from .core.settings import FrameSettings
 from .core.history import SlideHistory
 from .const import CONF_INTERVAL, CONF_PHOTO_FIT, photo_fit
@@ -72,7 +72,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
 
     async def _save_cache(self, snapshot: FrameSnapshot) -> None:
         try:
-            await self.hass.async_add_executor_job(self._write_cache, snapshot)
+            await finish_write(self.hass.async_add_executor_job(self._write_cache, snapshot))
         except OSError:
             LOGGER.warning("Could not save the frame cache", exc_info=True)
 
