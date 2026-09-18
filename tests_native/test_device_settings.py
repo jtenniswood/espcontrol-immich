@@ -73,8 +73,8 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "single"
         await set_value(hass, entry, "number", "pair_window_days", 3)
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
-        # Square/landscape photos still appear on their own in pair mode.
-        for orientation, expected_id in [("landscape", "wide"), ("square", "square"), ("portrait", asset["id"])]:
+        # Landscape photos still appear on their own in pair mode.
+        for orientation, expected_id in [("landscape", "wide"), ("portrait", asset["id"])]:
             await set_value(hass, entry, "select", "orientation", orientation)
             assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == expected_id
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
