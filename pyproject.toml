@@ -15,10 +15,11 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8", "pytest-asyncio>=0.23"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["immich_frames", "custom_components.immich_frames", "custom_components.immich_frames.core"]
+package-dir = {"immich_frames" = "src/immich_frames", "custom_components.immich_frames" = "custom_components/immich_frames"}
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "tests_core"]

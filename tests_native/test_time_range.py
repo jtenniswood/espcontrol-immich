@@ -168,8 +168,8 @@ def test_range_moves_forward_on_later_refreshes():
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-@pytest.mark.parametrize("option,restores", [("all_time", True), ("1_month", False)])
-async def test_old_cache_defaults_to_all_time(hass, asset, jpeg, option, restores):
+@pytest.mark.parametrize("option,restores", [("all_time", False), ("1_month", False)])
+async def test_cache_without_provenance_is_rejected(hass, asset, jpeg, option, restores):
     import json
     entry = frame(hass)
     async def request(_api, method, path, **kwargs):
@@ -181,7 +181,7 @@ async def test_old_cache_defaults_to_all_time(hass, asset, jpeg, option, restore
         state_path = hass.data[DOMAIN][entry.entry_id].cache_path.with_suffix(".json")
         assert await hass.config_entries.async_unload(entry.entry_id)
     state = json.loads(state_path.read_text())
-    state["photo_settings"].pop("time_range")
+    state.pop("signature")
     state_path.write_text(json.dumps(state))
     hass.config_entries.async_update_entry(entry, data={**entry.data, "time_range": option})
     with patch.object(ImmichApi, "_request", side_effect=ImmichApiError("Offline")):

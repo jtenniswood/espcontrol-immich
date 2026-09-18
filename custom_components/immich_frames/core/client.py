@@ -47,17 +47,24 @@ def _photo(asset: dict[str, Any]) -> dict[str, Any]:
 
 
 class ImmichApi:
-    def __init__(self, base_url: str, api_key: str) -> None:
+    def __init__(self, base_url: str, api_key: str, session=None) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.session: aiohttp.ClientSession | None = None
+        self.session = session
+        self._owned_session = session is None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        await self.close()
 
     async def close(self) -> None:
-        if self.session and not self.session.closed:
+        if self._owned_session and self.session and not getattr(self.session, "closed", False):
             await self.session.close()
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        if self.session is None or self.session.closed:
+        if self.session is None or getattr(self.session, "closed", False):
             self.session = aiohttp.ClientSession()
         for attempt in range(3):
             try:
@@ -97,13 +104,23 @@ class ImmichApi:
         await self.search({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None},
                            "visibility": {"eq": "timeline"}}, size=1)
 
-    async def search(self, filter_value: dict[str, Any], size: int = 200, random: bool = False) -> list[dict[str, Any]]:
+    async def search(self, filter_value: dict[str, Any], size: int = 200, random: bool = False, order_field: str = "fileCreatedAt", order_direction: str = "desc") -> list[dict[str, Any]]:
         endpoint = "/api/search/random" if random else "/api/search/metadata"
         body = {"filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True, "withStacked": False}
         if not random:
-            body["orderBy"] = {"field": "fileCreatedAt", "direction": "desc"}
-        result = await self._request("POST", endpoint, json=body)
-        return [_photo(asset) for asset in _asset_items(result, random=random)]
+            body["orderBy"] = {"field": order_field, "direction": order_direction}
+        photos = []
+        seen_cursors = set()
+        while len(photos) < size:
+            result = await self._request("POST", endpoint, json=dict(body))
+            items = _asset_items(result, random=random)
+            photos.extend(_photo(asset) for asset in items)
+            cursor = None if random else result["assets"].get("nextCursor")
+            if not items or not cursor or cursor in seen_cursors:
+                break
+            seen_cursors.add(cursor)
+            body["cursor"] = cursor
+        return photos[:size]
 
     async def albums(self) -> list[dict[str, Any]]:
         """List albums accessible to this account, including shared albums."""
@@ -117,19 +134,27 @@ class ImmichApi:
             raise ImmichApiError("Immich returned an invalid album list")
         return result
 
-    async def smart_search(self, query: str, filter_value: dict[str, Any], size: int = 200) -> list[dict[str, Any]]:
-        result = await self._request("POST", "/api/search/smart", json={"query": query, "filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True})
+    async def smart_search(self, query: str, filter_value: dict[str, Any], size: int = 200, reference_asset_id: str | None = None) -> list[dict[str, Any]]:
+        body = {"query": query, "filter": filter_value, "size": min(size, 1000), "withExif": True, "withPeople": True}
+        if reference_asset_id:
+            body["queryAssetId"] = reference_asset_id
+        result = await self._request("POST", "/api/search/smart", json=body)
         return [_photo(asset) for asset in _asset_items(result)]
 
-    async def memories(self, for_date: str, size: int = 100) -> list[dict[str, Any]]:
-        result = await self._request("GET", "/api/memories", params={"for": for_date, "size": min(size, 1000)})
+    async def memories(self, for_date: str | None = None, size: int = 100, is_saved: bool | None = None) -> list[dict[str, Any]]:
+        params = {"size": min(size, 1000)}
+        if for_date:
+            params["for"] = for_date
+        if is_saved is not None:
+            params["isSaved"] = str(is_saved).lower()
+        result = await self._request("GET", "/api/memories", params=params)
         items = result if isinstance(result, list) else result.get("memories") if isinstance(result, dict) else None
         if not isinstance(items, list) or any(not isinstance(item, dict) for item in items):
             raise ImmichApiError("Immich returned an invalid memories response")
         return items
 
-    async def thumbnail(self, asset_id: str) -> bytes:
-        return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": "preview"})
+    async def thumbnail(self, asset_id: str, size: str = "preview") -> bytes:
+        return await self._request("GET", f"/api/assets/{asset_id}/thumbnail", params={"size": size})
 
     async def crop_image(self, photo: dict[str, Any], size: tuple[int, int]) -> bytes:
         """Upgrade an undersized preview without making full-size access mandatory."""
@@ -157,4 +182,25 @@ class ImmichApi:
         except (ImmichApiError, OSError, ValueError, Image.DecompressionBombError):
             LOGGER.debug("Full-size photo unavailable; using the preview")
         return preview
+
+
+    async def capabilities(self) -> dict[str, Any]:
+        version = await self.version()
+        parts = version.lstrip("v").split(".")
+        major, minor = (int(parts[0]), int(parts[1])) if len(parts) > 1 and parts[0].isdigit() and parts[1].isdigit() else (0, 0)
+        return {"version": version, "structured_search": (major, minor) >= (3, 2), "memories": (major, minor) >= (3, 2), "smart_search": True, "ocr": (major, minor) >= (3, 2)}
+
+
+    async def statistics(self, filter: dict[str, Any]) -> int:
+        result = await self._request("POST", "/api/search/statistics", json={"filter": filter})
+        return int(result.get("total", 0))
+
+
+    async def people(self, size: int = 500) -> list[dict[str, Any]]:
+        result = await self._request("GET", "/api/people", params={"size": min(size, 1000), "withHidden": False})
+        return result if isinstance(result, list) else result.get("people", [])
+
+    async def tags(self) -> list[dict[str, Any]]:
+        result = await self._request("GET", "/api/tags")
+        return result if isinstance(result, list) else result.get("tags", [])
 

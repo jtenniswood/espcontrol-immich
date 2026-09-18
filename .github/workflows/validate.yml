@@ -27,4 +27,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Validate Home Assistant integration
-        uses: home-assistant/actions/hassfest@master
+        run: bash scripts/hassfest.sh

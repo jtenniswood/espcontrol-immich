@@ -166,5 +166,5 @@ async def test_cache_requires_matching_explicit_fit(hass, cached_fit):
         state["photo_fit"] = cached_fit
     coordinator.cache_path.with_suffix(".json").write_text(json.dumps(state))
     await hass.async_add_executor_job(coordinator._load_cache)
-    assert (coordinator.data is not None) is (cached_fit == "show_full")
+    assert coordinator.data is None  # Fit alone cannot prove the cached source.
     await coordinator.async_close()

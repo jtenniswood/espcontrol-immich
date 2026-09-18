@@ -66,7 +66,7 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             assert Image.open(BytesIO(coordinator.data.image)).size == size
             assert coordinator.data.layout == ("side_by_side" if paired else "single")
             assert len(coordinator.history) == 1
-            with Image.open(coordinator.cache_path.with_suffix(".jpg")) as image:
+            with Image.open(BytesIO(coordinator.store.read(coordinator.options, coordinator.connection_identity).image)) as image:
                 assert image.size == size
 
             # Each shape must restore its own image after an offline restart.

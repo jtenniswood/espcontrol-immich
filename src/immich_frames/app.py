@@ -10,14 +10,16 @@ from typing import Any
 from urllib.parse import urlparse
 
 from aiohttp import web
-from PIL import Image
 
 from .immich_client import ImmichClient, ImmichError
-from .models import OUTPUT_SIZE, FrameConfig, Photo, Slide
-from .pairing import choose_companion
-from .rendering import render_slide
+from .models import FrameConfig, Photo, Slide
 from .filtering import FilterValidationError, compile_filter
-from .selection import select_candidates
+from .selection import ClientAdapter
+from custom_components.immich_frames.core.engine import snapshot
+from dataclasses import asdict, replace
+from custom_components.immich_frames.core.history import SlideHistory
+from custom_components.immich_frames.core.errors import NoMatchingPhotos
+from custom_components.immich_frames.core.cache import SnapshotStore, connection_identity, signature
 from .storage import Storage
 
 LOG = logging.getLogger("immich_frames")
@@ -30,6 +32,7 @@ class FrameApp:
         if not self.storage.get_connection("default") and config.get("immich_url") and config.get("immich_api_key"):
             self.storage.save_connection("default", "Default Immich", config["immich_url"], config["immich_api_key"])
         self.generation: dict[str, int] = {}
+        self.active_settings: dict[str, str] = {}
         self.slides: dict[str, Any] = {}
         self.clients: dict[str, ImmichClient] = {}
         self.client = self._client_for("default") if self.storage.get_connection("default") else None
@@ -70,7 +73,8 @@ class FrameApp:
         elif command in {"next", "refresh"}:
             asyncio.run_coroutine_threadsafe(self.refresh_frame(frame, force=True), self.loop)
         elif command == "previous" and self.history.get(frame_id):
-            slide = self.history[frame_id][-2] if len(self.history[frame_id]) > 1 else self.history[frame_id][-1]
+            slide = self.history[frame_id].previous()
+            self.slides[frame_id] = slide
             if self.publisher:
                 self.publisher.publish_frame(frame, slide, paused=frame_id in self.paused, role=self.metadata_role.get(frame_id, "primary"))
         elif command == "clear_cache":
@@ -90,8 +94,9 @@ class FrameApp:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
             except ValueError:
                 return
-            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
+            updated = replace(frame, slideshow_interval=interval)
             self.storage.save_frame(updated)
+            self.start_frame(updated)
             if self.publisher:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
 
@@ -100,50 +105,30 @@ class FrameApp:
             if frame.frame_id in self.paused and not force:
                 return
             client = self._client_for(frame.connection_id)
-            candidates = await select_candidates(client, frame, size=1000)
-            if not candidates and frame.source == "memories" and frame.fallback_to_all:
-                fallback = FrameConfig(
-                    frame_id=frame.frame_id, name=frame.name, connection_id=frame.connection_id, mode=frame.mode, pair_window_days=frame.pair_window_days,
-                    slideshow_interval=frame.slideshow_interval, filter=frame.filter,
-                    output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit, orientation=frame.orientation,
-                )
-                candidates = await select_candidates(client, fallback, size=1000)
-            if frame.mode == "pairs_only":
-                candidates = [photo for photo in candidates if photo.orientation != "portrait" or choose_companion(
-                    photo, candidates, frame.pair_window_days,
-                )]
-            if not candidates:
-                LOG.warning("Frame %s has no matching photos", frame.name)
-                return
-            recent_ids = {photo.id for old_slide in self.history.get(frame.frame_id, [])[-10:] for photo in old_slide.photos}
-            primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
-            photos: tuple[Photo, ...] = (primary,)
-            if frame.mode in ("pairs", "pairs_only"):
-                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days)
-                if companion:
-                    photos = (primary, companion)
-            payloads = tuple(await asyncio.gather(*(client.thumbnail(photo.id) for photo in photos)))
+            account_identity = self._connection_identity(frame)
+            settings_key = signature(frame.settings(), account_identity)
+            if self.active_settings.get(frame.frame_id) != settings_key:
+                self.slides.pop(frame.frame_id, None)
+                self.history.pop(frame.frame_id, None)
+                self.active_settings[frame.frame_id] = settings_key
             generation = self.generation.get(frame.frame_id, 0) + 1
-            slide = render_slide(frame.frame_id, generation, photos, payloads, frame.output_width, frame.output_height, frame.fit)
+            recent_ids = self.history.get(frame.frame_id, SlideHistory()).recent_ids
+            result = await snapshot(ClientAdapter(client), frame.settings(), generation, recent_ids)
+            slide = Slide(frame.frame_id, generation, tuple(Photo.from_record(p) for p in result.photos), result.image, result.layout, result.created_at)
             self.generation[frame.frame_id] = generation
             self.slides[frame.frame_id] = slide
-            self.history.setdefault(frame.frame_id, []).append(slide)
-            self.history[frame.frame_id] = self.history[frame.frame_id][-20:]
-            cache_path = self.cache_dir / f"{frame.frame_id}.jpg"
-            temporary = cache_path.with_suffix(".tmp")
-            temporary.write_bytes(slide.jpeg)
-            temporary.replace(cache_path)
-            state_path = self.cache_dir / f"{frame.frame_id}.json"
-            state_temporary = state_path.with_suffix(".tmp")
-            state_temporary.write_text(json.dumps(slide.state()))
-            state_temporary.replace(state_path)
+            self.history.setdefault(frame.frame_id, SlideHistory()).append(slide)
+            try:
+                await asyncio.to_thread(self._store(frame).write, result, frame.settings(), account_identity)
+            except OSError:
+                LOG.warning("Could not save the frame cache", exc_info=True)
             cache_size = self.enforce_cache_limit()
             if self.publisher:
-                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=len(candidates), role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=cache_size)
+                self.publisher.publish_frame(frame, slide, paused=frame.frame_id in self.paused, matching_assets=result.matching_assets, role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=cache_size)
         except Exception as exc:
             LOG.exception("Unable to refresh frame %s", frame.name)
             if self.publisher:
-                status = "invalid_api_key" if isinstance(exc, ImmichError) and exc.status in (401, 403) else "upstream_unavailable"
+                status = "no_matching_photos" if isinstance(exc, NoMatchingPhotos) else "invalid_api_key" if isinstance(exc, ImmichError) and exc.status in (401, 403) else "upstream_unavailable"
                 cached = self.slides.get(frame.frame_id)
                 if cached:
                     self.publisher.publish_frame(frame, cached, paused=frame.frame_id in self.paused, using_cache=True, status=status, connected=False, role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=self.cache_size())
@@ -156,6 +141,11 @@ class FrameApp:
             await asyncio.sleep(max(10, frame.slideshow_interval))
 
     def start_frame(self, frame: FrameConfig) -> None:
+        key = signature(frame.settings(), self._connection_identity(frame))
+        if self.active_settings.get(frame.frame_id) != key:
+            self.paused.discard(frame.frame_id)
+            self.slides.pop(frame.frame_id, None)
+            self.history.pop(frame.frame_id, None)
         old = self.tasks.pop(frame.frame_id, None)
         if old:
             old.cancel()
@@ -200,7 +190,7 @@ class FrameApp:
             album_id = None
         if source == "album" and not (album_ids if album_ids is not None else album_id):
             raise ValueError("album_ids must contain at least one album")
-        order_direction = body.get("order_direction", "desc")
+        order_direction = body.get("order_direction", "random")
         if order_direction not in ("asc", "desc", "random"):
             raise ValueError("order_direction must be asc, desc, or random")
         order_field = body.get("order_field", "fileCreatedAt")
@@ -215,15 +205,19 @@ class FrameApp:
         connection_id = str(body.get("connection_id", "default")).strip()
         if not connection_id:
             raise ValueError("connection_id is required")
-        return FrameConfig(
+        frame = FrameConfig(
             frame_id=frame_id or str(uuid.uuid4()), name=name, connection_id=connection_id, mode=mode,
             pair_window_days=max(0, min(7, int(body.get("pair_window_days", 2)))),
             slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
             source=source, album_id=album_id, album_ids=album_ids, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
             fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
             smart_reference_asset_id=body.get("smart_reference_asset_id"), order_field=order_field, order_direction=order_direction,
-            fit=fit, orientation=orientation,
+            fit=fit, orientation=orientation, screen_shape=body.get("screen_shape", "landscape"),
+            photo_fit=body.get("photo_fit", "show_full" if "fit" not in body else None), time_range=body.get("time_range", "all_time"),
         )
+
+        frame.settings()  # Validate through the common product model.
+        return frame
 
     async def home(self, _: web.Request) -> web.Response:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
@@ -327,6 +321,9 @@ load();
         except Exception as exc:
             raise web.HTTPBadGateway(text=f"Unable to verify Immich connection: {exc}") from exc
         self.storage.save_connection(connection_id, name, url, api_key)
+        old_client = self.clients.pop(connection_id, None)
+        if old_client:
+            await old_client.close()
         client = ImmichClient(url, api_key)
         self.clients[connection_id] = client
         return web.json_response({"id": connection_id, "name": name, "url": url, "version": version}, status=201)
@@ -346,7 +343,7 @@ load();
         return web.Response(status=204)
 
     async def export_config(self, _: web.Request) -> web.Response:
-        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "album_id": f.album_id, "album_ids": f.album_ids, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit, "orientation": f.orientation} for f in self.storage.list_frames()]})
+        return web.json_response({"frames": [asdict(f) for f in self.storage.list_frames()]})
 
     async def import_config(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -384,15 +381,10 @@ load();
             raise web.HTTPNotFound()
         body = await request.json()
         try:
-            updated = self._frame_from_body({
-                "name": body.get("name", frame.name), "connection_id": body.get("connection_id", frame.connection_id), "mode": body.get("mode", frame.mode),
-                "pair_window_days": body.get("pair_window_days", frame.pair_window_days),
-                "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
-                "source": body.get("source", frame.source), "album_id": body.get("album_id", frame.album_id), "album_ids": body.get("album_ids", None if "album_id" in body else frame.album_ids), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
-                "smart_query": body.get("smart_query", frame.smart_query), "smart_reference_asset_id": body.get("smart_reference_asset_id", frame.smart_reference_asset_id),
-                "order_field": body.get("order_field", frame.order_field), "order_direction": body.get("order_direction", frame.order_direction),
-                "output_width": body.get("output_width", frame.output_width), "output_height": body.get("output_height", frame.output_height), "fit": body.get("fit", frame.fit), "orientation": body.get("orientation", frame.orientation),
-            }, frame.frame_id)
+            values = {**asdict(frame), **body}
+            if "album_id" in body and "album_ids" not in body:
+                values["album_ids"] = None
+            updated = self._frame_from_body(values, frame.frame_id)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise web.HTTPBadRequest(text=f"Invalid frame configuration: {exc}") from exc
         self._client_for(updated.connection_id)
@@ -436,6 +428,7 @@ load();
     def application(self) -> web.Application:
         app = web.Application()
         app.add_routes([web.get("/", self.home), web.get("/api/health", self.health), web.get("/api/capabilities", self.capabilities), web.get("/api/catalog/{kind}", self.catalog), web.get("/api/connections", self.list_connections), web.post("/api/connections", self.create_connection), web.delete("/api/connections/{connection_id}", self.delete_connection), web.get("/api/export", self.export_config), web.post("/api/import", self.import_config), web.get("/api/frames", self.list_frames), web.post("/api/frames", self.create_frame), web.put("/api/frames/{frame_id}", self.update_frame), web.post("/api/frames/{frame_id}/refresh", self.refresh), web.delete("/api/frames/{frame_id}", self.delete_frame)])
+        app.on_startup.append(self.start_existing)
         app.on_cleanup.append(self.shutdown)
         return app
 
@@ -449,34 +442,30 @@ load();
         if self.publisher:
             self.publisher.close()
 
-    async def start_existing(self) -> None:
+    async def start_existing(self, _app=None) -> None:
         self.loop = asyncio.get_running_loop()
         for frame in self.storage.list_frames():
             self.restore_cached(frame)
             self.start_frame(frame)
 
+    def _store(self, frame):
+        return SnapshotStore(self.cache_dir / f"{frame.frame_id}.json")
+
+    def _connection_identity(self, frame):
+        connection = self.storage.get_connection(frame.connection_id)
+        return connection_identity(connection[1], connection[2]) if connection else connection_identity(frame.connection_id, "")
+
     def restore_cached(self, frame: FrameConfig) -> None:
-        image_path = self.cache_dir / f"{frame.frame_id}.jpg"
-        state_path = self.cache_dir / f"{frame.frame_id}.json"
-        if not image_path.exists() or not state_path.exists():
+        result = self._store(frame).read(frame.settings(), self._connection_identity(frame))
+        if result is None:
             return
-        try:
-            with Image.open(image_path) as image:
-                if image.size != OUTPUT_SIZE:
-                    return
-            state = json.loads(state_path.read_text())
-            self.metadata_role[frame.frame_id] = state.get("selected_role", "primary")
-            photos = [Photo.from_cache(state["primary"])]
-            if state.get("secondary", {}).get("available"):
-                photos.append(Photo.from_cache(state["secondary"]))
-            slide = Slide(frame.frame_id, int(state.get("generation", 0)), tuple(photos), image_path.read_bytes(), state.get("layout", "single"))
-            self.generation[frame.frame_id] = slide.generation
-            self.slides[frame.frame_id] = slide
-            self.history[frame.frame_id] = [slide]
-            if self.publisher:
-                self.publisher.publish_frame(frame, slide, using_cache=True, status="cached", role=self.metadata_role.get(frame.frame_id, "primary"), cache_size=self.cache_size())
-        except (OSError, KeyError, ValueError, TypeError):
-            LOG.warning("Ignoring incomplete cache for frame %s", frame.name)
+        slide = Slide(frame.frame_id, result.generation, tuple(Photo.from_record(p) for p in result.photos), result.image, result.layout, result.created_at)
+        self.generation[frame.frame_id] = slide.generation
+        self.slides[frame.frame_id] = slide
+        self.history[frame.frame_id] = SlideHistory([slide])
+        self.active_settings[frame.frame_id] = signature(frame.settings(), self._connection_identity(frame))
+        if self.publisher:
+            self.publisher.publish_frame(frame, slide, using_cache=True, status="cached", role="primary", cache_size=self.cache_size())
 
     def cache_size(self) -> int:
         return sum(path.stat().st_size for path in self.cache_dir.iterdir() if path.is_file())
@@ -502,7 +491,4 @@ def main() -> None:
     if not config.get("immich_url") or not config.get("immich_api_key"):
         LOG.error("Configure immich_url and immich_api_key before starting Immich Frames")
     frame_app = FrameApp(config, path.parent)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(frame_app.start_existing())
     web.run_app(frame_app.application(), host="0.0.0.0", port=8099)

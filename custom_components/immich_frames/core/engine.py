@@ -6,6 +6,7 @@ from typing import Any
 from .settings import *  # noqa: F403
 from .models import FrameSnapshot
 from .rendering import render
+from .filtering import safe_filter
 from .errors import ImmichApiError, NoMatchingPhotos
 
 def selected_album_ids(options: dict[str, Any]) -> list[str]:
@@ -62,19 +63,21 @@ def _datetime(value: str | None) -> datetime | None:
 
 
 async def select_candidates(client, options, *, now=None, today=None, size=200):
+    options = FrameSettings.from_options(options).options()
     source = options.get(CONF_SOURCE, "all")
-    filter_value = {} if source in ("all", "album") else dict(options.get("filter") or {})
-    filter_value.update({"type": {"eq": "IMAGE"}, "trashedAt": {"eq": None}, "visibility": {"eq": "timeline"}})
+    filter_value = safe_filter(dict(options.get("filter") or {}))
     filter_value = _with_time_range(
         filter_value, options.get(CONF_TIME_RANGE, DEFAULT_TIME_RANGE), now or datetime.now(timezone.utc),
     )
+    search_options = {"size": size, "order_field": options["order_field"], "order_direction": options["order_direction"] if options["order_direction"] != "random" else "desc"}
+    random_order = options["order_direction"] == "random"
     if source == "album":
         album_ids = selected_album_ids(options)
         if not album_ids:
             raise ImmichApiError("Choose at least one album")
-        candidates = await client.search({**filter_value, "albumIds": {"any": album_ids}}, random=True)
+        candidates = await client.search({**filter_value, "albumIds": {"any": album_ids}}, random=random_order, **search_options)
     elif source == "smart":
-        candidates = await client.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value)
+        candidates = await client.smart_search(options.get(CONF_SMART_QUERY, ""), filter_value, size=size, reference_asset_id=options.get("smart_reference_asset_id"))
     elif source == "memories":
         anchor = today or date.today()
         assets: list[dict[str, Any]] = []
@@ -82,16 +85,17 @@ async def select_candidates(client, options, *, now=None, today=None, size=200):
             assets.extend(await client.memories((anchor + timedelta(days=offset)).isoformat()))
         ids = list(dict.fromkeys(asset.get("id") for memory in assets for asset in memory.get("assets", []) if asset.get("id")))
         memory_filter = _with_memory_ids(filter_value, ids[:1000])
-        candidates = await client.search(memory_filter) if memory_filter else []
+        candidates = await client.search(memory_filter, **search_options) if memory_filter else []
         if not candidates and options.get(CONF_FALLBACK):
-            candidates = await client.search(filter_value, random=True)
+            candidates = await client.search(filter_value, random=random_order, **search_options)
     else:
-        candidates = await client.search(filter_value, random=True)
+        candidates = await client.search(filter_value, random=random_order, **search_options)
     orientation = options.get(CONF_ORIENTATION, "any")
     candidates = [item for item in candidates if orientation == "any" or item["orientation"] == orientation]
     return candidates
 
 async def snapshot(client, options: dict[str, Any], generation: int, recent_ids: set[str]) -> FrameSnapshot:
+    options = FrameSettings.from_options(options).options()
     candidates = await select_candidates(client, options)
     if options.get(CONF_MODE) == "pairs_only":
         # This setting controls portraits; landscapes and squares still
@@ -125,10 +129,10 @@ async def snapshot(client, options: dict[str, Any], generation: int, recent_ids:
         raise ImmichApiError("Could not decode the photo preview from Immich") from exc
     return FrameSnapshot(output, generation, tuple(photos), layout, datetime.now(timezone.utc), len(candidates))
 
-def companion(primary: dict[str, Any], candidates: list[dict[str, Any]], window_days: int) -> dict[str, Any] | None:
+def companion(primary: dict[str, Any], candidates: list[dict[str, Any]], window_days: int, orientation: str = "portrait") -> dict[str, Any] | None:
     capture = primary.get("capture_dt")
-    if not capture or primary.get("orientation") != "portrait":
+    if not capture or primary.get("orientation") != orientation:
         return None
-    eligible = [item for item in candidates if item.get("orientation") == "portrait" and item.get("capture_dt") and abs((item["capture_dt"].date() - capture.date()).days) <= window_days]
+    eligible = [item for item in candidates if item["id"] != primary["id"] and (not primary.get("checksum") or item.get("checksum") != primary["checksum"]) and item.get("orientation") == orientation and item.get("capture_dt") and abs((item["capture_dt"].date() - capture.date()).days) <= window_days]
     return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 

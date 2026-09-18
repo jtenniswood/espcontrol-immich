@@ -19,8 +19,7 @@ def test_cached_slide_is_restored(tmp_path: Path) -> None:
     (app.cache_dir / "frame.jpg").write_bytes(slide.jpeg)
     (app.cache_dir / "frame.json").write_text(json.dumps(slide.state()))
     app.restore_cached(frame)
-    assert app.generation["frame"] == 4
-    assert app.slides["frame"].primary.id == "asset"
+    assert "frame" not in app.slides  # Legacy records cannot prove source/account.
 
 
 def test_cache_limit_evicts_old_files(tmp_path: Path) -> None:

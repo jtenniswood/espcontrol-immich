@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import asdict
 from pathlib import Path
 
 from .models import FrameConfig
@@ -20,19 +21,20 @@ class Storage:
         frames = []
         for row in rows:
             config = json.loads(row[0])
+            version = config.get("settings_version", 1)
+            if version > 2:
+                raise ValueError("Frame settings require a newer application version")
+            if version == 1:
+                config.setdefault("fit", "cover")
+                config["screen_shape"] = "landscape"  # The previous app always rendered this shape.
+                config["photo_fit"] = "show_full" if config["fit"] == "contain" else "crop"
+                config["settings_version"] = 2
             config.pop("pairs_only", None)  # Retired setting in older saved frames.
             frames.append(FrameConfig(**config))
         return frames
 
     def save_frame(self, frame: FrameConfig) -> None:
-        data = {
-            "frame_id": frame.frame_id, "name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days,
-            "slideshow_interval": frame.slideshow_interval, "filter": frame.filter,
-            "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
-            "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id,
-            "order_field": frame.order_field, "order_direction": frame.order_direction,
-            "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation,
-        }
+        data = asdict(frame)
         self.db.execute("INSERT OR REPLACE INTO frames(id,name,config) VALUES(?,?,?)", (frame.frame_id, frame.name, json.dumps(data)))
         self.db.commit()
 

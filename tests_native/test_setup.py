@@ -32,7 +32,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         await hass.async_block_till_done()
         coordinator = hass.data[DOMAIN][entry.entry_id]
         assert coordinator.data.primary["id"] == asset["id"]
-        assert coordinator.cache_path.with_suffix(".jpg").is_file()
+        assert coordinator.cache_path.with_suffix(".json").is_file()
         assert hass.states.get("image.immich_frame_image") is not None
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"

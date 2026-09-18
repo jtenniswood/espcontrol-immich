@@ -120,7 +120,7 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         old_coordinator = hass.data[DOMAIN][entry.entry_id]
         result = await submit(hass, await reconfigure(hass, entry), source="Albums")
         assert result["data_schema"]({})["album_ids"] == ["a"]
-        assert entry.data["album_id"] == "a"
+        assert entry.data["album_ids"] == ["a"]
         result = await submit(hass, result, album_ids=["a", "b"])
         result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()

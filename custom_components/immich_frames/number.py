@@ -6,6 +6,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, DOMAIN
+from .core.settings import SETTING_BY_KEY
 from .entity import ImmichFrameEntity
 
 
@@ -17,8 +18,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 class IntervalNumber(ImmichFrameEntity, NumberEntity):
     _attr_name = "Photo timer"
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_native_min_value = 10
-    _attr_native_max_value = 86400
+    _attr_native_min_value = SETTING_BY_KEY[CONF_INTERVAL].minimum
+    _attr_native_max_value = SETTING_BY_KEY[CONF_INTERVAL].maximum
     _attr_native_step = 1
     _attr_native_unit_of_measurement = "s"
     _attr_mode = NumberMode.BOX
@@ -45,8 +46,8 @@ class PairWindowNumber(ImmichFrameEntity, NumberEntity):
     _attr_translation_key = "pair_window_days"
     _attr_icon = "mdi:calendar-range"
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_native_min_value = 0
-    _attr_native_max_value = 7
+    _attr_native_min_value = SETTING_BY_KEY[CONF_PAIR_WINDOW].minimum
+    _attr_native_max_value = SETTING_BY_KEY[CONF_PAIR_WINDOW].maximum
     _attr_native_step = 1
     _attr_native_unit_of_measurement = "d"
     _attr_mode = NumberMode.BOX
