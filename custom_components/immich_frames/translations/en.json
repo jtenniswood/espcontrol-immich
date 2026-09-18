@@ -106,12 +106,10 @@
         "description": "Choose how closely the dates of paired photos should match, then use the button below to save the frame.",
         "data": {
           "pair_window_days": "Pair window (days)",
-          "pairs_only": "Only show portraits in pairs",
           "navigation": "Next action"
         },
         "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
-          "pairs_only": "Skip portraits without a matching companion. Landscapes and square photos still appear individually when included by the orientation filter.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }
@@ -175,11 +173,6 @@
     "number": {
       "pair_window_days": {
         "name": "Pairing window"
-      }
-    },
-    "switch": {
-      "pairs_only": {
-        "name": "Only show portraits in pairs"
       }
     }
   },
@@ -275,12 +268,10 @@
         "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
         "data": {
           "pair_window_days": "Pair window (days)",
-          "pairs_only": "Only show portraits in pairs",
           "navigation": "Next action"
         },
         "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
-          "pairs_only": "Skip portraits without a matching companion. Landscapes and square photos still appear individually when included by the orientation filter.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }

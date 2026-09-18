@@ -78,7 +78,7 @@ async def test_memories_fetch_metadata_with_supported_id_filters(asset, jpeg, mo
 
     with patch.object(ImmichApi, "_request", request):
         snapshot = await ImmichApi("http://immich.test", "key").snapshot({
-            "source": "memories", "memory_window_days": 1, "mode": mode, "pairs_only": True,
+            "source": "memories", "memory_window_days": 1, "mode": mode,
         }, 1, set())
     assert snapshot.primary["id"] == A
     assert snapshot.primary["exif"]["city"] == "Bath"

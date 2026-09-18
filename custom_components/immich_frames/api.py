@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
-    CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+    CONF_ORIENTATION, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 from .rendering import background_colour
@@ -226,17 +226,9 @@ class ImmichApi:
         primary = next((item for item in candidates if item["id"] not in recent_ids), candidates[0])
         photos = [primary]
         if options.get(CONF_MODE) == "pairs":
-            # Keep source order (unseen first); pairing must not exclude landscapes.
-            for candidate in sorted(candidates, key=lambda item: item["id"] in recent_ids):
-                companion = self._companion(candidate, [item for item in candidates if item["id"] != candidate["id"]], int(options.get(CONF_PAIR_WINDOW, 0)))
-                if companion:
-                    photos = [candidate, companion]
-                    break
-                if candidate["orientation"] != "portrait" or not options.get(CONF_PAIRS_ONLY):
-                    photos = [candidate]
-                    break
-            else:
-                raise ImmichApiError("No matching portrait pair is available")
+            companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)))
+            if companion:
+                photos.append(companion)
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
             output, layout = await asyncio.get_running_loop().run_in_executor(

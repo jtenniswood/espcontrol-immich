@@ -12,7 +12,7 @@ from homeassistant.helpers import selector
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
+    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
     PHOTO_FIT_CROP, PHOTO_FIT_FULL, PHOTO_SELECTION_DEFAULTS, SCREEN_SHAPE_LABELS, photo_fit,
 )
@@ -220,8 +220,7 @@ class FrameSettingsFlow:
                 return await self.async_step_photos()
             return await self._async_finish_settings()
         return self.async_show_form(step_id="pairing", data_schema=vol.Schema({
-            vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
-            vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
+            vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             **self._navigation("Back to photo display", save=True),
         }), last_step=True)
 

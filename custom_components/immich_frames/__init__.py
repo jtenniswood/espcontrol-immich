@@ -9,6 +9,10 @@ from .coordinator import FrameCoordinator
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    if "pairs_only" in entry.data:
+        data = dict(entry.data)
+        data.pop("pairs_only")
+        hass.config_entries.async_update_entry(entry, data=data)
     # Remove retired entities even when Immich is offline during this upgrade.
     registry = er.async_get(hass)
     retired_ids = {
@@ -17,6 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "sensor": ("photo_latitude", "photo_longitude", "photo_filename", "slide", "status", "matching_assets"),
             "binary_sensor": ("using_cache", "immich_connected"),
             "select": ("metadata_role",),
+            "switch": ("pairs_only",),
         }.items()
         for key in keys
     }
