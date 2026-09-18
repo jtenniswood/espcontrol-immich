@@ -14,11 +14,10 @@ from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
     CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
-    PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
+    PHOTO_FIT_CROP, PHOTO_FIT_FULL, SCREEN_SHAPE_LABELS, photo_fit,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
-SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:10, 1280 × 800)", "portrait": "Portrait (10:16, 800 × 1280)", "square": "Square (1:1, 720 × 720)"}
 MODE_LABELS = {"single": "Single image", "pairs": "Pair portrait photos"}
 ORIENTATION_LABELS = {"any": "Mixed (landscapes and portraits)", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
 SOURCE_FIELDS = {

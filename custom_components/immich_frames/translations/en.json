@@ -74,15 +74,15 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Choose a name, output size and display mode. Continue to photo display settings.",
+        "description": "Choose a name, target display and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Screen shape",
+          "screen_shape": "Target display",
           "mode": "Display mode",
           "navigation": "Next action"
         },
         "data_description": {
-          "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
+          "screen_shape": "Choose your EspControl device to match its output resolution. The 10.1-inch and 7-inch choices cover all panel revisions. The 10.1-inch display also has a portrait option. This does not change which photo orientations are selected.",
           "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
@@ -151,11 +151,14 @@
         }
       },
       "output_size": {
-        "name": "Target output size",
+        "name": "Target display",
         "state": {
-          "landscape": "Landscape (16:10, 1280 × 800)",
-          "portrait": "Portrait (10:16, 800 × 1280)",
-          "square": "Square (1:1, 720 × 720)"
+          "landscape": "10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)",
+          "jc1060p470": "7-inch Guition JC1060P470 (1024 × 600, landscape)",
+          "jc4880p443": "4.3-inch Guition JC4880P443 (480 × 800, portrait)",
+          "square": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
+          "4848s040": "4-inch Guition 4848S040 (480 × 480, square)",
+          "portrait": "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)"
         }
       }
     }
@@ -220,15 +223,15 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Choose a name, output size and display mode. Continue to photo display settings.",
+        "description": "Choose a name, target display and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Screen shape",
+          "screen_shape": "Target display",
           "mode": "Display mode",
           "navigation": "Next action"
         },
         "data_description": {
-          "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
+          "screen_shape": "Choose your EspControl device to match its output resolution. The 10.1-inch and 7-inch choices cover all panel revisions. The 10.1-inch display also has a portrait option. This does not change which photo orientations are selected.",
           "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }

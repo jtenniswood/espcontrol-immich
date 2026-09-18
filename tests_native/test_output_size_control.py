@@ -31,19 +31,27 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
         return jpeg
 
     registry = er.async_get(hass)
+    # Renaming the control to Target display must preserve existing dashboard references.
+    registry.async_get_or_create(
+        "select", DOMAIN, f"{entry.entry_id}_output_size", config_entry=entry,
+        suggested_object_id="frame_target_output_size", original_name="Target output size",
+    )
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         entity_id = registry.async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_output_size")
+        assert entity_id == "select.frame_target_output_size"
         entity = registry.async_get(entity_id)
         assert entity.entity_category == EntityCategory.CONFIG
-        assert entity.original_name == "Target output size"
+        assert entity.original_name == "Target display"
         device_id = entity.device_id
         assert hass.states.get(entity_id).state == "landscape"
-        assert hass.states.get(entity_id).attributes["options"] == ["landscape", "portrait", "square"]
+        assert hass.states.get(entity_id).attributes["options"] == [
+            "landscape", "jc1060p470", "jc4880p443", "square", "4848s040", "portrait",
+        ]
 
         # Exercise actual service calls, including changing back to landscape.
-        for shape, label, size in [SHAPES[1], SHAPES[2], SHAPES[0]]:
+        for shape, label, size in SHAPES[1:] + SHAPES[:1]:
             assert async_translate_state(hass, shape, "select", DOMAIN, entity.translation_key, None) == label
             previous = hass.data[DOMAIN][entry.entry_id]
             await hass.services.async_call("select", "select_option", {
@@ -67,6 +75,16 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             assert result["data_schema"]({})["screen_shape"] == label
             hass.config_entries.options.async_abort(result["flow_id"])
 
+            # Each device preset must restore its own image after an offline restart.
+            assert await hass.config_entries.async_unload(entry.entry_id)
+            with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
+                assert await hass.config_entries.async_setup(entry.entry_id)
+                await hass.async_block_till_done()
+                coordinator = hass.data[DOMAIN][entry.entry_id]
+                assert hass.states.get(entity_id).state == shape
+                assert coordinator.data.using_cache
+                assert Image.open(BytesIO(coordinator.data.image)).size == size
+
         # Selecting the existing size should not restart the slideshow.
         await hass.services.async_call("select", "select_option", {
             "entity_id": entity_id, "option": "landscape",
@@ -84,9 +102,16 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, jpeg):
+@pytest.mark.parametrize("old,new,size", [
+    ("landscape", "portrait", (800, 1280)),
+    ("square", "4848s040", (480, 480)),
+    ("landscape", "jc1060p470", (1024, 600)),
+    ("portrait", "jc4880p443", (480, 800)),
+])
+async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, jpeg, old, new, size):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
         "url": "http://immich.test", "api_key": "key", "source": "all",
+        "screen_shape": old,
     })
     entry.add_to_hass(hass)
 
@@ -99,14 +124,14 @@ async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, j
     entity_id = er.async_get(hass).async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_output_size")
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         await hass.services.async_call("select", "select_option", {
-            "entity_id": entity_id, "option": "portrait",
+            "entity_id": entity_id, "option": new,
         }, blocking=True)
         await hass.async_block_till_done()
-        assert entry.data["screen_shape"] == "portrait"
+        assert entry.data["screen_shape"] == new
         assert entry.entry_id not in hass.data[DOMAIN]
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.states.get(entity_id).state == "portrait"
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (800, 1280)
+        assert hass.states.get(entity_id).state == new
+        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == size
         assert await hass.config_entries.async_unload(entry.entry_id)
