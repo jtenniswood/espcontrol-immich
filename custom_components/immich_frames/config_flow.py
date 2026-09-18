@@ -12,8 +12,9 @@ from homeassistant.helpers import selector
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
+    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
+    PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
@@ -181,7 +182,11 @@ class FrameSettingsFlow:
                 return await self.async_step_pairing()
             return await self._async_finish_settings()
         return self.async_show_form(step_id="photos", data_schema=vol.Schema({
-            vol.Required(CONF_ORIGINAL_ASPECT_RATIO, default=self._data.get(CONF_ORIGINAL_ASPECT_RATIO, False)): bool,
+            vol.Required(CONF_PHOTO_FIT, default=photo_fit(self._data)): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[
+                    {"value": PHOTO_FIT_CROP, "label": "Crop to fit"},
+                    {"value": PHOTO_FIT_FULL, "label": "Show full image"},
+                ], mode=selector.SelectSelectorMode.DROPDOWN)),
             vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
             vol.Required(CONF_INTERVAL, default=self._data.get(CONF_INTERVAL, DEFAULT_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
             **_navigation("Back to frame setup", save=not pairs),
@@ -221,6 +226,7 @@ class FrameSettingsFlow:
                 for field in fields:
                     data.pop(field, None)
         data.pop("filter", None)
+        data.pop(CONF_ORIGINAL_ASPECT_RATIO, None)
         return await self._async_save_settings(data, name, unique_id)
 
 
