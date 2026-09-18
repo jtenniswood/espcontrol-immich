@@ -1,3 +1,4 @@
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -31,6 +32,17 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert hass.states.get("image.immich_frame_image") is not None
         assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
+        # Check the states published to Home Assistant, including valid zero ratings.
+        snapshot = coordinator.data
+        coordinator.async_set_updated_data(replace(snapshot, photos=({"rating": 0},)))
+        assert hass.states.get("sensor.immich_frame_rating").state == "0"
+        coordinator.async_set_updated_data(replace(snapshot, photos=({},)))
+        for name in ("date", "location", "filename", "people", "tags", "rating", "camera"):
+            assert hass.states.get(f"sensor.immich_frame_{name}").state == ""
+        coordinator.async_set_updated_data(replace(snapshot, photos=({"captured": "invalid"},)))
+        assert hass.states.get("sensor.immich_frame_date").state == ""
+        coordinator.async_set_updated_data(snapshot)
+        assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):

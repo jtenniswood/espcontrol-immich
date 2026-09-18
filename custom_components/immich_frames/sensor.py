@@ -40,4 +40,5 @@ class PhotoSensor(ImmichFrameEntity, SensorEntity):
     @property
     def native_value(self):
         data = self.coordinator.data
-        return self._value(self.selected_photo, data) if data else None
+        value = self._value(self.selected_photo, data) if data else None
+        return "" if value is None else value
