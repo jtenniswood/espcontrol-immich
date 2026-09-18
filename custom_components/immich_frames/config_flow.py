@@ -25,29 +25,8 @@ SOURCE_FIELDS = {
 }
 
 
-def _navigation(back_label: str, *, save: bool = False, change_source: bool = False) -> dict:
-    options = {"continue": "Save frame" if save else "Continue", "back": back_label}
-    if change_source:
-        options["source"] = "Change photo source"
-    return {vol.Optional("navigation", default="continue"): selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=[{"value": value, "label": label} for value, label in options.items()],
-            mode=selector.SelectSelectorMode.DROPDOWN,
-        )
-    )}
-
-
 class FrameSettingsFlow:
     """Shared photo source and frame name forms for setup and later edits."""
-
-    def _navigation(self, back_label: str, *, save: bool = False, change_source: bool = False) -> dict:
-        # New frames advance with the form button; existing frames retain back/edit actions.
-        if self._settings_entry is None:
-            return {}
-        return _navigation(back_label, save=save, change_source=change_source)
-
-    def _remember(self, user_input: dict[str, Any]) -> None:
-        self._data.update({key: value for key, value in user_input.items() if key != "navigation"})
 
     async def async_step_source(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         if user_input:
@@ -74,9 +53,6 @@ class FrameSettingsFlow:
         }), errors=errors or {})
 
     async def async_step_album(self, user_input: dict[str, Any] | None = None):
-        if user_input is not None and user_input.get("navigation") == "back":
-            self._remember(user_input)
-            return await self.async_step_source()
         api = ImmichApi(self._data[CONF_URL], self._data[CONF_API_KEY])
         try:
             albums = await api.albums()
@@ -113,50 +89,33 @@ class FrameSettingsFlow:
                 options=options, mode=selector.SelectSelectorMode.DROPDOWN,
                 custom_value=False, multiple=True,
             )),
-            **self._navigation("Back to photo source"),
         }), errors=errors)
 
     async def async_step_memories(self, user_input: dict[str, Any] | None = None):
         if user_input:
-            self._remember(user_input)
-            if user_input.get("navigation") == "back":
-                return await self.async_step_source()
+            self._data.update(user_input)
             return await self.async_step_display()
         return self.async_show_form(step_id="memories", data_schema=vol.Schema({
             vol.Required(CONF_MEMORY_WINDOW, default=self._data.get(CONF_MEMORY_WINDOW, 2)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_FALLBACK, default=self._data.get(CONF_FALLBACK, False)): bool,
-            **self._navigation("Back to photo source"),
         }))
 
     async def async_step_smart(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         if user_input:
-            self._remember(user_input)
-            if user_input.get("navigation") == "back":
-                return await self.async_step_source()
+            self._data.update(user_input)
             if not str(user_input.get(CONF_SMART_QUERY, "")).strip():
                 errors["base"] = "smart_query_required"
             else:
                 return await self.async_step_display()
         return self.async_show_form(step_id="smart", data_schema=vol.Schema({
             vol.Optional(CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")): str,
-            **self._navigation("Back to photo source"),
         }), errors=errors)
 
     async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         errors = errors or {}
-        initial_setup = self._settings_entry is None
-        source_step = self._data.get(CONF_SOURCE)
-        if initial_setup and source_step == "memories":
-            source_step = None
         if user_input:
-            self._remember(user_input)
-            if user_input.get("navigation") == "source":
-                return await self.async_step_source()
-            if user_input.get("navigation") == "back":
-                if source_step in SOURCE_FIELDS:
-                    return await getattr(self, f"async_step_{source_step}")()
-                return await self.async_step_source()
+            self._data.update(user_input)
             errors = self._name_errors()
             if not errors:
                 return await self._async_finish_settings()
@@ -170,10 +129,6 @@ class FrameSettingsFlow:
             name = f"Immich Frame {suffix}"
             suffix += 1
         fields = {vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str}
-        fields.update(self._navigation(
-            {"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(source_step, "Back to photo source"),
-            change_source=source_step in SOURCE_FIELDS, save=True,
-        ))
         return self.async_show_form(step_id="display", data_schema=vol.Schema(fields), errors=errors, last_step=True)
 
     def _name_errors(self) -> dict[str, str]:
@@ -203,7 +158,7 @@ class FrameSettingsFlow:
         data[CONF_PHOTO_FIT] = photo_fit(data)
         name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
         unique_id = f"{data[CONF_URL]}|{name}"
-        # Keep drafts while navigating, but save only the active source's filters.
+        # Save only the active source's filters.
         for source, fields in SOURCE_FIELDS.items():
             if source != data.get(CONF_SOURCE):
                 for field in fields:

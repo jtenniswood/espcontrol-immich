@@ -38,11 +38,7 @@
         "title": "Choose Immich albums",
         "description": "Choose albums to show together.",
         "data": {
-          "album_ids": "Albums",
-          "navigation": "Next action"
-        },
-        "data_description": {
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "album_ids": "Albums"
         }
       },
       "memories": {
@@ -50,36 +46,28 @@
         "description": "Set the date range used to find memories around today.",
         "data": {
           "memory_window_days": "Memory window (days)",
-          "fallback_to_all": "Fall back to All photos when memories are empty",
-          "navigation": "Next action"
+          "fallback_to_all": "Fall back to All photos when memories are empty"
         },
         "data_description": {
           "memory_window_days": "How many days before and after today to check when using Memories.",
-          "fallback_to_all": "Use the All photos source if Immich has no matching memories.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "fallback_to_all": "Use the All photos source if Immich has no matching memories."
         }
       },
       "smart": {
         "title": "Configure Keywords",
         "description": "Enter keywords describing the photos you want to find.",
         "data": {
-          "smart_query": "Keywords",
-          "navigation": "Next action"
+          "smart_query": "Keywords"
         },
         "data_description": {
-          "smart_query": "Enter a description such as “beach at sunset”.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "smart_query": "Enter a description such as “beach at sunset”."
         }
       },
       "display": {
         "title": "Set up the frame",
         "description": "Name your frame, then save. Display settings are available on the frame’s device page.",
         "data": {
-          "frame_name": "Frame name",
-          "navigation": "Next action"
-        },
-        "data_description": {
-          "navigation": "When editing an existing frame, choose an action, then use the button below. Going back keeps your selections."
+          "frame_name": "Frame name"
         }
       }
     },
@@ -155,11 +143,7 @@
         "title": "Choose Immich albums",
         "description": "Choose albums to show together.",
         "data": {
-          "album_ids": "Albums",
-          "navigation": "Next action"
-        },
-        "data_description": {
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "album_ids": "Albums"
         }
       },
       "memories": {
@@ -167,36 +151,28 @@
         "description": "Set the date range used to find memories around today.",
         "data": {
           "memory_window_days": "Memory window (days)",
-          "fallback_to_all": "Fall back to All photos when memories are empty",
-          "navigation": "Next action"
+          "fallback_to_all": "Fall back to All photos when memories are empty"
         },
         "data_description": {
           "memory_window_days": "How many days before and after today to check when using Memories.",
-          "fallback_to_all": "Use the All photos source if Immich has no matching memories.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "fallback_to_all": "Use the All photos source if Immich has no matching memories."
         }
       },
       "smart": {
         "title": "Configure Keywords",
         "description": "Enter keywords describing the photos you want to find.",
         "data": {
-          "smart_query": "Keywords",
-          "navigation": "Next action"
+          "smart_query": "Keywords"
         },
         "data_description": {
-          "smart_query": "Enter a description such as “beach at sunset”.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "smart_query": "Enter a description such as “beach at sunset”."
         }
       },
       "display": {
         "title": "Set up the frame",
         "description": "Name your frame, then save. Display settings are available on the frame’s device page.",
         "data": {
-          "frame_name": "Frame name",
-          "navigation": "Next action"
-        },
-        "data_description": {
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "frame_name": "Frame name"
         }
       }
     },
@@ -210,7 +186,7 @@
       "albums_unavailable": "Could not load albums from Immich. Choose Albums to retry, or select another photo source.",
       "no_albums": "No albums are available to this Immich account. Create or share an album in Immich, then choose Albums to retry, or select All photos.",
       "album_unavailable": "One or more selected albums are no longer available. Check the updated list and select the albums to use.",
-      "album_required": "Choose at least one album to continue, or select Back to photo source.",
+      "album_required": "Choose at least one album to continue.",
       "name_required": "Enter a name for this frame.",
       "name_in_use": "Another frame on this server already uses this name. Choose a different name."
     }

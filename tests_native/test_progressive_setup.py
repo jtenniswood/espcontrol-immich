@@ -35,7 +35,7 @@ async def start(hass, route, source="All photos"):
     with patch("custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}]):
         result = await manager.async_configure(result["flow_id"], {"source": source})
         if source != "All photos":
-            assert ("navigation" in result["data_schema"].schema) is (route != "setup")
+            assert "navigation" not in result["data_schema"].schema
             values = {"Albums": {"album_ids": ["a"]}, "Memories": {}, "Keywords": {"smart_query": "beach"}}
             result = await manager.async_configure(result["flow_id"], values[source])
     return manager, result, entry
@@ -43,13 +43,9 @@ async def start(hass, route, source="All photos"):
 
 def check_form(result, step, fields, final, route):
     assert result["step_id"] == step
-    expected_fields = set(fields) if route == "setup" else {*fields, "navigation"}
+    expected_fields = set(fields)
     assert set(result["data_schema"].schema) == expected_fields
     assert result["last_step"] is final
-    if route != "setup":
-        navigation = result["data_schema"].schema["navigation"]
-        assert navigation.config["mode"] == "dropdown"
-        assert navigation.config["options"][0]["label"] == ("Save frame" if final else "Continue")
     # Catch untranslated raw identifiers in both setup and Configure forms.
     section = "options" if route == "options" else "config"
     component = Path(__file__).parents[1] / "custom_components" / DOMAIN
@@ -88,13 +84,11 @@ async def test_source_edits_save_after_name_and_keep_device_settings(hass, route
 
 
 @pytest.mark.parametrize("route", ["options", "reconfigure"])
-async def test_cancel_preserves_entry_and_name_draft_survives_back(hass, route):
+async def test_cancel_preserves_entry(hass, route):
     manager, result, entry = await start(hass, route)
     before = dict(entry.data)
-    result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen", "navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     check_form(result, "display", {"frame_name"}, True, route)
-    assert result["data_schema"]({})["frame_name"] == "Kitchen"
+    assert result["data_schema"]({})["frame_name"] == "Frame"
     manager.async_abort(result["flow_id"])
     assert dict(entry.data) == before
 

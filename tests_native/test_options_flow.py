@@ -103,14 +103,13 @@ async def test_source_forms_edit_saved_settings(hass, source, old, new):
     assert "navigation" not in entry.data
 
 
-async def test_cancel_discards_changes_and_back_preserves_draft(hass):
+async def test_cancel_discards_source_changes(hass):
     entry = frame(hass, "smart", smart_query="beach")
     before = dict(entry.data)
     result = await open_settings(hass, entry, "smart")
     result = await submit(hass, result, smart_query="mountains")
-    result = await submit(hass, result, frame_name="Draft", navigation="back")
-    assert result["step_id"] == "smart"
-    assert result["data_schema"]({})["smart_query"] == "mountains"
+    assert result["step_id"] == "display"
+    assert set(result["data_schema"].schema) == {"frame_name"}
     hass.config_entries.options.async_abort(result["flow_id"])
     assert dict(entry.data) == before
 
