@@ -82,7 +82,6 @@ class FrameConfig:
     connection_id: str = "default"
     mode: Mode = "single"
     pair_window_days: int = 0
-    pairs_only: bool = False
     slideshow_interval: int = 30
     filter: dict[str, Any] = field(default_factory=dict)
     source: Literal["all", "album", "filter", "memories", "smart"] = "all"

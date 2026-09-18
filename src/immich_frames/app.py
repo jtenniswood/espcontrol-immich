@@ -90,7 +90,7 @@ class FrameApp:
                 interval = max(10, min(86400, int(command.split(":", 1)[1])))
             except ValueError:
                 return
-            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "pairs_only": frame.pairs_only, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
+            updated = self._frame_from_body({"name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days, "slideshow_interval": interval, "filter": frame.filter, "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all, "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id, "order_field": frame.order_field, "order_direction": frame.order_direction, "output_width": frame.output_width, "output_height": frame.output_height, "fit": frame.fit, "orientation": frame.orientation}, frame.frame_id)
             self.storage.save_frame(updated)
             if self.publisher:
                 self.publisher.publish_controls(updated, frame_id in self.paused)
@@ -104,7 +104,7 @@ class FrameApp:
             if not candidates and frame.source == "memories" and frame.fallback_to_all:
                 fallback = FrameConfig(
                     frame_id=frame.frame_id, name=frame.name, connection_id=frame.connection_id, mode=frame.mode, pair_window_days=frame.pair_window_days,
-                    pairs_only=frame.pairs_only, slideshow_interval=frame.slideshow_interval, filter=frame.filter,
+                    slideshow_interval=frame.slideshow_interval, filter=frame.filter,
                     output_width=frame.output_width, output_height=frame.output_height, fit=frame.fit, orientation=frame.orientation,
                 )
                 candidates = await select_candidates(client, fallback, size=1000)
@@ -115,17 +115,9 @@ class FrameApp:
             primary = next((photo for photo in candidates if photo.id not in recent_ids), candidates[0])
             photos: tuple[Photo, ...] = (primary,)
             if frame.mode == "pairs":
-                for candidate in sorted(candidates, key=lambda photo: photo.id in recent_ids):
-                    companion = choose_companion(candidate, [photo for photo in candidates if photo.id != candidate.id], frame.pair_window_days)
-                    if companion:
-                        photos = (candidate, companion)
-                        break
-                    if candidate.orientation != "portrait" or not frame.pairs_only:
-                        photos = (candidate,)
-                        break
-                else:
-                    LOG.info("Frame %s has no matching portrait pair", frame.name)
-                    return
+                companion = choose_companion(primary, [photo for photo in candidates if photo.id != primary.id], frame.pair_window_days)
+                if companion:
+                    photos = (primary, companion)
             payloads = tuple(await asyncio.gather(*(client.thumbnail(photo.id) for photo in photos)))
             generation = self.generation.get(frame.frame_id, 0) + 1
             slide = render_slide(frame.frame_id, generation, photos, payloads, frame.output_width, frame.output_height, frame.fit)
@@ -221,7 +213,7 @@ class FrameApp:
             raise ValueError("connection_id is required")
         return FrameConfig(
             frame_id=frame_id or str(uuid.uuid4()), name=name, connection_id=connection_id, mode=mode,
-            pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))), pairs_only=bool(body.get("pairs_only", False)),
+            pair_window_days=max(0, min(7, int(body.get("pair_window_days", 0)))),
             slideshow_interval=max(10, min(86400, int(body.get("slideshow_interval", 30)))), filter=compile_filter(raw_filter),
             source=source, album_id=album_id, album_ids=album_ids, memory_window_days=max(0, min(7, int(body.get("memory_window_days", 2)))),
             fallback_to_all=bool(body.get("fallback_to_all", False)), smart_query=body.get("smart_query"),
@@ -233,7 +225,7 @@ class FrameApp:
         return web.Response(text="""<!doctype html><meta name=viewport content='width=device-width'><title>Immich Frames</title>
 <h1>Immich Frames</h1><p>Create a Home Assistant photo frame.</p>
 <form id=c><h2>Immich connection</h2><label>Name <input name=name required></label><label>URL <input name=url type=url required></label><label>Read-only API key <input name=api_key type=password required></label><button>Connect</button></form>
-<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Pair portrait photos</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label><input name=pairs_only type=checkbox> Only show portraits in pairs</label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
+<form id=f><label>Name <input name=name required></label><label>Connection <select name=connection_id id=connections></select></label><label>Source <select name=source><option value=all>All photos</option><option value=album>Albums</option><option value=memories>Memories</option><option value=smart>Keywords</option></select></label><fieldset id=album-picker hidden><legend>Albums</legend><label>Search albums <input id=album-search type=search></label><button id=reload-albums type=button>Reload albums</button><p id=album-status role=status></p><div id=album-options></div></fieldset><label>Keywords <input name=smart_query></label><label>Photo orientation filter <select name=orientation><option value=any>Mixed (landscapes and portraits)</option><option value=portrait>Portrait photos only</option><option value=landscape>Landscape photos only</option><option value=square>Square photos only</option></select></label><label>Mode <select name=mode><option value=single>Single image</option><option value=pairs>Pair portrait photos</option></select></label><label>Pair window (days) <input name=pair_window_days type=number min=0 max=7 value=0></label><label>Memory window (days) <input name=memory_window_days type=number min=0 max=7 value=2></label><label><input name=fallback_to_all type=checkbox> Fall back to normal filter if memories are empty</label><label>Order <select name=order_direction><option value=random>Random</option><option value=desc>Newest first</option><option value=asc>Oldest first</option></select></label><button>Create frame</button></form>
 <pre id=frames>Loading…</pre><script>
 const out=document.querySelector('#frames');
 const form=document.querySelector('#f');
@@ -300,7 +292,7 @@ form.onsubmit=async e=>{
   const data=Object.fromEntries(fields);
   data.album_ids=fields.getAll('album_ids');
   if(data.source==='album'&&!data.album_ids.length){albumStatus.textContent='Choose at least one album to continue.';return;}
-  for(const key of ['pairs_only','fallback_to_all']) data[key]=form.elements[key].checked;
+  data.fallback_to_all=form.elements.fallback_to_all.checked;
   for(const key of ['pair_window_days','memory_window_days']) data[key]=Number(data[key]||0);
   const response=await fetch('/api/frames',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
   if(!response.ok){alert(await response.text());return;}
@@ -350,7 +342,7 @@ load();
         return web.Response(status=204)
 
     async def export_config(self, _: web.Request) -> web.Response:
-        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "pairs_only": f.pairs_only, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "album_id": f.album_id, "album_ids": f.album_ids, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit, "orientation": f.orientation} for f in self.storage.list_frames()]})
+        return web.json_response({"frames": [{"frame_id": f.frame_id, "name": f.name, "connection_id": f.connection_id, "mode": f.mode, "pair_window_days": f.pair_window_days, "slideshow_interval": f.slideshow_interval, "filter": f.filter, "source": f.source, "album_id": f.album_id, "album_ids": f.album_ids, "memory_window_days": f.memory_window_days, "fallback_to_all": f.fallback_to_all, "smart_query": f.smart_query, "smart_reference_asset_id": f.smart_reference_asset_id, "order_field": f.order_field, "order_direction": f.order_direction, "output_width": f.output_width, "output_height": f.output_height, "fit": f.fit, "orientation": f.orientation} for f in self.storage.list_frames()]})
 
     async def import_config(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -390,7 +382,7 @@ load();
         try:
             updated = self._frame_from_body({
                 "name": body.get("name", frame.name), "connection_id": body.get("connection_id", frame.connection_id), "mode": body.get("mode", frame.mode),
-                "pair_window_days": body.get("pair_window_days", frame.pair_window_days), "pairs_only": body.get("pairs_only", frame.pairs_only),
+                "pair_window_days": body.get("pair_window_days", frame.pair_window_days),
                 "slideshow_interval": body.get("slideshow_interval", frame.slideshow_interval), "filter": body.get("filter", frame.filter),
                 "source": body.get("source", frame.source), "album_id": body.get("album_id", frame.album_id), "album_ids": body.get("album_ids", None if "album_id" in body else frame.album_ids), "memory_window_days": body.get("memory_window_days", frame.memory_window_days), "fallback_to_all": body.get("fallback_to_all", frame.fallback_to_all),
                 "smart_query": body.get("smart_query", frame.smart_query), "smart_reference_asset_id": body.get("smart_reference_asset_id", frame.smart_reference_asset_id),

@@ -53,8 +53,8 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         expected = {
             ("select", "photo_fit"): "Photo fit", ("select", "mode"): "Display mode",
             ("select", "orientation"): "Photo orientation", ("number", "pair_window_days"): "Pairing window",
-            ("switch", "pairs_only"): "Only show portraits in pairs",
         }
+        assert registry.async_get_entity_id("switch", DOMAIN, f"{entry.entry_id}_pairs_only") is None
         entity_ids = {item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
         for (domain, key), name in expected.items():
             entity = registry.async_get(registry.async_get_entity_id(domain, DOMAIN, f"{entry.entry_id}_{key}"))
@@ -73,20 +73,17 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "single"
         await set_value(hass, entry, "number", "pair_window_days", 3)
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
-        await set_value(hass, entry, "switch", "pairs_only", True)
-        # Square/landscape photos still appear on their own with pairs-only enabled.
+        # Square/landscape photos still appear on their own in pair mode.
         for orientation, expected_id in [("landscape", "wide"), ("square", "square"), ("portrait", asset["id"])]:
             await set_value(hass, entry, "select", "orientation", orientation)
             assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == expected_id
         assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
-        await set_value(hass, entry, "switch", "pairs_only", False)
         await set_value(hass, entry, "number", "interval", 75)
         assert entry.data["interval"] == 75
         assert entry.data["pair_window_days"] == 3
         assert entry.data["mode"] == "pairs"
         assert entry.data["photo_fit"] == "crop"
         assert entry.data["orientation"] == "portrait"
-        assert not entry.data["pairs_only"]
         assert {item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)} == entity_ids
 
         # Configure reads the values chosen on the device page.
@@ -112,7 +109,7 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
 
 @pytest.mark.parametrize("domain,key,value", [
     ("select", "mode", "pairs"), ("select", "orientation", "landscape"),
-    ("select", "photo_fit", "crop"), ("switch", "pairs_only", True),
+    ("select", "photo_fit", "crop"),
     ("number", "pair_window_days", 7),
 ])
 async def test_changed_settings_do_not_restore_incompatible_cached_photos(hass, asset, jpeg, domain, key, value):

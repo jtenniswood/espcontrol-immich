@@ -12,7 +12,6 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Photo fit | Select (Configuration) | Crop to fit or Show full image |
 | Display mode | Select (Configuration) | Single image or Pair portrait photos |
 | Photo orientation | Select (Configuration) | Mixed, portrait, landscape or square photos |
-| Only show portraits in pairs | Switch (Configuration) | Skip unmatched portraits in pair mode; landscapes and squares remain eligible |
 | Pairing window | Number (Configuration) | 0–7 days between paired portraits; 0 means the same date |
 | Slide interval | Number (Configuration) | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |

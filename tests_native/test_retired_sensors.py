@@ -11,14 +11,14 @@ RETIRED = (
     ("sensor", "photo_latitude"), ("sensor", "photo_longitude"), ("sensor", "photo_filename"),
     ("sensor", "slide"), ("sensor", "status"), ("binary_sensor", "using_cache"),
     ("sensor", "matching_assets"), ("binary_sensor", "immich_connected"),
-    ("select", "metadata_role"),
+    ("select", "metadata_role"), ("switch", "pairs_only"),
 )
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("online", [True, False])
 async def test_upgrade_removes_only_this_frames_retired_entities(hass, asset, jpeg, online):
-    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "key"})
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "key", "pairs_only": True})
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
     retired = [registry.async_get_or_create(
@@ -45,6 +45,7 @@ async def test_upgrade_removes_only_this_frames_retired_entities(hass, asset, jp
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id) is online
         await hass.async_block_till_done()
+        assert "pairs_only" not in entry.data
         assert all(registry.async_get(entity_id) is None for entity_id in retired)
         assert all(hass.states.get(entity_id) is None for entity_id in retired)
         assert registry.async_get(location) is not None
