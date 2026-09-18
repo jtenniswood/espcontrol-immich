@@ -31,7 +31,5 @@ def render_slide(frame_id: str, generation: int, photos: tuple[Photo, ...], payl
             canvas.paste(_fit(image, (width, height), fit), (0, 0))
         layout = "single"
     output = BytesIO()
-    canvas.save(output, format="JPEG", quality=95 if len(photos) == 2 else 85,
-                subsampling=0 if len(photos) == 2 else -1, optimize=True)
+    canvas.save(output, format="JPEG", quality=95, subsampling=0, optimize=True)
     return Slide(frame_id, generation, photos, output.getvalue(), layout)
-
