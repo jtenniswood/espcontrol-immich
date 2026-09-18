@@ -43,9 +43,9 @@ async def test_snapshot_fills_single_photo_even_when_companion_is_missing(asset,
     api._request = AsyncMock(side_effect=[[asset], png(photo)])
     snapshot = await api.snapshot({"mode": mode, "screen_shape": "landscape"}, 1, set())
     with Image.open(BytesIO(snapshot.image)) as rendered:
-        assert rendered.size == (1920, 1080)
+        assert rendered.size == (1280, 800)
         assert all(abs(a - b) <= 3 for a, b in zip(rendered.getpixel((0, 0)), (20, 50, 100)))
-        assert all(abs(a - b) <= 3 for a, b in zip(rendered.getpixel((960, 540)), (40, 100, 200)))
+        assert all(abs(a - b) <= 3 for a, b in zip(rendered.getpixel((640, 400)), (40, 100, 200)))
     assert snapshot.layout == "single"
 
 
@@ -53,14 +53,14 @@ async def test_snapshot_fills_single_photo_even_when_companion_is_missing(asset,
 def test_real_black_photo_edges_are_preserved(size):
     photo = Image.new("RGB", size, "black")
     photo.paste((240, 80, 40), (100, 100, size[0] - 100, size[1] - 100))
-    output, _ = ImmichApi._render([], [png(photo)], "square")
+    output, _ = ImmichApi._render([], [png(photo)])
     with Image.open(BytesIO(output)) as rendered:
-        left, top = (1080 - size[0]) // 2, (1080 - size[1]) // 2
-        for position in [(left + 20, 540), (left + size[0] - 20, 540),
-                         (540, top + 20), (540, top + size[1] - 20)]:
+        left, top = (1280 - size[0]) // 2, (800 - size[1]) // 2
+        for position in [(left + 20, 400), (left + size[0] - 20, 400),
+                         (640, top + 20), (640, top + size[1] - 20)]:
             assert max(rendered.getpixel(position)) < 5
         assert rendered.getpixel((0, 0))[0] > 110
-        assert rendered.getpixel((540, 540))[0] > 230
+        assert rendered.getpixel((640, 400))[0] > 230
 
 
 def test_exif_rotation_is_applied_before_placing_photo():
@@ -69,8 +69,8 @@ def test_exif_rotation_is_applied_before_placing_photo():
     exif[274] = 6
     payload = BytesIO()
     photo.save(payload, "JPEG", exif=exif)
-    output, _ = ImmichApi._render([], [payload.getvalue()], "square")
+    output, _ = ImmichApi._render([], [payload.getvalue()])
     with Image.open(BytesIO(output)) as rendered:
         # The rotated portrait reaches above the horizontal source's old bounds.
-        assert rendered.getpixel((540, 200))[2] > 190
-        assert 95 <= rendered.getpixel((200, 540))[2] <= 105
+        assert rendered.getpixel((640, 200))[2] > 190
+        assert 95 <= rendered.getpixel((200, 400))[2] <= 105

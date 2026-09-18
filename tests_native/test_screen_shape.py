@@ -1,4 +1,4 @@
-"""Screen shape affects rendering independently of photo selection."""
+"""Legacy shape settings cannot bypass the fixed output frame."""
 from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
@@ -10,14 +10,14 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
 
-SHAPES = [("landscape", "Landscape (16:9)", (1920, 1080)),
-          ("portrait", "Portrait (9:16)", (1080, 1920)),
-          ("square", "Square (1:1)", (1080, 1080))]
+SHAPES = [("landscape", "Landscape (16:9)", (1280, 800)),
+          ("portrait", "Portrait (9:16)", (1280, 800)),
+          ("square", "Square (1:1)", (1280, 800))]
 
 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
 @pytest.mark.parametrize("paired", [False, True])
-async def test_snapshot_uses_screen_shape_without_filtering_photos(asset, jpeg, shape, label, size, paired):
+async def test_legacy_screen_shape_does_not_change_output_or_photo_selection(asset, jpeg, shape, label, size, paired):
     api = ImmichApi("http://immich.test", "key")
     assets = [asset, {**asset, "id": "second"}] if paired else [asset]
     api._request = AsyncMock(side_effect=[assets, *([jpeg] * len(assets))])
@@ -39,7 +39,7 @@ def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, 
         output = BytesIO()
         Image.new("RGB", (800, 400), color).save(output, "PNG")
         payloads.append(output.getvalue())
-    output, _ = ImmichApi._render([], payloads, shape)
+    output, _ = ImmichApi._render([], payloads)
     image = Image.open(BytesIO(output))
     size = (1280, 800) if paired else size
     width, height = size
@@ -67,7 +67,7 @@ def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, 
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize("shape,label,size", SHAPES)
 @pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
-async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, label, size, route):
+async def test_obsolete_output_settings_removed_on_all_edit_routes(hass, shape, label, size, route):
     if route == "setup":
         manager = hass.config_entries.flow
         with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"):
@@ -77,7 +77,7 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
         result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
     else:
         entry = MockConfigEntry(domain=DOMAIN, title="Frame", unique_id="http://immich.test|Frame", data={
-            "url": "http://immich.test", "api_key": "key", "frame_name": "Frame", "source": "all", "screen_shape": shape,
+            "url": "http://immich.test", "api_key": "key", "frame_name": "Frame", "source": "all", "screen_shape": shape, "original_aspect_ratio": True,
         })
         entry.add_to_hass(hass)
         if route == "options":
@@ -88,17 +88,20 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert result["data_schema"]({})["screen_shape"] == ("Landscape (16:9)" if route == "setup" else label)
+    assert "screen_shape" not in result["data_schema"]({})
+    assert "original_aspect_ratio" not in result["data_schema"]({})
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
-        result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
+        result = await manager.async_configure(result["flow_id"], {})
         await hass.async_block_till_done()
     saved = result["data"] if route == "setup" else entry.data
-    assert saved["screen_shape"] == shape
+    assert "screen_shape" not in saved
+    assert "original_aspect_ratio" not in saved
     assert saved["orientation"] == "any"
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpeg):
+@pytest.mark.parametrize("cached_size", [(1920, 1080), (1080, 1920), (300, 300), (1600, 1000), (1280, 800)])
+async def test_restart_only_restores_cache_with_current_dimensions(hass, asset, jpeg, cached_size):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
         "url": "http://immich.test", "api_key": "key", "source": "all",
     })
@@ -110,22 +113,20 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        manager = hass.config_entries.options
-        result = await manager.async_init(entry.entry_id)
-        result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
-        # A failing server must not bring back the old landscape cache after saving portrait.
-        with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            await manager.async_configure(result["flow_id"], {"screen_shape": "Portrait (9:16)"})
-            await hass.async_block_till_done()
-            assert entry.entry_id not in hass.data[DOMAIN]
-        assert await hass.config_entries.async_reload(entry.entry_id)
-        await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1080, 1920)
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        cache_path = coordinator.cache_path.with_suffix(".jpg")
         assert await hass.config_entries.async_unload(entry.entry_id)
+    # Simulate an image left by an older renderer while preserving its metadata.
+    Image.new("RGB", cached_size, "blue").save(cache_path, "JPEG")
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-        assert await hass.config_entries.async_setup(entry.entry_id)
+        ready = await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
-        assert snapshot.using_cache
-        assert Image.open(BytesIO(snapshot.image)).size == (1080, 1920)
-        assert await hass.config_entries.async_unload(entry.entry_id)
+        if cached_size == (1280, 800):
+            assert ready
+            snapshot = hass.data[DOMAIN][entry.entry_id].data
+            assert snapshot.using_cache
+            assert Image.open(BytesIO(snapshot.image)).size == (1280, 800)
+            assert await hass.config_entries.async_unload(entry.entry_id)
+        else:
+            assert not ready
+            assert entry.entry_id not in hass.data[DOMAIN]
