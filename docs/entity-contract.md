@@ -13,7 +13,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Portrait images | Select (Configuration) | Single portrait photos only; Single and Paired portrait photos; Paired portrait photos only |
 | Time range | Select (Configuration) | All time, or the last 1, 3 or 6 months; 1, 2, 3, 4, 5 or 10 years |
 | Photo orientation | Select (Configuration) | Mixed, portrait or landscape photos; legacy square-only values are retained |
-| Pairing window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
+| Portrait image window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
 | Slideshow Timer | Number (Controls) | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 

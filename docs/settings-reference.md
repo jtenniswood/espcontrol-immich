@@ -9,7 +9,7 @@ Generated from `core/settings.py`. Run `python scripts/product_contract.py` afte
 | Photo fit | `crop` — Crop to fit; `show_full` — Show full image | `show_full` |
 | Portrait images | `single` — Single portrait photos only; `pairs` — Single and Paired portrait photos; `pairs_only` — Paired portrait photos only | `single` |
 | Photo orientation | `any` — Mixed (landscapes and portraits); `portrait` — Portrait photos only; `landscape` — Landscape photos only | `any` |
-| Pairing window | 0–7 | `2` |
+| Portrait image window | 0–7 | `2` |
 | Slideshow Timer | 10–86400 | `30` |
 
 Screen outputs are exactly Landscape 1280 × 800, Portrait 800 × 1280, and Square 720 × 720.

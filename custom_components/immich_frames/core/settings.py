@@ -183,7 +183,7 @@ SETTINGS = (
     Setting(
         CONF_PAIR_WINDOW,
         DEFAULT_PAIR_WINDOW,
-        "Pairing window",
+        "Portrait image window",
         minimum=0,
         maximum=7,
         icon="mdi:calendar-range",

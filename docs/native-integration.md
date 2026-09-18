@@ -20,7 +20,7 @@ Use the frame device page for display and timing settings. See [the settings ref
 - **Photo fit:** Crop to fit fills the screen by trimming edges. Show full image retains the photo's proportions and fills empty space with a dim colour sampled from that photo.
 - **Portrait images:** Single portrait photos only; Single and Paired portrait photos; or Paired portrait photos only. Landscapes and square photos can still appear individually when permitted by the independent orientation filter.
 - **Photo orientation:** Mixed includes landscapes, portraits and square photos. Portrait-only and landscape-only choices restrict the source. Older square-only saved settings remain supported, but are not offered as a new choice.
-- **Pairing window:** 0–7 calendar days, default 2. Zero pairs photos captured on the same date. A pair stays side by side with a one-pixel black divider; each tile has its own fit and sampled background.
+- **Portrait image window:** 0–7 calendar days, default 2. Zero pairs photos captured on the same date. A pair stays side by side with a one-pixel black divider; each tile has its own fit and sampled background.
 - **Time range:** All time, or a rolling month/year range. It applies to every source, both photos in pairs, and the All photos fallback for Memories. Calendar ranges are measured in UTC.
 - **Slideshow Timer:** in the **Controls** panel alongside pause/resume and photo navigation; 10–86,400 seconds between slides. Changing this updates the timer without a reload.
 

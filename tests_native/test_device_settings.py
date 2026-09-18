@@ -52,7 +52,7 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         registry = er.async_get(hass)
         expected = {
             ("select", "photo_fit"): "Photo fit", ("select", "mode"): "Portrait images",
-            ("select", "orientation"): "Photo orientation", ("number", "pair_window_days"): "Pairing window",
+            ("select", "orientation"): "Photo orientation", ("number", "pair_window_days"): "Portrait image window",
         }
         assert registry.async_get_entity_id("switch", DOMAIN, f"{entry.entry_id}_pairs_only") is None
         entity_ids = {item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
