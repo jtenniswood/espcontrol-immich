@@ -2,7 +2,6 @@
 from datetime import date
 from custom_components.immich_frames.core.engine import select_candidates as select, _with_memory_ids  # noqa: F401
 from custom_components.immich_frames.core.filtering import safe_filter  # noqa: F401
-from custom_components.immich_frames.core.client import ImmichApi
 from .models import Photo
 
 
@@ -19,13 +18,8 @@ class ClientAdapter:
     async def memories(self, for_date, **kwargs):
         return await self.client.memories(for_date=for_date, **kwargs)
 
-    async def thumbnail(self, asset_id):
-        return await self.client.thumbnail(asset_id)
-
-    async def _request(self, *args, **kwargs):
-        return await self.client._request(*args, **kwargs)
-
-    crop_image = ImmichApi.crop_image
+    async def photo_image(self, asset_id):
+        return await self.client.photo_image(asset_id)
 
 
 async def select_candidates(client, frame, today=None, size=100):

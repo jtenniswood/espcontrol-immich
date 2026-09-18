@@ -189,6 +189,7 @@ async def test_hosts_produce_identical_slides(source, shape, mode):
             return [{"assets": assets}]
         if "/search/" in path:
             return assets if path.endswith("random") else {"assets": {"items": assets}}
+        assert kwargs["params"] == {"size": "fullsize"}
         return jpeg()
 
     options = {

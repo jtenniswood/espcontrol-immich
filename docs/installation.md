@@ -30,8 +30,8 @@ Enter the Immich server URL and a read-only API key with these permissions:
 | Permission | Used for |
 |---|---|
 | `asset.read` | Search and metadata |
-| `asset.view` | Preview images |
-| `asset.download` | Optional full-size originals for sharper crops |
+| `asset.view` | Full-size image requests and preview fallback |
+| `asset.download` | Full-quality originals (recommended; otherwise previews may be used) |
 | `album.read` | Album catalog and album filters |
 | `person.read` | People catalog and people filters |
 | `tag.read` | Tag catalog and tag filters |
@@ -44,9 +44,9 @@ The integration keeps the last complete rendered slide in Home Assistant's `.sto
 
 ## Image quality
 
-The native integration checks each photo's preview against the space it fills when **Crop to fit** is selected, including each half of a paired photo. If it would need enlarging, the integration requests Immich's full-size image and uses it when it provides more detail. An original that is already no larger than its preview is skipped. The selected screen dimensions and crop stay the same.
+The native integration and optional renderer app request Immich's full-size image first for every photo, in **Show full image** and **Crop to fit**, including both halves of a pair and unmatched portraits. The full-size source is used even when a preview would already fit the screen. It is then resized to your selected screen dimensions; the photo fit and layout stay the same. A successful full-size request does not also download a preview.
 
-Allow `asset.download` on your read-only API key to let Immich serve originals. Full-size downloads use more bandwidth. For formats such as HEIC or RAW, Immich may need full-size image generation enabled to provide a compatible converted image. Missing permissions, unavailable full-size images and unsupported formats fall back to the preview without interrupting the slideshow.
+Allow `asset.download` on your read-only API key to let Immich serve originals. Full-size downloads use more bandwidth and may take longer on slower connections. Immich serves original files for web-compatible formats; formats such as HEIC or RAW may need full-size image generation enabled to provide a compatible converted image. Immich can return a preview itself if no full-size conversion is available. Missing permissions, unavailable full-size images and unsupported or corrupt images fall back to the preview without interrupting the slideshow.
 
 Both the native integration and optional renderer app save JPEGs at quality 95 with full colour detail. Existing cached photos remain available offline; the improved quality takes effect as new slides are rendered. No cache clearing is needed.
 
