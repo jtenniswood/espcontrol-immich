@@ -44,7 +44,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
     result = await submit(hass, result, frame_name="Kitchen", mode="Pair portrait photos",
-                          screen_shape="4-inch ESP32-P4 86 Panel (720 × 720, square)")
+                          screen_shape="4-inch ESP32-P4 86 (720 × 720, square)")
     result = await submit(hass, result, orientation="Portrait photos only", interval=75)
     result = await submit(hass, result, pair_window_days=3, pairs_only=True, navigation="back")
     result = await submit(hass, result, navigation="back")
@@ -54,7 +54,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_ids=["a", "b"])
     defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
+    assert defaults == {"frame_name": "Kitchen", "screen_shape": "4-inch ESP32-P4 86 (720 × 720, square)",
                         "mode": "Pair portrait photos", "navigation": "continue"}
     result = await submit(hass, result)
     assert result["data_schema"]({})["interval"] == 75

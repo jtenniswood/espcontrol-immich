@@ -12,12 +12,12 @@ from custom_components.immich_frames.api import ImmichApi, ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
 from tests_native.flow_helpers import finish_settings
 
-SHAPES = [("landscape", "10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)", (1280, 800)),
-          ("portrait", "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)", (800, 1280)),
-          ("square", "4-inch ESP32-P4 86 Panel (720 × 720, square)", (720, 720)),
-          ("4848s040", "4-inch Guition 4848S040 (480 × 480, square)", (480, 480)),
-          ("jc1060p470", "7-inch Guition JC1060P470 (1024 × 600, landscape)", (1024, 600)),
-          ("jc4880p443", "4.3-inch Guition JC4880P443 (480 × 800, portrait)", (480, 800))]
+SHAPES = [("landscape", "10.1-inch JC8012P4A1 (1280 × 800, landscape)", (1280, 800)),
+          ("portrait", "10.1-inch JC8012P4A1 (800 × 1280, portrait)", (800, 1280)),
+          ("square", "4-inch ESP32-P4 86 (720 × 720, square)", (720, 720)),
+          ("4848s040", "4-inch 4848S040 (480 × 480, square)", (480, 480)),
+          ("jc1060p470", "7-inch JC1060P470 (1024 × 600, landscape)", (1024, 600)),
+          ("jc4880p443", "4.3-inch JC4880P443 (480 × 800, portrait)", (480, 800))]
 
 
 @pytest.mark.parametrize("shape,label,size", SHAPES)
@@ -92,7 +92,7 @@ async def test_screen_shape_saved_and_prefilled_on_all_edit_routes(hass, shape, 
             manager = hass.config_entries.flow
             result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id})
             result = await manager.async_configure(result["flow_id"], {"source": "All photos"})
-    assert result["data_schema"]({})["screen_shape"] == ("10.1-inch Guition JC8012P4A1 (1280 × 800, landscape)" if route == "setup" else label)
+    assert result["data_schema"]({})["screen_shape"] == ("10.1-inch JC8012P4A1 (1280 × 800, landscape)" if route == "setup" else label)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
         result = await manager.async_configure(result["flow_id"], {"screen_shape": label})
         result = await finish_settings(manager, result)
@@ -120,7 +120,7 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
         result = await manager.async_configure(result["flow_id"], {"next_step_id": "display"})
         # A failing server must not bring back the old landscape cache after saving portrait.
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
-            result = await manager.async_configure(result["flow_id"], {"screen_shape": "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)"})
+            result = await manager.async_configure(result["flow_id"], {"screen_shape": "10.1-inch JC8012P4A1 (800 × 1280, portrait)"})
             await finish_settings(manager, result)
             await hass.async_block_till_done()
             assert entry.entry_id not in hass.data[DOMAIN]

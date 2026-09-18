@@ -24,12 +24,12 @@ After setup, open the frame’s device page and use **Configuration → Target d
 
 | Target display | Output resolution | Shape |
 |---|---|---|
-| [10.1-inch Guition JC8012P4A1](https://jtenniswood.github.io/espcontrol/screens/jc8012p4a1) | 1280 × 800 | Landscape |
-| [7-inch Guition JC1060P470](https://jtenniswood.github.io/espcontrol/screens/jc1060p470) | 1024 × 600 | Landscape |
-| [4.3-inch Guition JC4880P443](https://jtenniswood.github.io/espcontrol/screens/jc4880p443) | 480 × 800 | Portrait |
-| [4-inch ESP32-P4 86 Panel](https://jtenniswood.github.io/espcontrol/screens/p4-86) | 720 × 720 | Square |
-| [4-inch Guition 4848S040](https://jtenniswood.github.io/espcontrol/screens/4848s040) | 480 × 480 | Square |
-| 10.1-inch Guition JC8012P4A1, portrait orientation | 800 × 1280 | Portrait |
+| [10.1-inch JC8012P4A1](https://jtenniswood.github.io/espcontrol/screens/jc8012p4a1) | 1280 × 800 | Landscape |
+| [7-inch JC1060P470](https://jtenniswood.github.io/espcontrol/screens/jc1060p470) | 1024 × 600 | Landscape |
+| [4.3-inch JC4880P443](https://jtenniswood.github.io/espcontrol/screens/jc4880p443) | 480 × 800 | Portrait |
+| [4-inch ESP32-P4 86](https://jtenniswood.github.io/espcontrol/screens/p4-86) | 720 × 720 | Square |
+| [4-inch 4848S040](https://jtenniswood.github.io/espcontrol/screens/4848s040) | 480 × 480 | Square |
+| 10.1-inch JC8012P4A1, portrait orientation | 800 × 1280 | Portrait |
 
 The 10.1-inch and 7-inch choices cover all panel revisions because they share the same output dimensions. Existing landscape, portrait and square settings retain 1280 × 800, 800 × 1280 and 720 × 720 respectively; their dropdown labels now show the matching device. The default remains the 10.1-inch landscape output.
 
