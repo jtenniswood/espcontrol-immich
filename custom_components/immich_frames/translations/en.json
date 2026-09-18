@@ -83,7 +83,7 @@
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
           "navigation": "Next action",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
@@ -201,7 +201,7 @@
           "pairs_only": "Require complete pairs",
           "interval": "Slideshow interval (seconds)",
           "navigation": "Next action",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "original_aspect_ratio": "Keep original aspect ratio for single photos"
         },
         "data_description": {
