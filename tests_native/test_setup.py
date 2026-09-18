@@ -81,7 +81,7 @@ async def test_pair_details_use_left_photo_and_interval_survives_reload(hass, as
         return jpeg
 
     entry = MockConfigEntry(domain=DOMAIN, title="Immich Frame", data={
-        "url": "http://immich.test", "api_key": "test-key", "mode": "pairs", "pairs_only": True,
+        "url": "http://immich.test", "api_key": "test-key", "mode": "pairs",
     })
     entry.add_to_hass(hass)
     # Upgrading an existing frame removes even a renamed photo-details selector.

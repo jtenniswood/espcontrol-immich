@@ -42,3 +42,15 @@ def test_legacy_album_survives_restart(tmp_path: Path) -> None:
     frame = Storage(tmp_path).list_frames()[0]
     assert frame.album_id == "old"
     assert frame.album_ids is None
+
+
+def test_retired_pairs_only_setting_does_not_break_saved_frames(tmp_path):
+    storage = Storage(tmp_path)
+    config = {"frame_id": "old", "name": "Old frame", "mode": "pairs", "pairs_only": True}
+    storage.db.execute("INSERT INTO frames VALUES (?, ?, ?)", ("old", "Old frame", json.dumps(config)))
+    storage.db.commit()
+    frame = storage.list_frames()[0]
+    assert frame == FrameConfig("old", "Old frame", mode="pairs")
+    storage.save_frame(frame)
+    saved = json.loads(storage.db.execute("SELECT config FROM frames").fetchone()[0])
+    assert "pairs_only" not in saved

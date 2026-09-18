@@ -46,7 +46,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, result, frame_name="Kitchen", mode="Pair portrait photos",
                           screen_shape="Square (720 × 720)")
     result = await submit(hass, result, orientation="Portrait photos only", interval=75)
-    result = await submit(hass, result, pair_window_days=3, pairs_only=True, navigation="back")
+    result = await submit(hass, result, pair_window_days=3, navigation="back")
     result = await submit(hass, result, navigation="back")
     result = await submit(hass, result, navigation="back")
     assert result["step_id"] == "album"
@@ -61,7 +61,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     assert result["data_schema"]({})["orientation"] == "Portrait photos only"
     result = await submit(hass, result)
     assert result["data_schema"]({})["pair_window_days"] == 3
-    assert result["data_schema"]({})["pairs_only"] is True
+    assert "pairs_only" not in result["data_schema"]({})
     result = await save(hass, result)
     assert result["album_ids"] == ["a", "b"]
     assert result["mode"] == "pairs"

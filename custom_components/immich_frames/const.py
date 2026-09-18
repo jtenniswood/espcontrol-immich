@@ -13,7 +13,6 @@ CONF_MODE = "mode"
 CONF_FILTER = "filter"
 CONF_SMART_QUERY = "smart_query"
 CONF_PAIR_WINDOW = "pair_window_days"
-CONF_PAIRS_ONLY = "pairs_only"
 CONF_ORIENTATION = "orientation"
 CONF_SCREEN_SHAPE = "screen_shape"
 CONF_ORIGINAL_ASPECT_RATIO = "original_aspect_ratio"  # Legacy saved setting.
@@ -41,12 +40,12 @@ CONF_INTERVAL = "interval"
 CONF_MEMORY_WINDOW = "memory_window_days"
 CONF_FALLBACK = "fallback_to_all"
 DEFAULT_INTERVAL = 30
+DEFAULT_PAIR_WINDOW = 2
 PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.SWITCH, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
 PHOTO_SELECTION_DEFAULTS = {
     CONF_MODE: "single",
     CONF_ORIENTATION: "any",
-    CONF_PAIR_WINDOW: 0,
-    CONF_PAIRS_ONLY: False,
+    CONF_PAIR_WINDOW: DEFAULT_PAIR_WINDOW,
 }
 
 
@@ -54,6 +53,7 @@ def screen_shape(value: str | None) -> str:
     """Map saved device presets to their corresponding output shape."""
     value = LEGACY_SCREEN_SHAPES.get(value, value)
     return value if value in SCREEN_SIZES else DEFAULT_SCREEN_SHAPE
+
 
 def photo_selection_settings(options: dict) -> dict:
     """Settings that determine which photos and pairings may appear in a cache."""

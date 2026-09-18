@@ -4,10 +4,11 @@ from immich_frames.app import FrameApp
 
 
 def test_frame_body_supports_sources_and_pair_options() -> None:
-    frame = FrameApp._frame_from_body({"name": "Hall", "source": "smart", "smart_query": "beach", "mode": "pairs", "pairs_only": True, "pair_window_days": 2, "filter": {"rating": {"gte": 4}}})
+    frame = FrameApp._frame_from_body({"name": "Hall", "source": "smart", "smart_query": "beach", "mode": "pairs", "pair_window_days": 2, "filter": {"rating": {"gte": 4}}})
     assert frame.source == "smart"
     assert frame.smart_query == "beach"
-    assert frame.pairs_only is True
+    assert frame.mode == "pairs"
+    assert frame.pair_window_days == 2
     assert frame.filter["type"] == {"eq": "IMAGE"}
 
 

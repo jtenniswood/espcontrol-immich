@@ -66,13 +66,12 @@ async def test_other_sources_render(source, asset, jpeg):
     assert snapshot.primary["id"] == asset["id"]
 
 
-@pytest.mark.parametrize("pairs_only", [False, True])
-async def test_pair_mode_keeps_landscapes_then_shows_portrait_pairs(asset, jpeg, pairs_only):
+async def test_pair_mode_keeps_landscapes_then_shows_portrait_pairs(asset, jpeg):
     api = ImmichApi("http://immich.test", "test-key")
     landscape = {**asset, "id": "landscape", "width": 200, "height": 100}
     companion = {**asset, "id": "portrait-b"}
     api._request = AsyncMock(side_effect=[[landscape, asset, companion], jpeg, [landscape, asset, companion], jpeg, jpeg])
-    options = {"mode": "pairs", "pairs_only": pairs_only}
+    options = {"mode": "pairs"}
     first = await api.snapshot(options, 1, set())
     assert [photo["id"] for photo in first.photos] == ["landscape"]
     assert first.layout == "single"
@@ -109,7 +108,7 @@ async def test_multiple_albums_share_one_photo_pool(asset, jpeg):
     api._request = AsyncMock(side_effect=[[asset, companion], jpeg, jpeg])
     snapshot = await api.snapshot({
         "source": "album", "album_ids": ["a", "b", "a"], "album_id": "old",
-        "mode": "pairs", "pairs_only": True,
+        "mode": "pairs",
     }, 1, set())
     query = api._request.call_args_list[0].kwargs["json"]["filter"]
     assert query["albumIds"] == {"any": ["a", "b"]}
@@ -125,13 +124,13 @@ async def test_empty_album_selection_never_falls_back_to_all_photos(options):
     api._request.assert_not_awaited()
 
 
-@pytest.mark.parametrize("pairs_only,expected", [(False, "portrait-a"), (True, "landscape")])
-async def test_unmatched_portrait_can_be_skipped_without_skipping_landscape(asset, jpeg, pairs_only, expected):
+@pytest.mark.parametrize("pairs_only", [False, True])
+async def test_retired_setting_does_not_skip_unmatched_portraits(asset, jpeg, pairs_only):
     api = ImmichApi("http://immich.test", "test-key")
     landscape = {**asset, "id": "landscape", "width": 200, "height": 100}
     api._request = AsyncMock(side_effect=[[asset, landscape], jpeg])
     snapshot = await api.snapshot({"mode": "pairs", "pairs_only": pairs_only}, 1, set())
-    assert snapshot.primary["id"] == expected
+    assert snapshot.primary["id"] == asset["id"]
     assert snapshot.layout == "single"
 
 
@@ -145,27 +144,29 @@ async def test_orientation_filter_is_independent_of_pairing(asset, jpeg, source,
         replies.insert(0, [{"assets": [{"id": item["id"]} for item in assets]}])
     api._request = AsyncMock(side_effect=[*replies, *([jpeg] * len(expected))])
     snapshot = await api.snapshot({"source": source, "album_ids": ["a"], "smart_query": "beach", "memory_window_days": 0,
-                                   "mode": "pairs", "pairs_only": True, "orientation": orientation}, 1, set())
+                                   "mode": "pairs", "orientation": orientation}, 1, set())
     assert [photo["id"] for photo in snapshot.photos] == expected
 
 
 @pytest.mark.parametrize("missing_date", [False, True])
-async def test_portraits_only_with_no_pair_reports_no_matching_pair(asset, missing_date):
+async def test_portraits_only_with_no_pair_shows_single_photo(asset, jpeg, missing_date):
     api = ImmichApi("http://immich.test", "test-key")
     if missing_date:
         asset = {**asset, "localDateTime": None}
-    api._request = AsyncMock(return_value=[asset])
-    with pytest.raises(ImmichApiError, match="No matching portrait pair"):
-        await api.snapshot({"mode": "pairs", "pairs_only": True, "orientation": "portrait"}, 1, set())
-    assert api._request.await_count == 1
+    api._request = AsyncMock(side_effect=[[asset], jpeg])
+    snapshot = await api.snapshot({"mode": "pairs", "orientation": "portrait"}, 1, set())
+    assert snapshot.primary["id"] == asset["id"]
+    assert snapshot.layout == "single"
 
 
-async def test_required_pairs_skip_unmatched_portrait_and_find_later_pair(asset, jpeg):
+async def test_unmatched_portrait_precedes_later_pair(asset, jpeg):
     api = ImmichApi("http://immich.test", "test-key")
     unmatched = {**asset, "id": "unmatched", "localDateTime": "2026-09-01T12:00:00Z"}
     companion = {**asset, "id": "portrait-b"}
-    api._request = AsyncMock(side_effect=[[unmatched, asset, companion], jpeg, jpeg])
-    snapshot = await api.snapshot({"mode": "pairs", "pairs_only": True}, 1, set())
+    api._request = AsyncMock(side_effect=[[unmatched, asset, companion], jpeg, [unmatched, asset, companion], jpeg, jpeg])
+    snapshot = await api.snapshot({"mode": "pairs"}, 1, set())
+    assert [photo["id"] for photo in snapshot.photos] == ["unmatched"]
+    snapshot = await api.snapshot({"mode": "pairs"}, 2, {"unmatched"})
     assert [photo["id"] for photo in snapshot.photos] == ["portrait-a", "portrait-b"]
 
 

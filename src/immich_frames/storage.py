@@ -17,12 +17,17 @@ class Storage:
 
     def list_frames(self) -> list[FrameConfig]:
         rows = self.db.execute("SELECT config FROM frames ORDER BY name").fetchall()
-        return [FrameConfig(**json.loads(row[0])) for row in rows]
+        frames = []
+        for row in rows:
+            config = json.loads(row[0])
+            config.pop("pairs_only", None)  # Retired setting in older saved frames.
+            frames.append(FrameConfig(**config))
+        return frames
 
     def save_frame(self, frame: FrameConfig) -> None:
         data = {
             "frame_id": frame.frame_id, "name": frame.name, "connection_id": frame.connection_id, "mode": frame.mode, "pair_window_days": frame.pair_window_days,
-            "pairs_only": frame.pairs_only, "slideshow_interval": frame.slideshow_interval, "filter": frame.filter,
+            "slideshow_interval": frame.slideshow_interval, "filter": frame.filter,
             "source": frame.source, "album_id": frame.album_id, "album_ids": frame.album_ids, "memory_window_days": frame.memory_window_days, "fallback_to_all": frame.fallback_to_all,
             "smart_query": frame.smart_query, "smart_reference_asset_id": frame.smart_reference_asset_id,
             "order_field": frame.order_field, "order_direction": frame.order_direction,
