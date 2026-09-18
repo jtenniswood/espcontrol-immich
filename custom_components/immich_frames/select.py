@@ -39,6 +39,7 @@ class OutputSizeSelect(ImmichFrameEntity, SelectEntity):
 
 class MetadataRoleSelect(ImmichFrameEntity, SelectEntity):
     _attr_translation_key = "metadata_role"
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:image-text"
     # Keep service values stable for existing automations; translate UI labels.
     _attr_options = ["primary", "secondary"]
