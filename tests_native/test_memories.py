@@ -115,6 +115,6 @@ async def test_second_frame_memories_setup_succeeds(hass, asset, jpeg):
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][first.entry_id].data.primary["id"] == asset["id"]
         assert hass.data[DOMAIN][second.entry_id].data.primary["id"] == A
-        assert hass.states.get("image.immich_frame2_frame") is not None
+        assert hass.states.get("image.immich_frame2_image") is not None
         assert await hass.config_entries.async_unload(first.entry_id)
         assert await hass.config_entries.async_unload(second.entry_id)

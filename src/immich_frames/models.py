@@ -39,7 +39,8 @@ class Photo:
     @classmethod
     def from_api(cls, value: dict[str, Any]) -> "Photo":
         exif = value.get("exifInfo") or {}
-        people = tuple(p.get("name") or p.get("id", "") for p in value.get("people") or [])
+        people = tuple(name.strip() for person in value.get("people") or []
+                       if isinstance(name := person.get("name"), str) and name.strip())
         tags = tuple(t.get("name") or t.get("id", "") for t in value.get("tags") or [])
         return cls(
             id=value["id"], width=value.get("width"), height=value.get("height"),

@@ -14,7 +14,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 
 class FrameImage(ImmichFrameEntity, ImageEntity):
-    _attr_name = "Frame"
+    _attr_name = "Image"
     _attr_content_type = "image/jpeg"
 
     def __init__(self, hass, coordinator: FrameCoordinator) -> None:
