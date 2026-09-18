@@ -6,6 +6,18 @@ Each config entry creates one persistent Home Assistant device. A frame can show
 
 The native integration offers landscape (1280 × 800), portrait (800 × 1280), or square (720 × 720) output. The optional renderer uses a fixed 16:10 frame at 1280 × 800 pixels.
 
+## Install with HACS
+
+Until this repository is accepted into the HACS default list, add it as a custom repository:
+
+1. Open **HACS → ⋮ → Custom repositories** in Home Assistant.
+2. Add `https://github.com/jtenniswood/espcontrol-immich` with type **Integration**.
+3. Find **EspControl Immich Companion** in HACS and download it, then restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
+5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source and display settings.
+
+See the [installation guide](docs/installation.md) for API-key permissions, manual installation, and updates. Each frame becomes a Home Assistant device with its own image and controls.
+
 ## Development
 
 ```sh
@@ -16,6 +28,8 @@ pytest
 ```
 
 Native integration tests run against Home Assistant 2026.9.2 with mocked Immich responses, including setup, entity registration, image rendering, and cache recovery. In a separate Python 3.14 environment, install `-e '.[test]' -r requirements-native-test.txt` and run `pytest -q tests_native`. CI runs both suites.
+
+The **HACS validation** workflow runs HACS and Hassfest on pushes, pull requests, and published releases, and can be run manually. See [HACS publishing](docs/hacs-publishing.md) for the remaining release and default-list submission steps.
 
 The integration stores the Immich URL and API key in a Home Assistant config entry. API keys are never exposed as entity state, image URLs, or logs.
 
