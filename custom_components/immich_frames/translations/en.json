@@ -42,7 +42,6 @@
           "navigation": "Next action"
         },
         "data_description": {
-          "album_ids": "Search by album name and select as many albums as you like. Albums with the same name also show their ID so you can tell them apart.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
@@ -212,7 +211,6 @@
           "navigation": "Next action"
         },
         "data_description": {
-          "album_ids": "Search by album name and select as many albums as you like. Albums with the same name also show their ID so you can tell them apart.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
