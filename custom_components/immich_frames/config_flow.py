@@ -12,11 +12,12 @@ from homeassistant.helpers import selector
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_MODE, CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
-    CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DOMAIN,
+    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
+    CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
+SCREEN_SHAPE_LABELS = {"landscape": "Landscape (16:10, 1280 × 800)", "portrait": "Portrait (10:16, 800 × 1280)", "square": "Square (1:1, 720 × 720)"}
 MODE_LABELS = {"single": "Single image", "pairs": "Matching portrait pairs"}
 ORIENTATION_LABELS = {"any": "Any orientation", "portrait": "Portrait photos only", "landscape": "Landscape photos only", "square": "Square photos only"}
 SOURCE_FIELDS = {
@@ -142,6 +143,7 @@ class FrameSettingsFlow:
                 "Landscape photos only": "landscape",
                 "Square photos only": "square",
             }.get(user_input[CONF_ORIENTATION], user_input[CONF_ORIENTATION])
+            user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
             self._remember(user_input)
             if user_input.get("navigation") == "source":
                 return await self.async_step_source()
@@ -166,8 +168,6 @@ class FrameSettingsFlow:
                         for field in fields:
                             data.pop(field, None)
                 data.pop("filter", None)
-                data.pop("screen_shape", None)
-                data.pop("original_aspect_ratio", None)
                 return await self._async_save_settings(data, name, unique_id)
         names = {
             entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
@@ -180,7 +180,9 @@ class FrameSettingsFlow:
             suffix += 1
         return self.async_show_form(step_id="display", data_schema=vol.Schema({
             vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
+            vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
             vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
+            vol.Required(CONF_ORIGINAL_ASPECT_RATIO, default=self._data.get(CONF_ORIGINAL_ASPECT_RATIO, False)): bool,
             vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
             vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
