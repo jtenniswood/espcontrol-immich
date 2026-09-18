@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from unittest.mock import patch
+from urllib.parse import quote
 
 import pytest
 from PIL import Image
@@ -22,13 +23,16 @@ async def test_thumbnail_follows_frame_and_previous(hass, hass_client_no_auth, a
     for index, colour in enumerate(("red", "blue")):
         output = BytesIO()
         Image.new("RGB", (1280, 800), colour).save(output, "JPEG")
+        photos = (asset, {**asset, "id": "portrait-b"}) if index == 0 else (
+            {**asset, "id": "photo with /?#"},
+        )
         snapshots.append(FrameSnapshot(
-            output.getvalue(), index + 1, (asset,), "single",
+            output.getvalue(), index + 1, photos, "pair" if index == 0 else "single",
             created_at + timedelta(microseconds=index), 1,
         ))
 
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
-        "url": "http://immich.test", "api_key": "test-key",
+        "url": "http://immich.test/library/", "api_key": "test-key",
     })
     entry.add_to_hass(hass)
     with patch("custom_components.immich_frames.api.ImmichApi.snapshot", side_effect=snapshots):
@@ -40,6 +44,16 @@ async def test_thumbnail_follows_frame_and_previous(hass, hass_client_no_auth, a
         async def thumbnail_url(snapshot):
             state = hass.states.get("image.frame_image")
             assert state.state == snapshot.created_at.isoformat()
+            assert state.attributes["open_in_immich"] == (
+                f"http://immich.test/library/photos/{quote(snapshot.primary['id'], safe='')}"
+            )
+            if snapshot.secondary:
+                assert state.attributes["open_second_photo_in_immich"] == (
+                    f"http://immich.test/library/photos/{snapshot.secondary['id']}"
+                )
+            else:
+                assert "open_second_photo_in_immich" not in state.attributes
+            assert "test-key" not in str(state.attributes)
             url = state.attributes["entity_picture"]
             response = await client.get(url)
             assert response.status == 200

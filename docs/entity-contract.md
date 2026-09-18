@@ -4,7 +4,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 
 | Entity | Type | Purpose |
 |---|---|---|
-| Image | Image | Final rendered single image or pair |
+| Image | Image | Final rendered single image or pair; clickable Immich links in its attributes |
 | Date/Location/People/Tags/Rating/Camera | Sensors | Details for the single photo, or the left photo in a pair |
 | Favourite | Sensor | Yes if the single photo (or left photo in a pair) is a favourite in Immich, No if it is not; blank when the status is missing |
 | Slideshow | Switch | Pause or resume automatic advancement |
@@ -16,6 +16,8 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Pairing window | Number (Configuration) | 0–7 days between paired portraits; default 2 days; 0 means the same date |
 | Slide interval | Number (Configuration) | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
+
+The Image entity exposes `open_in_immich` for the single/left photo and `open_second_photo_in_immich` only when a right photo exists. Each is an Immich web URL (`/photos/<asset-id>`) without the API key. Links use the same snapshot as the image, including cached slides and Previous navigation.
 
 The image and metadata entities update from the same coordinator snapshot. The image is replaced only after every selected photo has been downloaded and rendered. During a temporary Immich outage the last complete cached slide remains available.
 
