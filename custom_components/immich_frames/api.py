@@ -225,17 +225,17 @@ class ImmichApi:
         primary = next((item for item in candidates if item["id"] not in recent_ids), candidates[0])
         photos = [primary]
         if options.get(CONF_MODE) == "pairs":
-            companion = None
-            # Prefer unseen photos, but search the whole candidate batch for a pair.
+            # Keep source order (unseen first); pairing must not exclude landscapes.
             for candidate in sorted(candidates, key=lambda item: item["id"] in recent_ids):
                 companion = self._companion(candidate, [item for item in candidates if item["id"] != candidate["id"]], int(options.get(CONF_PAIR_WINDOW, 0)))
                 if companion:
+                    photos = [candidate, companion]
+                    break
+                if candidate["orientation"] != "portrait" or not options.get(CONF_PAIRS_ONLY):
                     photos = [candidate]
                     break
-            if companion:
-                photos.append(companion)
-            elif options.get(CONF_PAIRS_ONLY):
-                raise ImmichApiError("No matching pair is available")
+            else:
+                raise ImmichApiError("No matching portrait pair is available")
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
         try:
             output, layout = await asyncio.get_running_loop().run_in_executor(

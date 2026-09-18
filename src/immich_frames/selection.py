@@ -53,7 +53,8 @@ async def select_candidates(client: Any, frame: FrameConfig, today: str | None =
     if frame.source == "smart":
         if not frame.smart_query and not frame.smart_reference_asset_id:
             return []
-        return await client.smart_search(frame.smart_query or "", query, size=size, reference_asset_id=frame.smart_reference_asset_id)
+        photos = await client.smart_search(frame.smart_query or "", query, size=size, reference_asset_id=frame.smart_reference_asset_id)
+        return [photo for photo in photos if frame.orientation == "any" or photo.orientation == frame.orientation]
     if frame.source == "memories":
         anchor = date.fromisoformat(today) if today else date.today()
         memories: list[dict[str, Any]] = []

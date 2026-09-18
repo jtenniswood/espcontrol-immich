@@ -83,13 +83,13 @@
         },
         "data_description": {
           "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
-          "mode": "Show one photo at a time, or two portrait photos from nearby dates side by side. Pairing settings appear only for matching portrait pairs.",
+          "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
           "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
@@ -98,7 +98,7 @@
         },
         "data_description": {
           "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
-          "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
+          "orientation": "Mixed includes landscapes and portraits by default, as well as square photos. Choose portrait photos only or landscape photos only to restrict the slideshow. This does not change the output size.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
@@ -107,12 +107,12 @@
         "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
         "data": {
           "pair_window_days": "Pair window (days)",
-          "pairs_only": "Require complete pairs",
+          "pairs_only": "Only show portraits in pairs",
           "navigation": "Next action"
         },
         "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
-          "pairs_only": "Skip a slide unless a matching portrait companion is available.",
+          "pairs_only": "Skip portraits without a matching companion. Landscapes and square photos still appear individually when included by the orientation filter.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }
@@ -221,13 +221,13 @@
         },
         "data_description": {
           "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
-          "mode": "Show one photo at a time, or two portrait photos from nearby dates side by side. Pairing settings appear only for matching portrait pairs.",
+          "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
           "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
@@ -236,7 +236,7 @@
         },
         "data_description": {
           "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
-          "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
+          "orientation": "Mixed includes landscapes and portraits by default, as well as square photos. Choose portrait photos only or landscape photos only to restrict the slideshow. This does not change the output size.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
@@ -245,12 +245,12 @@
         "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
         "data": {
           "pair_window_days": "Pair window (days)",
-          "pairs_only": "Require complete pairs",
+          "pairs_only": "Only show portraits in pairs",
           "navigation": "Next action"
         },
         "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
-          "pairs_only": "Skip a slide unless a matching portrait companion is available.",
+          "pairs_only": "Skip portraits without a matching companion. Landscapes and square photos still appear individually when included by the orientation filter.",
           "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }

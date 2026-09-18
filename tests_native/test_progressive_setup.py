@@ -59,7 +59,7 @@ async def test_short_steps_save_only_at_end(hass, route, pairs):
     manager, result, entry = await start(hass, route)
     before = dict(entry.data) if entry else None
     check_form(result, "display", {"frame_name", "screen_shape", "mode"}, False, route)
-    result = await manager.async_configure(result["flow_id"], {"mode": "Matching portrait pairs" if pairs else "Single image"})
+    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos" if pairs else "Single image"})
     check_form(result, "photos", {"original_aspect_ratio", "orientation", "interval"}, not pairs, route)
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
         if pairs:
@@ -87,7 +87,7 @@ async def test_short_steps_save_only_at_end(hass, route, pairs):
 async def test_switching_to_single_skips_pairing_and_cancel_preserves_entry(hass, route):
     manager, result, entry = await start(hass, route)
     before = dict(entry.data) if entry else None
-    result = await manager.async_configure(result["flow_id"], {"mode": "Matching portrait pairs"})
+    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
     result = await manager.async_configure(result["flow_id"], {"interval": 120})
     result = await manager.async_configure(result["flow_id"], {"pair_window_days": 5, "pairs_only": True, "navigation": "back"})
     result = await manager.async_configure(result["flow_id"], {"navigation": "back"})
@@ -96,7 +96,7 @@ async def test_switching_to_single_skips_pairing_and_cancel_preserves_entry(hass
     assert result["data_schema"]({})["interval"] == 120
     # Changing back to pairs restores the pairing draft.
     result = await manager.async_configure(result["flow_id"], {"navigation": "back"})
-    result = await manager.async_configure(result["flow_id"], {"mode": "Matching portrait pairs"})
+    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
     result = await manager.async_configure(result["flow_id"], {})
     assert result["data_schema"]({})["pair_window_days"] == 5
     assert result["data_schema"]({})["pairs_only"] is True
@@ -115,3 +115,19 @@ async def test_name_claimed_during_later_step_returns_to_frame_without_losing_dr
     assert entry.title == "Frame"
     result = await manager.async_configure(result["flow_id"], {"frame_name": "Bedroom"})
     assert result["data_schema"]({})["interval"] == 120
+
+
+@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("label,value", [("Mixed (landscapes and portraits)", "any"), ("Landscape photos only", "landscape"), ("Portrait photos only", "portrait")])
+async def test_orientation_and_portrait_pair_requirement_save_independently(hass, route, label, value):
+    manager, result, entry = await start(hass, route)
+    result = await manager.async_configure(result["flow_id"], {"mode": "Pair portrait photos"})
+    assert result["data_schema"]({})["orientation"] == "Mixed (landscapes and portraits)"
+    result = await manager.async_configure(result["flow_id"], {"orientation": label})
+    with patch("custom_components.immich_frames.async_setup_entry", return_value=True), patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"pairs_only": True})
+        await hass.async_block_till_done()
+    saved = entry.data if entry else result["data"]
+    assert saved["orientation"] == value
+    assert saved["mode"] == "pairs"
+    assert saved["pairs_only"] is True

@@ -56,7 +56,7 @@ async def test_display_edit_reloads_same_frame_without_fetching_albums(hass, ass
         devices = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
         coordinator = hass.data[DOMAIN][entry.entry_id]
         result = await open_settings(hass, entry, "display")
-        result = await submit(hass, result, mode="Matching portrait pairs")
+        result = await submit(hass, result, mode="Pair portrait photos")
         assert result["data_schema"]({})["interval"] == 90
         result = await submit(hass, result, interval=120)
         result = await submit(hass, result, pair_window_days=3)

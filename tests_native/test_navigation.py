@@ -39,7 +39,7 @@ async def save(hass, result):
 async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result, frame_name="Kitchen", mode="Matching portrait pairs",
+    result = await submit(hass, result, frame_name="Kitchen", mode="Pair portrait photos",
                           screen_shape="Square (1:1, 720 × 720)")
     result = await submit(hass, result, orientation="Portrait photos only", interval=75)
     result = await submit(hass, result, pair_window_days=3, pairs_only=True, navigation="back")
@@ -51,7 +51,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, result, album_ids=["a", "b"])
     defaults = result["data_schema"]({})
     assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1, 720 × 720)",
-                        "mode": "Matching portrait pairs", "navigation": "continue"}
+                        "mode": "Pair portrait photos", "navigation": "continue"}
     result = await submit(hass, result)
     assert result["data_schema"]({})["interval"] == 75
     assert result["data_schema"]({})["orientation"] == "Portrait photos only"
