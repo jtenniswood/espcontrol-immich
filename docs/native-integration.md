@@ -22,7 +22,7 @@ On **Configure photo display**, under **Photo fit**, choose **Crop to fit** to f
 
 Change this through **Configure → Change photo display settings**. This replaces the old **Keep original aspect ratio for single photos** checkbox. Existing single-photo frames and frames with that checkbox enabled default to **Show full image**; other existing pair frames default to **Crop to fit**. New single-photo frames default to **Show full image**; new pair frames default to **Crop to fit**. Old cached images and images from a different fit or screen shape are discarded, so Immich must be reachable to generate the first image with the new settings.
 
-The **Photo date** sensor displays dates as **14 May, 2007** (day, full month name, year). It uses the date recorded with the photo, without changing it to Home Assistant’s timezone. The full timestamp remains in the internal photo metadata for pairing and caching. Missing or invalid dates appear as unknown.
+The **Date** sensor displays dates as **14 May, 2007** (day, full month name, year). It uses the date recorded with the photo, without changing it to Home Assistant’s timezone. The full timestamp remains in the internal photo metadata for pairing and caching. Missing or invalid dates appear as unknown.
 
 The background colour calculation follows [ESPFrame’s former accent-fill helper](https://github.com/jtenniswood/espframe/blob/47ae12c7b29d73f7623c9cc13a7bac7435c10ae8/components/espframe/espframe_helpers.h#L335-L387), using RGB preview pixels. ESPFrame later removed its border-detection implementation; this integration creates the padding separately and never identifies borders by looking for black pixels. Cached images are reused only when their fit setting and output dimensions match.
 
