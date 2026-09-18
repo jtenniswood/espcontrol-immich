@@ -53,7 +53,7 @@ def check_form(result, step, fields, final, route):
             assert labels[key] and labels[key] != key
 
 
-@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("pairs", [False, True])
 async def test_short_steps_save_only_at_end(hass, route, pairs):
     manager, result, entry = await start(hass, route)
@@ -83,7 +83,7 @@ async def test_short_steps_save_only_at_end(hass, route, pairs):
     assert "navigation" not in saved
 
 
-@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 async def test_switching_to_single_skips_pairing_and_cancel_preserves_entry(hass, route):
     manager, result, entry = await start(hass, route)
     before = dict(entry.data) if entry else None
@@ -117,7 +117,7 @@ async def test_name_claimed_during_later_step_returns_to_frame_without_losing_dr
     assert result["data_schema"]({})["interval"] == 120
 
 
-@pytest.mark.parametrize("route", ["setup", "options", "reconfigure"])
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("label,value", [("Mixed (landscapes and portraits)", "any"), ("Landscape photos only", "landscape"), ("Portrait photos only", "portrait")])
 async def test_orientation_and_portrait_pair_requirement_save_independently(hass, route, label, value):
     manager, result, entry = await start(hass, route)
@@ -131,3 +131,31 @@ async def test_orientation_and_portrait_pair_requirement_save_independently(hass
     assert saved["orientation"] == value
     assert saved["mode"] == "pairs"
     assert saved["pairs_only"] is True
+
+
+@pytest.mark.parametrize("source,extra", [
+    ("All photos", None), ("Albums", {"album_ids": ["a"]}),
+    ("Memories", {"memory_window_days": 3}), ("Keywords", {"smart_query": "beach"}),
+])
+async def test_new_setup_finishes_after_name_and_display_with_defaults(hass, source, extra):
+    manager = hass.config_entries.flow
+    with patch("custom_components.immich_frames.api.ImmichApi.validate_connection"), patch(
+        "custom_components.immich_frames.api.ImmichApi.albums", return_value=[{"id": "a", "albumName": "Family"}],
+    ):
+        result = await manager.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER}, data={
+            "url": "http://immich.test", "api_key": "key",
+        })
+        result = await manager.async_configure(result["flow_id"], {"source": source})
+        if extra:
+            result = await manager.async_configure(result["flow_id"], extra)
+    check_form(result, "display", {"frame_name", "screen_shape"}, True, "setup")
+    assert not hass.config_entries.async_entries(DOMAIN)
+    with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
+        result = await manager.async_configure(result["flow_id"], {"frame_name": "Kitchen"})
+        await hass.async_block_till_done()
+    assert result["type"] == "create_entry"
+    for key, value in {
+        "mode": "single", "photo_fit": "show_full", "orientation": "any",
+        "interval": 30, "pair_window_days": 0, "pairs_only": False,
+    }.items():
+        assert result["data"][key] == value

@@ -9,6 +9,11 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Slideshow | Switch | Pause or resume automatic advancement |
 | Show photo details for | Select | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
 | Target display | Select (Configuration) | Choose the EspControl device and its resolution: 1280 × 800, 1024 × 600, 480 × 800, 720 × 720, 480 × 480, or 800 × 1280; saves the choice and reloads the frame |
+| Photo fit | Select (Configuration) | Crop to fit or Show full image |
+| Display mode | Select (Configuration) | Single image or Pair portrait photos |
+| Photo orientation | Select (Configuration) | Mixed, portrait, landscape or square photos |
+| Only show portraits in pairs | Switch (Configuration) | Skip unmatched portraits in pair mode; landscapes and squares remain eligible |
+| Pairing window | Number (Configuration) | 0–7 days between paired portraits; 0 means the same date |
 | Slide interval | Number | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 
@@ -17,3 +22,5 @@ The image and metadata entities update from the same coordinator snapshot. The i
 With a single image, the sensors always use that photo's details, even if the right-photo option is selected. With a pair, the selector chooses the left or right photo. It changes the detail sensors, not the displayed images. The control's details panel includes an explanation. Existing entity IDs and the `primary`/`secondary` automation values remain unchanged; the UI translates those values into the descriptive labels above.
 
 Target display labels include the device model, resolution and shape. The existing entity ID and `landscape`, `portrait`, and `square` service values keep their original dimensions. New service values are `jc1060p470` (1024 × 600), `jc4880p443` (480 × 800), and `4848s040` (480 × 480). See the [display presets](native-integration.md) for the device mapping.
+
+Photo and pairing settings save immediately and reload the frame. The interval updates the slideshow timer directly. All settings share the same saved values as Configure and survive Home Assistant restarts. Cached photos are restored only when their photo rules and rendering settings still match.

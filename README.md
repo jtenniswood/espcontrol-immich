@@ -16,7 +16,7 @@ Until this repository is accepted into the HACS default list, add it as a custom
 2. Add `https://github.com/jtenniswood/espcontrol-immich` with type **Integration**.
 3. Find **EspControl Immich Companion** in HACS and download it, then restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
-5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source and display settings.
+5. Enter your Immich 3.2+ server URL and a read-only API key, then choose the photo source, frame name and target display. Adjust photo fit, orientation and pairing afterwards in the device’s **Configuration** section.
 
 See the [installation guide](docs/installation.md) for API-key permissions, manual installation, and updates. Each frame becomes a Home Assistant device with its own image and controls.
 

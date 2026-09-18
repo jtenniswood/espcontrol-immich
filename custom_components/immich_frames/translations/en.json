@@ -74,7 +74,7 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Choose a name, target display and display mode. Continue to photo display settings.",
+        "description": "Choose a name and target display, then save the frame. Photo fit, display mode, photo orientation, pairing and slideshow interval can be changed afterwards on the device page. Existing frames can also continue through these settings here.",
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Target display",
@@ -84,7 +84,7 @@
         "data_description": {
           "screen_shape": "Choose your EspControl device to match its output resolution. The 10.1-inch and 7-inch choices cover all panel revisions. The 10.1-inch display also has a portrait option. This does not change which photo orientations are selected.",
           "mode": "Show photos individually, or pair portrait photos from nearby dates side by side while keeping landscapes in the slideshow.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "navigation": "Choose Save frame to finish setup, Back to review your photo source, or Continue when editing an existing frame."
         }
       },
       "photos": {
@@ -160,6 +160,39 @@
           "4848s040": "4-inch Guition 4848S040 (480 × 480, square)",
           "portrait": "10.1-inch Guition JC8012P4A1 (800 × 1280, portrait)"
         }
+      },
+      "photo_fit": {
+        "name": "Photo fit",
+        "state": {
+          "crop": "Crop to fit",
+          "show_full": "Show full image"
+        }
+      },
+      "mode": {
+        "name": "Display mode",
+        "state": {
+          "single": "Single image",
+          "pairs": "Pair portrait photos"
+        }
+      },
+      "orientation": {
+        "name": "Photo orientation",
+        "state": {
+          "any": "Mixed (landscapes and portraits)",
+          "portrait": "Portrait photos only",
+          "landscape": "Landscape photos only",
+          "square": "Square photos only"
+        }
+      }
+    },
+    "number": {
+      "pair_window_days": {
+        "name": "Pairing window"
+      }
+    },
+    "switch": {
+      "pairs_only": {
+        "name": "Only show portraits in pairs"
       }
     }
   },

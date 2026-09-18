@@ -14,7 +14,7 @@ from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
     CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
-    PHOTO_FIT_CROP, PHOTO_FIT_FULL, SCREEN_SHAPE_LABELS, photo_fit,
+    PHOTO_FIT_CROP, PHOTO_FIT_FULL, PHOTO_SELECTION_DEFAULTS, SCREEN_SHAPE_LABELS, photo_fit,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
@@ -137,11 +137,13 @@ class FrameSettingsFlow:
 
     async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
         errors = errors or {}
-        if user_input:
+        initial_setup = self._settings_entry is None
+        if user_input and not initial_setup:
             user_input[CONF_MODE] = {
                 "Single image": "single",
                 "Pair portrait photos": "pairs",
             }.get(user_input[CONF_MODE], user_input[CONF_MODE])
+        if user_input:
             user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
             self._remember(user_input)
             if user_input.get("navigation") == "source":
@@ -153,6 +155,8 @@ class FrameSettingsFlow:
                 return await self.async_step_source()
             errors = self._name_errors()
             if not errors:
+                if initial_setup:
+                    return await self._async_finish_settings()
                 return await self.async_step_photos()
         names = {
             entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
@@ -166,9 +170,9 @@ class FrameSettingsFlow:
         return self.async_show_form(step_id="display", data_schema=vol.Schema({
             vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
             vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
-            vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
-            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS),
-        }), errors=errors, last_step=False)
+            **({} if initial_setup else {vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values()))}),
+            **_navigation({"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(self._data.get(CONF_SOURCE), "Back to photo source"), change_source=self._data.get(CONF_SOURCE) in SOURCE_FIELDS, save=initial_setup),
+        }), errors=errors, last_step=initial_setup)
 
     async def async_step_photos(self, user_input: dict[str, Any] | None = None):
         pairs = self._data.get(CONF_MODE) == "pairs"
@@ -216,7 +220,8 @@ class FrameSettingsFlow:
         # Recheck in case another flow claimed this name while these steps were open.
         if errors := self._name_errors():
             return await self.async_step_display(errors=errors)
-        data = dict(self._data)
+        data = {**PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL: DEFAULT_INTERVAL, **self._data}
+        data[CONF_PHOTO_FIT] = photo_fit(data)
         name = data[CONF_FRAME_NAME] = data[CONF_FRAME_NAME].strip()
         unique_id = f"{data[CONF_URL]}|{name}"
         # Keep drafts while navigating, but save only the active source's filters.

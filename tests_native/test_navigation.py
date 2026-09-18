@@ -39,29 +39,19 @@ async def save(hass, result):
 async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result, frame_name="Kitchen", mode="Pair portrait photos",
-                          screen_shape="4-inch ESP32-P4 86 Panel (720 × 720, square)")
-    result = await submit(hass, result, orientation="Portrait photos only", interval=75)
-    result = await submit(hass, result, pair_window_days=3, pairs_only=True, navigation="back")
-    result = await submit(hass, result, navigation="back")
-    result = await submit(hass, result, navigation="back")
+    result = await submit(hass, result, frame_name="Kitchen",
+                          screen_shape="4-inch ESP32-P4 86 Panel (720 × 720, square)", navigation="back")
     assert result["step_id"] == "album"
     assert result["data_schema"]({})["album_ids"] == ["a"]
-    assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_ids=["a", "b"])
-    defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
-                        "mode": "Pair portrait photos", "navigation": "continue"}
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["interval"] == 75
-    assert result["data_schema"]({})["orientation"] == "Portrait photos only"
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["pair_window_days"] == 3
-    assert result["data_schema"]({})["pairs_only"] is True
+    assert result["data_schema"]({}) == {
+        "frame_name": "Kitchen", "screen_shape": "4-inch ESP32-P4 86 Panel (720 × 720, square)",
+        "navigation": "continue",
+    }
     result = await save(hass, result)
     assert result["type"] == "create_entry"
     assert result["data"]["album_ids"] == ["a", "b"]
-    assert result["data"]["mode"] == "pairs"
+    assert result["data"]["mode"] == "single"
     assert result["data"]["screen_shape"] == "square"
     assert result["data"]["api_key"] == "test-key"
     assert "navigation" not in result["data"]
@@ -128,15 +118,12 @@ async def test_display_back_targets_previous_step(hass, label, step, values):
 async def test_display_can_change_source_directly(hass):
     result = await submit(hass, await start(hass), source="Albums")
     result = await submit(hass, result, album_ids=["a"])
-    result = await submit(hass, result)
-    result = await submit(hass, result, interval=120, navigation="back")
-    result = await submit(hass, result, navigation="source")
+    result = await submit(hass, result, frame_name="Kitchen", navigation="source")
     assert result["step_id"] == "source"
     result = await submit(hass, result, source="All photos")
-    result = await submit(hass, result)
-    assert result["data_schema"]({})["interval"] == 120
+    assert result["data_schema"]({})["frame_name"] == "Kitchen"
     result = await save(hass, result)
-    assert "album_id" not in result["data"]
+    assert "album_ids" not in result["data"]
 
 
 def existing_frame(hass, title="Frame"):

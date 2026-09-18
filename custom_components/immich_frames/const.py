@@ -44,6 +44,17 @@ CONF_MEMORY_WINDOW = "memory_window_days"
 CONF_FALLBACK = "fallback_to_all"
 DEFAULT_INTERVAL = 30
 PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.SWITCH, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
+PHOTO_SELECTION_DEFAULTS = {
+    CONF_MODE: "single",
+    CONF_ORIENTATION: "any",
+    CONF_PAIR_WINDOW: 0,
+    CONF_PAIRS_ONLY: False,
+}
+
+
+def photo_selection_settings(options: dict) -> dict:
+    """Settings that determine which photos and pairings may appear in a cache."""
+    return {key: options.get(key, default) for key, default in PHOTO_SELECTION_DEFAULTS.items()}
 
 
 def photo_fit(options: dict) -> str:
