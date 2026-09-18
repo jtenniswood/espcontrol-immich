@@ -81,7 +81,7 @@ async def test_each_source_sends_range_before_selection(asset, jpeg, source, pai
             return photos if path.endswith("random") else {"assets": {"items": photos}}
         return jpeg
 
-    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.api.datetime") as clock:
+    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.core.engine.datetime") as clock:
         clock.now.return_value = NOW
         clock.fromisoformat = datetime.fromisoformat
         snapshot = await ImmichApi("http://immich.test", "key").snapshot({
@@ -122,7 +122,7 @@ async def test_control_labels_persistence_reload_and_filtering(hass, asset, jpeg
                     datetime.fromisoformat(query["takenAt"]["gte"]) <= datetime.fromisoformat(photo["localDateTime"]) <= datetime.fromisoformat(query["takenAt"]["lte"])]
         return jpeg
 
-    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.api.datetime") as clock:
+    with patch.object(ImmichApi, "_request", request), patch("custom_components.immich_frames.core.engine.datetime") as clock:
         clock.now.return_value = NOW
         clock.fromisoformat = datetime.fromisoformat
         assert await hass.config_entries.async_setup(entry.entry_id)

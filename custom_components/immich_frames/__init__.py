@@ -1,14 +1,17 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-
-from .const import CONF_SCREEN_SHAPE, DOMAIN, LEGACY_SCREEN_SHAPES, PLATFORMS, screen_shape
-from .coordinator import FrameCoordinator
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers import entity_registry as er
+    from .const import CONF_SCREEN_SHAPE, DOMAIN, LEGACY_SCREEN_SHAPES, PLATFORMS, screen_shape
+    from .coordinator import FrameCoordinator
     # Upgrade device presets before rendering or restoring a cached image.
     if entry.data.get(CONF_SCREEN_SHAPE) in LEGACY_SCREEN_SHAPES:
         hass.config_entries.async_update_entry(entry, data={
@@ -46,6 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    from .const import DOMAIN, PLATFORMS
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
