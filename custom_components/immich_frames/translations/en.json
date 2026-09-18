@@ -43,7 +43,7 @@
         },
         "data_description": {
           "album_ids": "Search by album name and select as many albums as you like. Albums with the same name also show their ID so you can tell them apart.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "memories": {
@@ -57,7 +57,7 @@
         "data_description": {
           "memory_window_days": "How many days before and after today to check when using Memories.",
           "fallback_to_all": "Use the All photos source if Immich has no matching memories.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "smart": {
@@ -69,31 +69,51 @@
         },
         "data_description": {
           "smart_query": "Enter a description such as “beach at sunset”.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "display": {
-        "title": "Configure the display",
-        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings.",
+        "title": "Set up the frame",
+        "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "mode": "Display mode",
-          "orientation": "Photo orientation filter",
-          "pair_window_days": "Pair window (days)",
-          "pairs_only": "Require complete pairs",
-          "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action",
           "screen_shape": "Screen shape",
-          "original_aspect_ratio": "Keep original aspect ratio for single photos"
+          "mode": "Display mode",
+          "navigation": "Next action"
         },
         "data_description": {
-          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill the selected output size with a 1-pixel black divider.",
-          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the output size and aspect ratio. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
+          "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
+          "mode": "Show one photo at a time, or two portrait photos from nearby dates side by side. Pairing settings appear only for matching portrait pairs.",
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+        }
+      },
+      "photos": {
+        "title": "Configure photo display",
+        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "data": {
+          "original_aspect_ratio": "Keep original aspect ratio for single photos",
+          "orientation": "Photo orientation filter",
+          "interval": "Slideshow interval (seconds)",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
+          "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+        }
+      },
+      "pairing": {
+        "title": "Configure portrait pairs",
+        "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
+        "data": {
+          "pair_window_days": "Pair window (days)",
+          "pairs_only": "Require complete pairs",
+          "navigation": "Next action"
+        },
+        "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
-          "screen_shape": "Choose Landscape (16:10, 1280 × 800), Portrait (10:16, 800 × 1280), or Square (1:1, 720 × 720). Single photos keep their proportions with a dim photo-colour background where needed, or fit within these limits without padding when Keep original aspect ratio is enabled. Portrait pairs are cropped to fill the selected size with a 1-pixel black divider.",
-          "original_aspect_ratio": "On: supply each single photo without added borders, cropping or stretching, scaled down to fit within the selected output size. Image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected output size and aspect ratio."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }
     },
@@ -136,7 +156,7 @@
     "step": {
       "init": {
         "title": "Edit frame settings",
-        "description": "Choose what to change. Your current settings are filled in. Changes take effect only after you select Save frame on the display screen and press Submit.",
+        "description": "Choose what to change. Your current settings are filled in. Changes take effect only after you select Save frame on the final step.",
         "menu_options": {
           "source": "Change photo source",
           "album": "Change albums",
@@ -161,7 +181,7 @@
         },
         "data_description": {
           "album_ids": "Search by album name and select as many albums as you like. Albums with the same name also show their ID so you can tell them apart.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "memories": {
@@ -175,7 +195,7 @@
         "data_description": {
           "memory_window_days": "How many days before and after today to check when using Memories.",
           "fallback_to_all": "Use the All photos source if Immich has no matching memories.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "smart": {
@@ -187,31 +207,51 @@
         },
         "data_description": {
           "smart_query": "Enter a description such as “beach at sunset”.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       },
       "display": {
-        "title": "Configure the display",
-        "description": "Choose how this frame should present the selected photos. Select Save frame to finish, or go back to change the source or its settings.",
+        "title": "Set up the frame",
+        "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "mode": "Display mode",
-          "orientation": "Photo orientation filter",
-          "pair_window_days": "Pair window (days)",
-          "pairs_only": "Require complete pairs",
-          "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action",
           "screen_shape": "Screen shape",
-          "original_aspect_ratio": "Keep original aspect ratio for single photos"
+          "mode": "Display mode",
+          "navigation": "Next action"
         },
         "data_description": {
-          "mode": "Single image shows one photo at a time. Matching portrait pairs places two portrait photos from nearby dates side by side, cropped to fill the selected output size with a 1-pixel black divider.",
-          "orientation": "Only photos with the selected orientation are eligible. This filters the source photos; it does not set the output size and aspect ratio. Choose Any orientation to allow every orientation. Matching portrait pairs still require portrait photos.",
+          "screen_shape": "Landscape: 16:10, 1280 × 800. Portrait: 10:16, 800 × 1280. Square: 1:1, 720 × 720.",
+          "mode": "Show one photo at a time, or two portrait photos from nearby dates side by side. Pairing settings appear only for matching portrait pairs.",
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+        }
+      },
+      "photos": {
+        "title": "Configure photo display",
+        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "data": {
+          "original_aspect_ratio": "Keep original aspect ratio for single photos",
+          "orientation": "Photo orientation filter",
+          "interval": "Slideshow interval (seconds)",
+          "navigation": "Next action"
+        },
+        "data_description": {
+          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
+          "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+        }
+      },
+      "pairing": {
+        "title": "Configure portrait pairs",
+        "description": "Choose how closely the dates of paired photos should match, then select Save frame to finish.",
+        "data": {
+          "pair_window_days": "Pair window (days)",
+          "pairs_only": "Require complete pairs",
+          "navigation": "Next action"
+        },
+        "data_description": {
           "pair_window_days": "The maximum number of days between the two portrait photos in a pair.",
           "pairs_only": "Skip a slide unless a matching portrait companion is available.",
-          "navigation": "Choose a Back option to change an earlier selection, then press Submit. Your other settings are kept.",
-          "screen_shape": "Choose Landscape (16:10, 1280 × 800), Portrait (10:16, 800 × 1280), or Square (1:1, 720 × 720). Single photos keep their proportions with a dim photo-colour background where needed, or fit within these limits without padding when Keep original aspect ratio is enabled. Portrait pairs are cropped to fill the selected size with a 1-pixel black divider.",
-          "original_aspect_ratio": "On: supply each single photo without added borders, cropping or stretching, scaled down to fit within the selected output size. Image dimensions can change between photos. Also applies when no matching pair is available. Paired photos still use the selected output size and aspect ratio."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
         }
       }
     },

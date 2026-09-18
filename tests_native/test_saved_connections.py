@@ -6,6 +6,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.immich_frames.api import ImmichApiError
 from custom_components.immich_frames.const import DOMAIN
+from tests_native.flow_helpers import finish_settings
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -58,7 +59,7 @@ async def test_saved_connection_creates_independent_second_frame(hass):
     defaults = result["data_schema"]({})
     assert defaults["frame_name"] == "Immich Frame 2"
     with patch("custom_components.immich_frames.async_setup_entry", return_value=True):
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], defaults)
+        result = await finish_settings(hass.config_entries.flow, result)
         await hass.async_block_till_done()
     assert result["type"] == "create_entry"
     assert result["data"]["url"] == original.data["url"]
