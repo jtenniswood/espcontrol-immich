@@ -75,7 +75,8 @@ async def test_snapshot_passes_fit_to_singles_pairs_and_fallback(asset, mode, co
     payload = preview((200, 400))
     api._request = AsyncMock(side_effect=[assets, *([payload] * len(assets))])
     snapshot = await api.snapshot({"mode": mode, "screen_shape": "square", "photo_fit": fit}, 1, set())
-    expected, layout = ImmichApi._render(assets, [payload] * len(assets), "square", fit)
+    expected_fit = "show_full" if mode == "pairs" and not companion else fit
+    expected, layout = ImmichApi._render(assets, [payload] * len(assets), "square", expected_fit)
     assert snapshot.image == expected
     assert snapshot.layout == layout
     assert len(snapshot.photos) == len(assets)
