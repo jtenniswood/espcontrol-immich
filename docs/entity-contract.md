@@ -5,7 +5,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Entity | Type | Purpose |
 |---|---|---|
 | Image | Image | Final rendered single image or pair |
-| Date/Location/Filename/People/Tags/Rating/Camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
+| Date/Location/People/Tags/Rating/Camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
 | Slideshow | Switch | Pause or resume automatic advancement |
 | Show photo details for | Select | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
 | Target display | Select (Configuration) | Choose the EspControl device and its resolution: 1280 × 800, 1024 × 600, 480 × 800, 720 × 720, 480 × 480, or 800 × 1280; saves the choice and reloads the frame |

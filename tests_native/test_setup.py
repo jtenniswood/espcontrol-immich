@@ -29,7 +29,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert coordinator.data.primary["id"] == asset["id"]
         assert coordinator.cache_path.with_suffix(".jpg").is_file()
         assert hass.states.get("image.immich_frame_image") is not None
-        assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
     # A server outage after restart should restore the cached image and metadata.
@@ -37,7 +37,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.data[DOMAIN][entry.entry_id].data.using_cache
-        assert hass.states.get("sensor.immich_frame_filename").state == "a.jpg"
+        assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_date").state == "17 September, 2026"
         assert await hass.config_entries.async_unload(entry.entry_id)
 
@@ -58,7 +58,7 @@ async def test_failed_setup_closes_api(hass):
 async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass, asset, jpeg):
     async def request(_api, method, path, **kwargs):
         if path == "/api/search/random":
-            return [asset, {**asset, "id": "portrait-b", "originalFileName": "b.jpg"}]
+            return [asset, {**asset, "id": "portrait-b", "originalFileName": "b.jpg", "exifInfo": {"city": "Bristol"}}]
         return jpeg
 
     entry = MockConfigEntry(domain=DOMAIN, title="Immich Frame", data={
@@ -79,10 +79,11 @@ async def test_metadata_switch_updates_sensors_and_interval_survives_reload(hass
         assert select_entry.translation_key == "metadata_role"
         label = async_translate_state(hass, "secondary", "select", DOMAIN, select_entry.translation_key, None)
         assert label == "Right photo in a pair"
+        assert hass.states.get("sensor.immich_frame_location").state == "Bath"
         await hass.services.async_call("select", "select_option", {
             "entity_id": "select.immich_frame_metadata_photo", "option": "secondary",
         }, blocking=True)
-        assert hass.states.get("sensor.immich_frame_filename").state == "b.jpg"
+        assert hass.states.get("sensor.immich_frame_location").state == "Bristol"
         await hass.services.async_call("number", "set_value", {
             "entity_id": "number.immich_frame_slide_interval", "value": 90,
         }, blocking=True)
