@@ -8,6 +8,7 @@ Each configured frame is one native Home Assistant device. Entity IDs are genera
 | Photo date/location/filename/people/tags/rating/camera | Sensors | Details for the selected photo: the single image, or the left/right photo in a pair |
 | Slideshow | Switch | Pause or resume automatic advancement |
 | Show photo details for | Select | Choose “Single photo or left photo in a pair” or “Right photo in a pair” to set which photo supplies the detail sensors |
+| Target output size | Select (Configuration) | Landscape (1280 × 800), Portrait (800 × 1280), or Square (720 × 720); saves the choice and reloads the frame |
 | Slide interval | Number | 10–86,400 seconds |
 | Next, Previous, Refresh, Clear cache | Buttons | Manual frame controls |
 
