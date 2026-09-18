@@ -123,7 +123,7 @@ SETTINGS = (
     Setting(
         CONF_TIME_RANGE,
         DEFAULT_TIME_RANGE,
-        "Time range",
+        "Photo time range",
         tuple(
             zip(
                 TIME_RANGE_MONTHS,
