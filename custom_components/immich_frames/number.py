@@ -15,7 +15,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 
 class IntervalNumber(ImmichFrameEntity, NumberEntity):
-    _attr_name = "Slide interval"
+    _attr_name = "Photo timer"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = 10
     _attr_native_max_value = 86400

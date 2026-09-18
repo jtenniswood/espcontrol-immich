@@ -73,11 +73,11 @@
       },
       "display": {
         "title": "Set up the frame",
-        "description": "Name your frame, then save. Screen shape, photo preferences, slideshow interval and Memories preferences can be changed afterwards in settings.",
+        "description": "Name your frame, then save. Screen shape, photo preferences, photo timer and Memories preferences can be changed afterwards in settings.",
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Screen shape",
-          "mode": "Display mode",
+          "mode": "Portrait images",
           "navigation": "Next action"
         },
         "data_description": {
@@ -88,10 +88,10 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
+        "description": "Choose which photo orientations to include, how photos fit and the photo timer. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
           "orientation": "Photo orientation filter",
-          "interval": "Slideshow interval (seconds)",
+          "interval": "Photo timer (seconds)",
           "navigation": "Next action",
           "photo_fit": "Photo fit"
         },
@@ -151,9 +151,9 @@
         }
       },
       "mode": {
-        "name": "Display mode",
+        "name": "Portrait images",
         "state": {
-          "single": "Single image",
+          "single": "Single portrait images",
           "pairs": "Pair portrait photos"
         }
       },
@@ -236,7 +236,7 @@
         "data": {
           "frame_name": "Frame name",
           "screen_shape": "Screen shape",
-          "mode": "Display mode",
+          "mode": "Portrait images",
           "navigation": "Next action"
         },
         "data_description": {
@@ -247,10 +247,10 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
+        "description": "Choose which photo orientations to include, how photos fit and the photo timer. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
           "orientation": "Photo orientation filter",
-          "interval": "Slideshow interval (seconds)",
+          "interval": "Photo timer (seconds)",
           "navigation": "Next action",
           "photo_fit": "Photo fit"
         },

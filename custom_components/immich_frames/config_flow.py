@@ -18,7 +18,7 @@ from .const import (
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
-MODE_LABELS = {"single": "Single image", "pairs": "Pair portrait photos"}
+MODE_LABELS = {"single": "Single portrait images", "pairs": "Pair portrait photos"}
 ORIENTATION_LABELS = {"any": "Mixed (landscapes and portraits)", "portrait": "Portrait photos only", "landscape": "Landscape photos only"}
 SOURCE_FIELDS = {
     "album": (CONF_ALBUM_ID, CONF_ALBUM_IDS),
@@ -153,7 +153,7 @@ class FrameSettingsFlow:
             source_step = None
         if user_input and not initial_setup:
             user_input[CONF_MODE] = {
-                "Single image": "single",
+                "Single portrait images": "single",
                 "Pair portrait photos": "pairs",
             }.get(user_input[CONF_MODE], user_input[CONF_MODE])
             user_input[CONF_SCREEN_SHAPE] = {label: value for value, label in SCREEN_SHAPE_LABELS.items()}.get(user_input[CONF_SCREEN_SHAPE], user_input[CONF_SCREEN_SHAPE])
@@ -183,7 +183,7 @@ class FrameSettingsFlow:
         if not initial_setup:
             fields.update({
                 vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS[screen_shape(self._data.get(CONF_SCREEN_SHAPE))]): vol.In(list(SCREEN_SHAPE_LABELS.values())),
-                vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
+                vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single portrait images")): vol.In(list(MODE_LABELS.values())),
             })
         fields.update(self._navigation(
             {"album": "Back to album selection", "memories": "Back to memory settings", "smart": "Back to Keywords"}.get(source_step, "Back to photo source"),
