@@ -107,7 +107,7 @@ def _photo(asset: dict[str, Any]) -> dict[str, Any]:
         "width": width, "height": height, "orientation": orientation,
         "captured": captured.isoformat() if captured else None, "capture_dt": captured,
         "exif": exif, "people": people, "tags": tags,
-        "favorite": bool(asset.get("isFavorite")), "rating": exif.get("rating"),
+        "favorite": asset.get("isFavorite"), "rating": exif.get("rating"),
     }
 
 

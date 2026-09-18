@@ -45,7 +45,7 @@ class MetadataRoleSelect(ImmichFrameEntity, SelectEntity):
     _attr_extra_state_attributes = {
         "description": (
             "Chooses which photo supplies the Date, Location, Filename, People, "
-            "Tags, Rating and Camera sensors. For a pair, choose the left or right "
+            "Tags, Rating, Camera and Favourite sensors. For a pair, choose the left or right "
             "photo. When only one photo is shown, its details are always used."
         ),
     }
