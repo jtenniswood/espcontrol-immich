@@ -89,17 +89,17 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save here for single images, or continue to pairing settings for portrait pairs.",
         "data": {
-          "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "photo_fit": "Photo fit"
         },
         "data_description": {
-          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
           "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step.",
+          "photo_fit": "Crop to fit fills the frame by trimming photo edges. Show full image keeps the entire photo and fills any empty space with a dim colour from the photo. Applies to single photos and both photos in a pair."
         }
       },
       "pairing": {
@@ -227,17 +227,17 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings for matching portrait pairs.",
+        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save here for single images, or continue to pairing settings for portrait pairs.",
         "data": {
-          "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "photo_fit": "Photo fit"
         },
         "data_description": {
-          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
           "orientation": "Filter the source photos by orientation. This does not change the output size. Matching portrait pairs require portrait photos.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step.",
+          "photo_fit": "Crop to fit fills the frame by trimming photo edges. Show full image keeps the entire photo and fills any empty space with a dim colour from the photo. Applies to single photos and both photos in a pair."
         }
       },
       "pairing": {

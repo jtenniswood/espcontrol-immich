@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FrameSnapshot, ImmichApi, ImmichApiError
-from .const import CONF_INTERVAL, CONF_ORIGINAL_ASPECT_RATIO, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES
+from .const import CONF_INTERVAL, CONF_PHOTO_FIT, CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, DOMAIN, SCREEN_SIZES, photo_fit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             # A cached image must fit the currently configured device screen.
             if state.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE) != self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE):
                 return
-            if state.get(CONF_ORIGINAL_ASPECT_RATIO, False) != self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False):
+            if state.get(CONF_PHOTO_FIT) != photo_fit(self.options):
                 return
             size = SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
             if state.get("output_size") != list(size):
@@ -62,13 +62,10 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             photos = tuple(state["photos"])
             if not photos or any(not isinstance(photo, dict) or not photo.get("id") for photo in photos):
                 return
-            # Preserve the base branch's JPEG validation with the selected limits.
+            # Verify actual JPEG dimensions as well as saved settings.
             image_data = image_path.read_bytes()
             with Image.open(BytesIO(image_data)) as image:
-                if len(photos) == 1 and self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False):
-                    if image.width > size[0] or image.height > size[1]:
-                        return
-                elif image.size != size:
+                if image.size != size:
                     return
             self.generation = int(state["generation"])
             self.data = FrameSnapshot(image_data, self.generation, photos, state.get("layout", "single"), datetime.fromisoformat(state["created_at"]), int(state.get("matching_assets", 0)), connected=False, using_cache=True, status="cached")
@@ -104,7 +101,7 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             "generation": snapshot.generation, "layout": snapshot.layout,
             "output_size": SCREEN_SIZES.get(self.options.get(CONF_SCREEN_SHAPE), SCREEN_SIZES[DEFAULT_SCREEN_SHAPE]),
             CONF_SCREEN_SHAPE: self.options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
-            CONF_ORIGINAL_ASPECT_RATIO: self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
+            CONF_PHOTO_FIT: photo_fit(self.options),
             "created_at": snapshot.created_at.isoformat(), "matching_assets": snapshot.matching_assets,
             "photos": [{key: value for key, value in photo.items() if key != "capture_dt"} for photo in snapshot.photos],
         }
