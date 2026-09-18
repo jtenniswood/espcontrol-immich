@@ -42,11 +42,12 @@ CONF_INTERVAL = "interval"
 CONF_MEMORY_WINDOW = "memory_window_days"
 CONF_FALLBACK = "fallback_to_all"
 DEFAULT_INTERVAL = 30
+DEFAULT_PAIR_WINDOW = 2
 PLATFORMS: list[Platform] = [Platform.IMAGE, Platform.SENSOR, Platform.SWITCH, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
 PHOTO_SELECTION_DEFAULTS = {
     CONF_MODE: "single",
     CONF_ORIENTATION: "any",
-    CONF_PAIR_WINDOW: 0,
+    CONF_PAIR_WINDOW: DEFAULT_PAIR_WINDOW,
 }
 
 

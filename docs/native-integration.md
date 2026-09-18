@@ -14,7 +14,7 @@ For HACS, add this repository as a custom repository of type **Integration**, th
 
 During setup, use the button at the bottom of each form to continue. The frame name is the final step and saves the frame. Only filters for the selected source are saved. You can change the frame’s settings after setup using **Configure**.
 
-On the frame’s device page, **Configuration** contains **Target display**, **Photo fit**, **Display mode**, **Photo orientation**, and **Pairing window** (0–7 days). Zero days pairs portraits taken on the same date. Pairing settings apply when **Display mode** is **Pair portrait photos**; they remain saved when showing single images. **Slide interval** also appears in **Configuration**. Slideshow pause/resume and navigation remain in **Controls**.
+On the frame’s device page, **Configuration** contains **Target display**, **Photo fit**, **Display mode**, **Photo orientation**, and **Pairing window** (0–7 days, default 2 days). Zero days pairs portraits taken on the same date. Pairing settings apply when **Display mode** is **Pair portrait photos**; they remain saved when showing single images. **Slide interval** also appears in **Configuration**. Slideshow pause/resume and navigation remain in **Controls**.
 
 Device settings save immediately and reload the frame to apply the new photo rules. A reload restarts the slideshow and clears previous-slide history. Immich must be reachable for the first image after a change: cached images from different modes, orientations, pairing rules, photo fits or output dimensions are rejected. Existing settings are preserved; caches from older versions that cannot confirm non-default pairing/orientation rules are regenerated. The slide interval control updates the timer without a reload.
 

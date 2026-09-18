@@ -164,7 +164,7 @@ async def test_new_setup_finishes_after_name_with_defaults(hass, source, extra):
     assert result["type"] == "create_entry"
     for key, value in {
         "mode": "single", "photo_fit": "show_full", "orientation": "any",
-        "interval": 30, "pair_window_days": 0, "screen_shape": "landscape",
+        "interval": 30, "pair_window_days": 2, "screen_shape": "landscape",
     }.items():
         assert result["data"][key] == value
 

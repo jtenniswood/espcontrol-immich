@@ -5,7 +5,7 @@ from datetime import timedelta
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DOMAIN
+from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, DOMAIN
 from .entity import ImmichFrameEntity
 
 
@@ -56,7 +56,7 @@ class PairWindowNumber(ImmichFrameEntity, NumberEntity):
 
     @property
     def native_value(self):
-        return self.coordinator.entry.data.get(CONF_PAIR_WINDOW, 0)
+        return self.coordinator.entry.data.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)
 
     async def async_set_native_value(self, value: float) -> None:
         self.coordinator.async_update_settings({CONF_PAIR_WINDOW: int(value)})

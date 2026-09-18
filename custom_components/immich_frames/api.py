@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
-    CONF_ORIENTATION, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
+    CONF_ORIENTATION, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
     CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 from .rendering import background_colour
@@ -226,7 +226,7 @@ class ImmichApi:
         primary = next((item for item in candidates if item["id"] not in recent_ids), candidates[0])
         photos = [primary]
         if options.get(CONF_MODE) == "pairs":
-            companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, 0)))
+            companion = self._companion(primary, [item for item in candidates if item["id"] != primary["id"]], int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)))
             if companion:
                 photos.append(companion)
         image_data = await asyncio.gather(*(self.thumbnail(item["id"]) for item in photos))
