@@ -4,7 +4,7 @@ from io import BytesIO
 
 from PIL import Image, ImageOps
 
-from .models import Photo, Slide
+from .models import OUTPUT_SIZE, Photo, Slide
 
 
 def _fit(image: Image.Image, size: tuple[int, int], mode: str) -> Image.Image:
@@ -14,9 +14,10 @@ def _fit(image: Image.Image, size: tuple[int, int], mode: str) -> Image.Image:
 
 
 def render_slide(frame_id: str, generation: int, photos: tuple[Photo, ...], payloads: tuple[bytes, ...], width: int, height: int, fit: str = "cover") -> Slide:
+    # Keep accepting legacy size arguments, but always render the device frame.
+    width, height = OUTPUT_SIZE
+    canvas = Image.new("RGB", (width, height), "black")
     if len(photos) == 2:
-        width, height = 1280, 800
-        canvas = Image.new("RGB", (width, height), "black")
         divider = width // 2
         tiles = ((0, divider), (divider + 1, width - divider - 1))
         for (left, tile_width), raw in zip(tiles, payloads):
@@ -25,7 +26,6 @@ def render_slide(frame_id: str, generation: int, photos: tuple[Photo, ...], payl
                 canvas.paste(_fit(image, (tile_width, height), "cover"), (left, 0))
         layout = "side_by_side"
     else:
-        canvas = Image.new("RGB", (width, height), "black")
         with Image.open(BytesIO(payloads[0])) as source:
             image = ImageOps.exif_transpose(source).convert("RGB")
             canvas.paste(_fit(image, (width, height), fit), (0, 0))
