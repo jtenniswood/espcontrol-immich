@@ -77,7 +77,7 @@
         "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },
@@ -89,17 +89,17 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
+        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
-          "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "photo_fit": "Photo fit"
         },
         "data_description": {
-          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
           "orientation": "Mixed includes landscapes and portraits by default, as well as square photos. Choose portrait photos only or landscape photos only to restrict the slideshow. This does not change the output size.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step.",
+          "photo_fit": "Crop to fit fills the frame by trimming photo edges. Show full image keeps the entire photo and fills any empty space with a dim colour from the photo. Applies to single photos and both photos in a pair."
         }
       },
       "pairing": {
@@ -215,7 +215,7 @@
         "description": "Choose a name, output size and display mode. Continue to photo display settings.",
         "data": {
           "frame_name": "Frame name",
-          "screen_shape": "Output size and aspect ratio",
+          "screen_shape": "Screen shape",
           "mode": "Display mode",
           "navigation": "Next action"
         },
@@ -227,17 +227,17 @@
       },
       "photos": {
         "title": "Configure photo display",
-        "description": "Choose which photo orientations to include, how single photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
+        "description": "Choose which photo orientations to include, how photos fit and the slideshow interval. Save the frame here for single images, or continue to pairing settings when Pair portrait photos is selected.",
         "data": {
-          "original_aspect_ratio": "Keep original aspect ratio for single photos",
           "orientation": "Photo orientation filter",
           "interval": "Slideshow interval (seconds)",
-          "navigation": "Next action"
+          "navigation": "Next action",
+          "photo_fit": "Photo fit"
         },
         "data_description": {
-          "original_aspect_ratio": "Supply single photos without added borders, scaled down to fit the selected output size. Also applies when no matching pair is available. Paired photos still fill the selected size.",
           "orientation": "Mixed includes landscapes and portraits by default, as well as square photos. Choose portrait photos only or landscape photos only to restrict the slideshow. This does not change the output size.",
-          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step."
+          "navigation": "Choose an action, then use the button below. Going back keeps your selections; changes are applied only when you choose Save frame on the final step.",
+          "photo_fit": "Crop to fit fills the frame by trimming photo edges. Show full image keeps the entire photo and fills any empty space with a dim colour from the photo. Applies to single photos and both photos in a pair."
         }
       },
       "pairing": {

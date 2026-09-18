@@ -14,7 +14,7 @@ from PIL import Image, ImageOps
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_FALLBACK, CONF_MEMORY_WINDOW, CONF_MODE,
     CONF_ORIENTATION, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY, CONF_SOURCE,
-    CONF_SCREEN_SHAPE, CONF_ORIGINAL_ASPECT_RATIO, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES,
+    CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE, SCREEN_SIZES, PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 from .rendering import background_colour
 
@@ -241,7 +241,7 @@ class ImmichApi:
             output, layout = await asyncio.get_running_loop().run_in_executor(
                 None, self._render, photos, image_data,
                 options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE),
-                options.get(CONF_ORIGINAL_ASPECT_RATIO, False),
+                photo_fit(options),
             )
         except (OSError, ValueError) as exc:
             raise ImmichApiError("Could not decode the photo preview from Immich") from exc
@@ -256,30 +256,32 @@ class ImmichApi:
         return min(eligible, key=lambda item: (abs((item["capture_dt"] - capture).total_seconds()), item["id"])) if eligible else None
 
     @staticmethod
-    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, original_aspect_ratio: bool = False) -> tuple[bytes, str]:
+    def _render(photos: list[dict[str, Any]], payloads: list[bytes], screen_shape: str = DEFAULT_SCREEN_SHAPE, fit: str | None = None) -> tuple[bytes, str]:
         canvas_size = SCREEN_SIZES.get(screen_shape, SCREEN_SIZES[DEFAULT_SCREEN_SHAPE])
         images: list[Image.Image] = []
         for payload in payloads:
             image = ImageOps.exif_transpose(Image.open(BytesIO(payload))).convert("RGB")
             images.append(image)
+        fit = fit or (PHOTO_FIT_FULL if len(images) == 1 else PHOTO_FIT_CROP)
+
+        def tile(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+            if fit == PHOTO_FIT_CROP:
+                return ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+            contained = ImageOps.contain(image, size, Image.Resampling.LANCZOS)
+            result = Image.new("RGB", size, background_colour(image))
+            result.paste(contained, ((size[0] - contained.width) // 2, (size[1] - contained.height) // 2))
+            return result
+
         if len(images) == 1:
-            if original_aspect_ratio:
-                # Keep the photo proportions without padding, within the output limits.
-                canvas = images[0]
-                canvas.thumbnail(canvas_size, Image.Resampling.LANCZOS)
-            else:
-                images[0].thumbnail(canvas_size, Image.Resampling.LANCZOS)
-                canvas = Image.new("RGB", canvas_size, background_colour(images[0]))
-                canvas.paste(images[0], ((canvas.width - images[0].width) // 2, (canvas.height - images[0].height) // 2))
+            canvas = tile(images[0], canvas_size)
             layout = "single"
         else:
-            # Fill the selected frame with one black pixel between the two tiles.
+            # Keep one black pixel between the two independently fitted photos.
             canvas = Image.new("RGB", canvas_size, "black")
             divider = canvas.width // 2
             tiles = ((0, divider), (divider + 1, canvas.width - divider - 1))
             for image, (left, width) in zip(images[:2], tiles):
-                cropped = ImageOps.fit(image, (width, canvas.height), Image.Resampling.LANCZOS)
-                canvas.paste(cropped, (left, 0))
+                canvas.paste(tile(image, (width, canvas.height)), (left, 0))
             layout = "side_by_side"
         output = BytesIO()
         # Avoid chroma bleeding across the narrow divider in paired output.
