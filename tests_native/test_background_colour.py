@@ -41,7 +41,7 @@ async def test_snapshot_fills_single_photo_even_when_companion_is_missing(asset,
     photo = Image.new("RGB", (200, 400), (40, 100, 200))
     api = ImmichApi("http://immich.test", "key")
     api._request = AsyncMock(side_effect=[[asset], png(photo)])
-    snapshot = await api.snapshot({"mode": mode, "screen_shape": "landscape"}, 1, set())
+    snapshot = await api.snapshot({"mode": mode, "screen_shape": "landscape", "photo_fit": "show_full"}, 1, set())
     with Image.open(BytesIO(snapshot.image)) as rendered:
         assert rendered.size == (1280, 800)
         assert all(abs(a - b) <= 3 for a, b in zip(rendered.getpixel((0, 0)), (20, 50, 100)))
@@ -55,6 +55,8 @@ def test_real_black_photo_edges_are_preserved(size):
     photo.paste((240, 80, 40), (100, 100, size[0] - 100, size[1] - 100))
     output, _ = ImmichApi._render([], [png(photo)])
     with Image.open(BytesIO(output)) as rendered:
+        scale = min(1280 / size[0], 800 / size[1])
+        size = (int(size[0] * scale), int(size[1] * scale))
         left, top = (1280 - size[0]) // 2, (800 - size[1]) // 2
         for position in [(left + 20, 400), (left + size[0] - 20, 400),
                          (640, top + 20), (640, top + size[1] - 20)]:

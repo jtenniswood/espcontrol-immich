@@ -52,7 +52,7 @@ def test_render_preserves_single_padding_and_fills_pairs_in_order(shape, label, 
             assert image.getpixel((center[0], 0))[0 if index == 0 else 2] > 240
             assert image.getpixel((center[0], height - 1))[0 if index == 0 else 2] > 240
         else:
-            scaled_height = min(400, tile_width // 2)
+            scaled_height = min(height, tile_width // 2)
             padding = image.getpixel((center[0], (height - scaled_height) // 2 - 10))
             assert 120 <= padding[0] <= 135
             assert max(padding[1:]) < 10
@@ -170,7 +170,7 @@ async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg
     ("square", False, False, (720, 720), True),
     ("portrait", False, False, (1280, 800), False),
     ("square", False, False, (1920, 1080), False),
-    ("square", True, False, (360, 720), True),
+    ("square", True, False, (360, 720), False),
     ("square", True, False, (720, 721), False),
     ("square", True, True, (720, 720), True),
     ("square", True, True, (360, 720), False),
@@ -182,7 +182,7 @@ async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, pai
 
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
         "url": "http://immich.test", "api_key": "key", "screen_shape": shape,
-        "original_aspect_ratio": original,
+        "photo_fit": "show_full" if original else "crop",
     })
     entry.add_to_hass(hass)
     coordinator = FrameCoordinator(hass, entry)
@@ -192,7 +192,7 @@ async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, pai
         "generation": 1, "created_at": "2026-09-18T12:00:00+00:00",
         "layout": "side_by_side" if paired else "single",
         "photos": [{"id": "a"}, {"id": "b"}] if paired else [{"id": "a"}],
-        "screen_shape": shape, "original_aspect_ratio": original,
+        "screen_shape": shape, "photo_fit": "show_full" if original else "crop",
         "output_size": SCREEN_SIZES[shape],
     }))
     await hass.async_add_executor_job(coordinator._load_cache)

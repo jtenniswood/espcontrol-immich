@@ -46,7 +46,7 @@ async def test_back_to_album_keeps_display_settings_and_saves_new_album(hass):
     assert result["data_schema"]({})["navigation"] == "continue"
     result = await submit(hass, result, album_ids=["a", "b"])
     defaults = result["data_schema"]({})
-    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1, 720 × 720)", "original_aspect_ratio": False, "mode": "Matching portrait pairs",
+    assert defaults == {"frame_name": "Kitchen", "screen_shape": "Square (1:1, 720 × 720)", "photo_fit": "show_full", "mode": "Matching portrait pairs",
                         "orientation": "Portrait photos only", "pair_window_days": 3,
                         "pairs_only": True, "interval": 75, "navigation": "continue"}
     result = await save(hass, result)

@@ -12,8 +12,9 @@ from homeassistant.helpers import selector
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
     CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
+    CONF_MODE, CONF_ORIENTATION, CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_PAIRS_ONLY, CONF_PAIR_WINDOW, CONF_SMART_QUERY,
     CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
+    PHOTO_FIT_CROP, PHOTO_FIT_FULL, photo_fit,
 )
 
 SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
@@ -168,6 +169,7 @@ class FrameSettingsFlow:
                         for field in fields:
                             data.pop(field, None)
                 data.pop("filter", None)
+                data.pop(CONF_ORIGINAL_ASPECT_RATIO, None)
                 return await self._async_save_settings(data, name, unique_id)
         names = {
             entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
@@ -182,7 +184,11 @@ class FrameSettingsFlow:
             vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str,
             vol.Required(CONF_SCREEN_SHAPE, default=SCREEN_SHAPE_LABELS.get(self._data.get(CONF_SCREEN_SHAPE), SCREEN_SHAPE_LABELS[DEFAULT_SCREEN_SHAPE])): vol.In(list(SCREEN_SHAPE_LABELS.values())),
             vol.Required(CONF_MODE, default=MODE_LABELS.get(self._data.get(CONF_MODE), "Single image")): vol.In(list(MODE_LABELS.values())),
-            vol.Required(CONF_ORIGINAL_ASPECT_RATIO, default=self._data.get(CONF_ORIGINAL_ASPECT_RATIO, False)): bool,
+            vol.Required(CONF_PHOTO_FIT, default=photo_fit(self._data)): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[
+                    {"value": PHOTO_FIT_CROP, "label": "Crop to fit"},
+                    {"value": PHOTO_FIT_FULL, "label": "Show full image"},
+                ], mode=selector.SelectSelectorMode.DROPDOWN)),
             vol.Required(CONF_ORIENTATION, default=ORIENTATION_LABELS.get(self._data.get(CONF_ORIENTATION), "Any orientation")): vol.In(list(ORIENTATION_LABELS.values())),
             vol.Required(CONF_PAIR_WINDOW, default=self._data.get(CONF_PAIR_WINDOW, 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=7)),
             vol.Required(CONF_PAIRS_ONLY, default=self._data.get(CONF_PAIRS_ONLY, False)): bool,
