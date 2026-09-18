@@ -50,6 +50,11 @@ def test_app_can_start_before_immich_is_configured(tmp_path) -> None:
     app = FrameApp({}, tmp_path)
     assert app.client is None
 
+@pytest.mark.parametrize("size", [(1920, 1080), (800, 1280), (4096, 4096)])
+def test_requested_output_dimensions_use_fixed_frame(size):
+    frame = FrameApp._frame_from_body({"name": "Frame", "output_width": size[0], "output_height": size[1]})
+    assert (frame.output_width, frame.output_height) == (1280, 800)
+
 
 def test_multiple_albums_take_precedence_over_legacy_selection() -> None:
     frame = FrameApp._frame_from_body({"name": "Albums", "source": "album", "album_ids": ["a", "b", "a"], "album_id": "old"})

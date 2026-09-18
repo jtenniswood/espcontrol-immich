@@ -4,6 +4,8 @@ EspControl Immich Companion is an original Home Assistant integration that turns
 
 Each config entry creates one persistent Home Assistant device. A frame can show all photos, select one or more Immich albums by name, use Memories, or use Keywords. Pair mode keeps primary and companion metadata separate so automations can choose either photo. The repository also contains the optional renderer app for supervised installations, but the native integration is the recommended user path.
 
+The native integration offers landscape (1280 × 800), portrait (800 × 1280), or square (720 × 720) output. The optional renderer uses a fixed 16:10 frame at 1280 × 800 pixels.
+
 ## Development
 
 ```sh

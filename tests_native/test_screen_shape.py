@@ -159,3 +159,40 @@ async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.entry_id not in hass.data[DOMAIN]
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize("shape,original,paired,cached_size,accepted", [
+    ("landscape", False, False, (1280, 800), True),
+    ("portrait", False, False, (800, 1280), True),
+    ("square", False, False, (720, 720), True),
+    ("portrait", False, False, (1280, 800), False),
+    ("square", False, False, (1920, 1080), False),
+    ("square", True, False, (360, 720), True),
+    ("square", True, False, (720, 721), False),
+    ("square", True, True, (720, 720), True),
+    ("square", True, True, (360, 720), False),
+])
+async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, paired, cached_size, accepted):
+    """Correct cache metadata must not hide an image with obsolete dimensions."""
+    from custom_components.immich_frames.const import SCREEN_SIZES
+    from custom_components.immich_frames.coordinator import FrameCoordinator
+
+    entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={
+        "url": "http://immich.test", "api_key": "key", "screen_shape": shape,
+        "original_aspect_ratio": original,
+    })
+    entry.add_to_hass(hass)
+    coordinator = FrameCoordinator(hass, entry)
+    coordinator.cache_path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", cached_size, "blue").save(coordinator.cache_path.with_suffix(".jpg"), "JPEG")
+    coordinator.cache_path.with_suffix(".json").write_text(json.dumps({
+        "generation": 1, "created_at": "2026-09-18T12:00:00+00:00",
+        "layout": "side_by_side" if paired else "single",
+        "photos": [{"id": "a"}, {"id": "b"}] if paired else [{"id": "a"}],
+        "screen_shape": shape, "original_aspect_ratio": original,
+        "output_size": SCREEN_SIZES[shape],
+    }))
+    await hass.async_add_executor_job(coordinator._load_cache)
+    assert (coordinator.data is not None) is accepted
+    await coordinator.async_close()

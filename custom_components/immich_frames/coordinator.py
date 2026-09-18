@@ -4,8 +4,11 @@ import json
 import logging
 from dataclasses import replace
 from datetime import datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+from PIL import Image
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -59,8 +62,16 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
             photos = tuple(state["photos"])
             if not photos or any(not isinstance(photo, dict) or not photo.get("id") for photo in photos):
                 return
+            # Preserve the base branch's JPEG validation with the selected limits.
+            image_data = image_path.read_bytes()
+            with Image.open(BytesIO(image_data)) as image:
+                if len(photos) == 1 and self.options.get(CONF_ORIGINAL_ASPECT_RATIO, False):
+                    if image.width > size[0] or image.height > size[1]:
+                        return
+                elif image.size != size:
+                    return
             self.generation = int(state["generation"])
-            self.data = FrameSnapshot(image_path.read_bytes(), self.generation, photos, state.get("layout", "single"), datetime.fromisoformat(state["created_at"]), int(state.get("matching_assets", 0)), connected=False, using_cache=True, status="cached")
+            self.data = FrameSnapshot(image_data, self.generation, photos, state.get("layout", "single"), datetime.fromisoformat(state["created_at"]), int(state.get("matching_assets", 0)), connected=False, using_cache=True, status="cached")
             self.history = [self.data]
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
             return
