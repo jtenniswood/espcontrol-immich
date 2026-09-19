@@ -16,6 +16,20 @@ The current integration is a substantial and well-tested custom integration, but
 
 The audit began as research only. The follow-up implementation branch now contains a first readiness slice; the status below distinguishes code completed in this repository from external gates that still require a PyPI release, Home Assistant maintainer agreement, or changes in the Home Assistant Core and documentation repositories.
 
+## Current upstream contribution status
+
+The recommended architecture has now been implemented in an isolated Home Assistant Core candidate: `immich_frames` depends on the existing Core `immich` config entry and reuses its maintained `aioimmich==0.17.0` client/session. This removes the need for a new Immich transport package for the initial Core contribution. A standalone client package remains an optional product/reuse decision for the custom repository, not a blocker for this Core path.
+
+Open upstream pull requests:
+
+- Home Assistant Core: [#182693](https://github.com/home-assistant/core/pull/182693) — initial image-only integration contribution.
+- Home Assistant documentation: [home-assistant.io #48258](https://github.com/home-assistant/home-assistant.io/pull/48258) — setup, options, entity, cache, troubleshooting, and removal documentation.
+- Home Assistant brands: [#11193](https://github.com/home-assistant/brands/pull/11193) — Immich Frames icon and logo assets.
+
+The Core maintainer requested a single platform for the first contribution. The Core candidate therefore ships only the `image` platform; buttons, sensors, and the slideshow switch remain in the custom product and are documented as follow-up Core work. This keeps the first reviewable contribution small without discarding the product implementation.
+
+Current non-code blockers are the contributor CLA signature, completion of the upstream checks, and maintainer review/approval. These are external workflow gates, not missing implementation in the candidate.
+
 ## Implementation status on the readiness branch
 
 Completed in this repository:
@@ -27,14 +41,13 @@ Completed in this repository:
 - Added redacted config-entry diagnostics that never include image bytes or the API key.
 - Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
 - Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 343 tests on the readiness branch, and the shared-client/core contract tests pass separately.
-- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commits `b12fb77c`, `8b906697`, `21ee8236`, and `eba4bb36`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and now includes the image platform plus translated buttons, slideshow switch, metadata/status sensors, config/options/reconfigure flows, exact-size rendering, source filtering, portrait pairing, atomic persistent cache, migration, diagnostics, icons, and entity defaults/parallel-update declarations.
-- The Core candidate has 31 focused tests covering setup, migration behavior, config-flow branches, entity behavior, exact output sizes, pairing, source API calls, cache integrity, error/recovery paths, and diagnostics. The measured branch-aware coverage is 96% for the integration modules, above the documented Silver threshold. Ruff and focused mypy pass; translation generation/validation, `git diff --check`, and the integration Hassfest validation pass apart from the four external Bronze gates for website documentation and Brands work.
+- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commits `b12fb77c`, `8b906697`, `21ee8236`, `eba4bb36`, `516af31c`, and `06ad6595`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and includes one image platform with config/options/reconfigure flows, exact-size rendering, source filtering, portrait pairing, atomic persistent cache, migration, diagnostics, translated selectors, fixed polling, parent reauthentication, and cached-image availability semantics.
+- The Core candidate has 34 focused tests covering setup, migration behavior, config-flow branches, image behavior, exact output sizes, pairing, source API calls, cache integrity, error/recovery paths, and diagnostics. The measured branch-aware coverage is 95% for the integration modules. Ruff, focused tests, integration-specific mypy, generated mypy configuration, and direct Hassfest validation pass; the remaining Hassfest Bronze findings are the external website and Brands pull requests.
 
 Still required before this can be proposed as a built-in integration:
 
-- Publish the reusable client as a maintained PyPI project with an sdist, public typed API, issue tracker, documentation, and a pinned release; then add that exact requirement to the Core manifest and generated Core requirements.
-- Decide with the existing Home Assistant `immich` integration maintainers whether this should depend on the existing Immich config entry or become additional functionality in that integration. The current branch is a transport/library preparation step and does not yet perform that account-ownership migration.
-- Create the actual `homeassistant/components/<domain>/` and `tests/components/<domain>/` Core PR, with the final domain/name and Home Assistant website documentation.
+- Complete the external Core PR gates: contributor CLA, final CI, maintainer review, and merge of the documentation and Brands companion PRs.
+- Keep the existing custom integration and the Core image-only contribution clearly separated. If the custom repository continues to maintain a standalone transport/library, publish and support that package independently; it is not required by the current Core design.
 - Complete the remaining feature and migration decisions: the candidate now covers album/keyword selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata/status entities, and a version migration for its initial Core shape. Migration from released HACS entries still needs a maintained mapping to an existing Core `immich` account, and the current `aioimmich` API does not expose the memories operation used by the custom integration.
 - Complete Core-only gates: brands, CODEOWNERS, the remaining full config-flow/error and migration checks, website documentation, generated dependency updates, and maintainer review. Strict typing and the Silver coverage threshold are now evidenced locally for the candidate; the remaining external/library gap is the unsupported memories source, which is deliberately not exposed until the shared client has a supported API.
 
@@ -44,7 +57,7 @@ Home Assistant already ships an `immich` integration. Its current manifest ident
 
 Before implementation, request maintainer feedback on one of these designs:
 
-### Recommended: a small `immich_frames` integration that depends on `immich`
+### Selected for the initial Core contribution: a small `immich_frames` integration that depends on `immich`
 
 - Require the user to configure the existing Immich integration first.
 - Let the frame flow select an existing Immich config entry/user instead of collecting the URL and API key again.
@@ -52,7 +65,7 @@ Before implementation, request maintainer feedback on one of these designs:
 - Keep only frame-specific state in `immich_frames`: source/filter, rendering policy, frame identity, cache, and entities.
 - Add `dependencies: ["immich"]` only if the final lifecycle and runtime-data contract needs it; a dependency controls setup order but does not configure an Immich entry for the user.
 
-This preserves the current user experience conceptually while avoiding duplicate credentials, API retry logic, SSL handling, and account ownership.
+This preserves the current user experience conceptually while avoiding duplicate credentials, API retry logic, SSL handling, and account ownership. It is the architecture used by Core PR #182693 and remains subject to maintainer approval.
 
 ### Alternative: add frame support to the existing `immich` integration
 
@@ -90,12 +103,12 @@ Importance: Critical
 Recommendation strength: Strong  
 Work required: Large
 
-Why it matters: This is an explicit Home Assistant Core eligibility requirement and the current code fails it. The Home Assistant layer should work with typed library objects, not build request paths, headers, retries, response validation, and API error messages itself.
+Why it matters: This is an explicit Home Assistant Core eligibility requirement. The initial Core candidate satisfies it by reusing the existing Core `immich` integration and its maintained `aioimmich` dependency. The custom repository's optional standalone client remains a separate packaging decision.
 
 Development needed:
 
 - Extend `aioimmich` if its public API can cleanly support the required searches, albums, memories, thumbnails/full-size images, and metadata.
-- If the frame-specific engine needs a separate library, publish and maintain an async package on PyPI with source distributions, an issue tracker, documentation, tests, and a stable API. It must be reusable outside Home Assistant.
+- If the frame-specific engine later needs API operations that `aioimmich` does not provide, extend `aioimmich` or publish a separate maintained async package on PyPI with source distributions, an issue tracker, documentation, tests, and a stable API. Do not add an unpublished repository-local requirement to Core.
 - Keep Pillow-based rendering separate from Immich transport. Rendering is not external communication, but it should have a clear package boundary and must not leak Immich HTTP details into Home Assistant entities.
 - Add a pinned manifest requirement and the corresponding Home Assistant `requirements_all.txt` update through the normal generator.
 - Ensure the library accepts a Home Assistant-provided `aiohttp.ClientSession` and does not create its own session.
@@ -110,7 +123,7 @@ Importance: Critical
 Recommendation strength: Strong  
 Work required: Medium after the library decision
 
-Home Assistant asks new integrations to begin at Bronze, keep the PR small, and limit the first contribution to a single platform. The current submission would include image, sensor, select, switch, number, and button platforms plus cache/rendering infrastructure and an optional app. That is appropriate product scope for the custom integration, but too broad for the first Core PR.
+Home Assistant asks new integrations to begin at Bronze, keep the PR small, and limit the first contribution to a single platform. The current Core submission follows that guidance with the image platform plus the minimum shared cache/rendering/configuration infrastructure. The custom product can continue to expose buttons, sensors, and switches separately.
 
 Suggested sequence:
 
@@ -127,7 +140,7 @@ Importance: Critical
 Recommendation strength: Strong  
 Work required: Small once the architecture is decided
 
-The current manifest is custom-integration oriented:
+The original custom manifest is custom-integration oriented:
 
 ```json
 {
@@ -143,7 +156,7 @@ The current manifest is custom-integration oriented:
 }
 ```
 
-For Core, development must:
+The Core candidate now has the corresponding Core manifest fields (`documentation`, `integration_type`, `quality_scale`, `requirements`, and `loggers`). For Core, development must:
 
 - Change `documentation` to the eventual `https://www.home-assistant.io/integrations/<domain>` page.
 - Remove `version`; Core integrations do not carry a custom-component version.
@@ -160,10 +173,12 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Large
 
-Concrete gaps:
+The Core candidate now addresses the main patterns below. The remaining gap is preserving/migrating released HACS entries if a future Core migration is approved.
 
-- Replace the current `hass.data[DOMAIN][entry_id]` runtime store with a typed `ConfigEntry.runtime_data` object.
-- Separate connection/account identity from frame options. The current options flow rewrites `entry.data`; it does not use `ConfigEntry.options` as Home Assistant expects.
+Concrete requirements and follow-up gaps:
+
+- Replace the current custom `hass.data[DOMAIN][entry_id]` runtime store with a typed `ConfigEntry.runtime_data` object. **Done in the Core candidate.**
+- Separate connection/account identity from frame options. **Done in the Core candidate;** the existing Immich entry owns connection/account data and the frame options flow owns frame settings.
 - Use Home Assistant constants such as `CONF_URL` and `CONF_API_KEY`, or use the existing Immich entry so the frame flow does not own those fields.
 - Use current `probatio` schemas/selectors, including URL and password selectors, field defaults in the schema, and `data_description` for every field that needs context.
 - Use typed config-entry aliases and `ConfigEntryState`/standard exceptions where appropriate.
@@ -177,7 +192,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Medium
 
-The current coordinator turns many upstream failures into a cached snapshot with a status string. That is useful product behavior, but it is not enough for Core lifecycle semantics.
+The Core candidate now separates connection failures from empty/unsupported/render failures, starts reauthentication on the parent Immich entry, retries when the parent is not loaded, and reports cached connection failures through entity availability. The custom integration still has additional platform-specific error behavior that must be kept aligned if it is maintained separately.
 
 Development needed:
 
@@ -194,7 +209,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Medium
 
-The current strings cover the image and select entities, but several entities use hard-coded `_attr_name` values. The remaining gaps are:
+The initial Core candidate covers the image entity and translated setup selectors. The remaining gaps are follow-up platform work:
 
 - Add translation keys for all sensors, buttons, the slideshow switch, and the interval number.
 - Add translated exception messages and placeholders rather than exposing raw API exception strings.
@@ -211,7 +226,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Medium
 
-The repository documentation is unusually detailed and is a useful source, but Core requires documentation on `home-assistant.io`. Create the page after the architecture/domain decision and cover:
+The repository documentation is unusually detailed and is a useful source, but Core requires documentation on `home-assistant.io`. The page is now proposed in [home-assistant.io PR #48258](https://github.com/home-assistant/home-assistant.io/pull/48258); keep the following requirements as the review checklist:
 
 - What Immich Frames does and how it relates to the built-in Immich integration.
 - Prerequisites, supported Immich versions, required API permissions, and whether an Immich config entry must already exist.
@@ -229,7 +244,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Large
 
-The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. It is not yet a Home Assistant Core test suite or evidence of the Silver >95% integration-module coverage rule.
+The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 34 tests and 95% branch-aware integration-module coverage; the remaining coverage work is follow-up platform/migration behavior.
 
 Development needed:
 
@@ -272,15 +287,15 @@ The first Core PR should not wait for every Gold/Platinum feature if Bronze is c
 
 | Home Assistant development checklist item | Current status | Gap/action |
 |---|---|---|
-| External communication in a PyPI library | **Partial** | The transport now lives in `src/immich_frames/client.py`; publish it as the maintained dependency and remove the remaining repository-local compatibility dependency before the Core PR. |
+| External communication in a PyPI library | **Pass for the initial Core path** | Core reuses the existing maintained `aioimmich` dependency through the built-in `immich` entry. A separate PyPI package is only required if future frame operations cannot be added to/reused from `aioimmich`. |
 | Source distribution available | **Gap** | The release process must publish and verify an sdist, not only wheels. |
 | Issue tracker for external library | **Gap/verify** | Maintain an issue tracker and link it in the library project; do not use the custom integration repository as a substitute for library ownership. |
-| Requirements in `manifest.json` | **Gap** | Add the exact published client requirement and update HA's generated `requirements_all.txt`; it is intentionally not pinned to an unpublished package in this branch. |
+| Requirements in `manifest.json` | **Pass for the initial Core path** | The Core manifest uses the existing exact `aioimmich==0.17.0` requirement and the generated Core requirements file was regenerated and validated. |
 | Code owners | **Partial** | The custom manifest names `@jtenniswood`; add the appropriate Core `CODEOWNERS` entry and confirm sustainable ownership. |
-| `.strict-typing` | **Pass locally / verify in Core** | The candidate is listed in Core's `.strict-typing` and passes focused mypy; re-run the full Core typing gate in the eventual PR. |
+| `.strict-typing` | **Pass locally / verify in CI** | The candidate is listed in Core's `.strict-typing`, generated `mypy.ini` is committed, and integration-specific mypy reports no findings; re-run the full Core typing gate in CI. |
 | Ruff formatting | **Verify** | Run Home Assistant's actual pre-commit/Ruff checks in a Core checkout; the repository CI check is not equivalent. |
 | Deprecation process | **Gap to plan** | Document migration from the custom integration and use Core config-entry migrations for saved data. |
-| `home-assistant.io` documentation | **Gap** | Add the complete integration page and link it from the Core manifest. |
+| `home-assistant.io` documentation | **In review** | Companion PR #48258 adds the integration page and links to the Core domain; merge remains an external gate. |
 
 ## Integration Quality Scale matrix
 
@@ -291,23 +306,23 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | Rule | Status | Evidence and required development |
 |---|---|---|
 | `action-setup` | N/A/decision | No custom service actions are currently defined. If custom actions are added later, register them in `async_setup`, not per entry. |
-| `appropriate-polling` | Pass/verify | `DataUpdateCoordinator` polls using a bounded configurable interval; the website still needs to document the default and request/render cost. |
+| `appropriate-polling` | Pass/verify | The Core candidate uses a fixed 30-second `DataUpdateCoordinator` interval, independent of user options; the website PR documents the cadence and request/render cost. |
 | `brands` | Partial | The custom integration has local brand images. Core assets must be submitted to the Home Assistant brands repository. |
 | `common-modules` | Pass | `coordinator.py`, `entity.py`, `selection.py`, `rendering.py`, and `cache.py` centralize shared behavior in the Core candidate. |
-| `config-flow-test-coverage` | Partial | Core flow tests cover the principal setup and unavailable-parent branches. Add complete tests for source-specific validation, options/reconfigure, migrated HACS entries, cancellation, and the eventual reauth/account association. |
-| `config-flow` | Partial | The candidate uses `probatio`, selectors, descriptions, options flow, reconfigure flow, and an existing Immich account. The final account migration and full branch coverage remain. |
-| `dependency-transparency` | Partial | The candidate declares the existing pinned `aioimmich` dependency and reuses Core Immich. Memories and any additional frame API operations still require a maintained client release. |
+| `config-flow-test-coverage` | Pass for the initial slice | Core flow tests cover setup, parent availability, source-specific validation/errors, options, reconfigure, and translation paths. HACS-to-Core migration remains a future design because the initial PR does not migrate custom entries. |
+| `config-flow` | Pass for the initial slice | The candidate uses `probatio`, translated selectors, descriptions, options/reconfigure flows, and an existing Immich account. HACS migration remains out of scope for the initial PR. |
+| `dependency-transparency` | Pass for the initial slice | The candidate declares the existing pinned `aioimmich` dependency through the Core Immich path. Memories remain deliberately unsupported because the maintained client does not expose that API. |
 | `docs-actions`, `docs-triggers`, `docs-conditions` | N/A/decision | No custom actions, triggers, or conditions exist. Document entity controls and add these features only when they are truly needed. |
-| `docs-high-level-description` | Partial | README/repo docs cover the product, but the Core website page does not exist and must explain the relationship with built-in Immich. |
-| `docs-installation-instructions` | Partial | Custom/HACS instructions exist; replace them with the standard Home Assistant website setup page for a built-in integration. |
-| `docs-removal-instructions` | Gap | Add explicit removal instructions, including what happens to frame entries, cached images, and the separate Immich account entry. |
+| `docs-high-level-description` | In review | Companion PR #48258 supplies the Core website description and relationship with built-in Immich. |
+| `docs-installation-instructions` | In review | Companion PR #48258 supplies standard Home Assistant setup instructions. |
+| `docs-removal-instructions` | In review | Companion PR #48258 documents frame removal, cache handling, and preservation of the separate Immich account entry. |
 | `entity-event-setup` | N/A/decision | No entity event listeners are currently used. Reassess if the integration starts listening to Home Assistant events. |
 | `entity-unique-id` | Pass/verify | Entities use stable entry-ID/key IDs. Preserve them through custom-to-Core migration and test registry continuity. |
 | `has-entity-name` | Pass | The base entity sets `_attr_has_entity_name = True`. Keep this pattern. |
 | `runtime-data` | Pass | The coordinator is assigned to `entry.runtime_data` and all platforms read it through a typed Core config-entry alias. |
 | `test-before-configure` | Pass/partial | The flow validates a loaded Immich account before advancing and validates selected albums. Add full tests for all upstream failure types. |
 | `test-before-setup` | Pass/partial | First refresh tests setup and translated update/auth failures are present; add standard Core retry/auth association coverage. |
-| `unique-config-entry` | Pass/partial | The candidate uses the selected Immich entry plus frame name as the unique identity. Preserve that identity when mapping released custom entries. |
+| `unique-config-entry` | Pass for the initial slice | The candidate uses the selected Immich entry plus a generated stable frame ID, avoiding mutable names as config-entry unique IDs. HACS mapping is future work. |
 
 ### Silver
 
@@ -322,7 +337,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs one warning per outage and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | Pass locally / verify in Core | Invalid API keys raise `ConfigEntryAuthFailed`; the new reauth flow updates only the key and preserves the frame entry. Add full Core flow coverage. |
-| `test-coverage` | Pass locally / verify in Core | The 31-test focused Core suite measures 96% branch-aware coverage across the integration modules. Preserve this threshold as the implementation and dependency boundary change in the eventual PR. |
+| `test-coverage` | Pass locally / verify in CI | The 34-test focused Core suite measures 95% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
 
 ### Gold
 
@@ -332,21 +347,21 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `diagnostics` | Pass locally / verify in Core | Added diagnostics that expose safe runtime state without image bytes; add the final Core diagnostics test and ensure URLs/account identifiers follow maintainer guidance. |
 | `discovery-update-info` | N/A/verify | No supported Immich discovery mechanism has been established. Investigate Zeroconf/SSDP/DHCP before declaring this N/A. |
 | `discovery` | N/A/verify | Current setup is manual by URL/account. Implement only if Immich exposes a stable, safe discovery protocol. |
-| `docs-data-update` | Partial | Polling/cache behavior is documented in repo files; move it to the website and state the final interval/backoff. |
-| `docs-examples` | Gap | Add tested automation examples for pause/resume, next/previous, refresh/clear-cache where those entities remain in scope. |
-| `docs-known-limitations` | Partial | Repo docs describe many limitations; publish them on the website and keep them distinct from bugs. |
-| `docs-supported-devices` | Partial | Screen resolutions are documented, but the Core page needs an explicit supported/unsupported display/device matrix. |
-| `docs-supported-functions` | Partial | Entity contract exists; publish the final Core platform/entity list and supported behavior. |
-| `docs-troubleshooting` | Gap/partial | Add a dedicated website troubleshooting section with debug logging and diagnostics instructions. |
-| `docs-use-cases` | Gap | Add clear use cases, such as a wall display, rotating family photos, album-based display, and offline cache behavior. |
+| `docs-data-update` | In review | Companion PR #48258 documents the fixed 30-second polling and cache behavior. |
+| `docs-examples` | N/A for the initial slice | The image-only contribution has no custom actions or automation controls; examples belong with follow-up button/switch platforms. |
+| `docs-known-limitations` | In review | Companion PR #48258 documents preview-only rendering, unsupported memories, and cache/auth limitations. |
+| `docs-supported-devices` | In review | Companion PR #48258 documents the exact supported output dimensions. |
+| `docs-supported-functions` | In review | Companion PR #48258 documents the initial image-platform contract. |
+| `docs-troubleshooting` | In review | Companion PR #48258 includes debug logging, diagnostics, authentication, connectivity, and no-photo guidance. |
+| `docs-use-cases` | In review | Companion PR #48258 describes wall-display and rotating-photo use cases. |
 | `dynamic-devices` | N/A/decision | Explicitly configured frame entries are not automatically discovered. Only implement dynamic devices if the selected architecture requires adding frames under an existing Immich account. |
-| `entity-category` | Partial | Configuration selects/numbers already use `CONFIG`; audit buttons and metadata against Core conventions. |
+| `entity-category` | N/A for the initial slice | The initial image entity has no configuration-only or diagnostic category. Follow-up platforms need a separate audit. |
 | `entity-device-class` | Partial/N/A | Text photo metadata has no obvious standard class; numeric/date entities should be audited and justified. |
-| `entity-disabled-by-default` | Pass/verify | Low-value photo metadata sensors are disabled by default; matching-count and frame-status sensors remain enabled. Confirm this product choice with maintainers. |
-| `entity-translations` | Pass locally / verify in Core | Buttons, switch, number, sensor, image, and select entities now expose translation keys; add the final Core translation validation. |
-| `exception-translations` | Gap | Raw `ImmichApiError` messages are not Core exception translations. Add translated exception keys/placeholders. |
-| `icon-translations` | Pass/verify | The candidate supplies `icons.json` for buttons, metadata sensors, and slideshow state; validate against the final entity set. |
-| `reconfiguration-flow` | Partial | A source/frame reconfigure flow exists, but server/account changes are intentionally owned by the parent Immich entry. Complete and document the released-HACS account association path. |
+| `entity-disabled-by-default` | N/A for the initial slice | The initial image entity is enabled by default. Follow-up metadata sensors need explicit default-enabled decisions. |
+| `entity-translations` | Pass locally / verify in Core | The initial image entity and all shipped config/options selectors expose translation keys; follow-up platform entities need their own translations. |
+| `exception-translations` | Pass for the initial slice | The Core candidate uses translated coordinator exceptions for setup, connection, image, empty-selection, and unsupported-source failures. |
+| `icon-translations` | N/A for the initial slice | The initial Core contribution has only the image platform and no dynamic icon translations. Button/sensor/switch icon work belongs to follow-up platform PRs. |
+| `reconfiguration-flow` | Pass for the initial slice | Source/frame reconfiguration is covered; server/account changes remain intentionally owned by the parent Immich entry. HACS account association is future work. |
 | `repair-issues` | Gap/decision | Add repairs for actionable migration/auth conditions only; avoid repair spam for normal empty libraries. |
 | `stale-devices` | N/A/decision | No service-side dynamic frame discovery currently exists. Revisit if frames become dynamic children of an Immich account. |
 
@@ -354,46 +369,44 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 
 | Rule | Status | Required development |
 |---|---|---|
-| `async-dependency` | Partial | The transport is now async and package-isolated, but the package must be published and maintained externally before it meets Core's dependency rule. |
+| `async-dependency` | Pass for the initial Core path | The candidate reuses the existing asynchronous `aioimmich` dependency through the built-in Immich integration. |
 | `inject-websession` | Pass locally / verify in Core | The coordinator and config flow inject Home Assistant's managed session; the client only owns a session when used standalone by the optional app. |
 | `strict-typing` | Pass locally / verify in Core | The candidate is listed in Core's `.strict-typing`, uses typed config-entry/runtime-data aliases, and passes focused mypy. Re-run the full Core typing gate in the eventual PR. |
 
 ## Core packaging and repository boundaries
 
-The following should be separated before opening a Home Assistant Core PR:
+The following boundaries are now in place for the open Home Assistant Core PR:
 
 - Core integration files move to `homeassistant/components/<domain>/`.
 - Core tests move to `tests/components/<domain>/` and use Home Assistant's standard fixtures.
 - The HACS manifest version, `hacs.json`, `repository.yaml`, HACS publishing instructions, custom brand directory, optional app/Docker files, and this repository's release automation stay outside the Core PR.
-- The reusable Immich client/rendering package lives on PyPI and is versioned independently from Home Assistant Core.
+- Any future standalone Immich client/rendering package remains versioned independently from Home Assistant Core; it is not an unpublished Core requirement.
 - Core brand assets go to the Home Assistant brands repository, not only `custom_components/<domain>/brand/`.
 - The custom integration needs a documented migration/retirement path so existing users are not left with duplicate `immich` and `immich_frames` accounts or broken entity IDs.
 
 ## Recommended delivery plan
 
-### Phase 0 — maintainer alignment
+### Phase 0 — maintainer alignment (in progress)
 
-- Confirm separate integration versus extension of `immich`.
-- Confirm domain/name, integration type, config-entry relationship, and initial platform.
-- Open a design discussion with the Immich integration owners before extracting a library.
+- The dependent-integration architecture is implemented in Core PR #182693 and awaits maintainer approval.
+- The initial platform has been reduced to `image` per maintainer feedback.
+- CLA signature, CI completion, and final reviewer approval remain.
 
-### Phase 1 — reusable library
+### Phase 1 — reusable library (complete for the initial Core path)
 
 - Implement the async API and rendering boundaries.
 - Inject the Home Assistant web session.
-- Publish a pinned PyPI release with sdist, tests, issue tracker, and typed public models.
+- The initial Core path reuses the existing pinned `aioimmich` release; publish a separate package only if future APIs require it.
 - Add characterization tests for current output dimensions, pairing, fit, cache identity, and failure behavior.
 
-### Phase 2 — Bronze Core integration
+### Phase 2 — Bronze Core integration (submitted)
 
-- Add Core manifest and file layout.
-- Add typed `runtime_data`, config-entry migration, UI flow, unique identity, setup/unload, translated errors, and one platform.
-- Add the Home Assistant website page and Core tests.
+- Core manifest/file layout, typed `runtime_data`, UI flow, stable generated identity, setup/unload, translated errors, image platform, website page, and Core tests are in the open PR set.
 - Run Hassfest, Ruff/pre-commit, mypy/strict typing as applicable, targeted tests, and the full Core test suite relevant to the change.
 
-### Phase 3 — user-facing expansion
+### Phase 3 — user-facing expansion (future follow-up PRs)
 
-- Add remaining entities one platform at a time.
+- Add buttons, sensors, and the slideshow switch one platform at a time.
 - Add reauth/reconfigure, availability/recovery logs, default-disabled metadata, translations, and automation examples.
 - Preserve entity IDs and frame settings through each step.
 
@@ -416,7 +429,7 @@ The following should be separated before opening a Home Assistant Core PR:
 - Read the current Home Assistant [creating an integration](https://developers.home-assistant.io/docs/creating_component_index/), [development checklist](https://developers.home-assistant.io/docs/development_checklist/), [component checklist](https://developers.home-assistant.io/docs/creating_component_code_review/), [manifest reference](https://developers.home-assistant.io/docs/creating_integration_manifest/), [Core contribution guidance](https://developers.home-assistant.io/docs/core/integration/contributing_to_core/), and [Integration Quality Scale checklist](https://developers.home-assistant.io/docs/core/integration-quality-scale/checklist/).
 - Compared the repository with the live Home Assistant [Immich integration](https://www.home-assistant.io/integrations/immich) and its current Core manifest/coordinator/config flow.
 - Inspected the repository status, local `main` and `origin/main` ancestry, manifest, config flow, coordinator, API/client, platform modules, translations, tests, architecture docs, and CI/release workflows.
-- The implementation follow-up was run in the isolated readiness worktree. `tests_native`: 341 passed. Shared client/core tests: 82 passed. The full repository run also contains one aiohttp test that needs socket permission under the Home Assistant test plugin; it passes with that test runner override. Ruff reports pre-existing repository-wide style findings, and the managed worktree prevents Ruff/Python cache writes, so Core linting still needs to be run in a normal writable Home Assistant Core checkout.
+- The implementation follow-up was run in isolated worktrees. The custom repository's existing native/client suites remain separate from the Core evidence. In the Home Assistant Core candidate, `tests/components/immich_frames`: 34 passed, branch-aware integration coverage is 95%, Ruff and integration-specific mypy pass, generated `mypy.ini` validates, and direct Hassfest validation reports only the four expected external Bronze gates before the companion docs/Brands PRs merge. The repository-wide mypy run still reports unrelated baseline errors outside `immich_frames`; the Core CI gate is the final authority.
 
 ## References
 
