@@ -2,7 +2,7 @@
 from datetime import date
 from custom_components.immich_frames.core.engine import select_candidates as select, _with_memory_ids  # noqa: F401
 from custom_components.immich_frames.core.filtering import safe_filter  # noqa: F401
-from custom_components.immich_frames.core.client import ImmichApi
+from .client import ImmichClient as ImmichApi
 from .models import Photo
 
 

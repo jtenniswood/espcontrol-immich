@@ -116,18 +116,18 @@ async def test_fit_change_rejects_old_cache_then_restores_matching_cache(hass, a
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1280, 800)
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).size == (1280, 800)
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
             await set_value(hass, entry, "select", "photo_fit", "crop")
-            assert entry.entry_id not in hass.data[DOMAIN]
+        assert getattr(entry, "runtime_data", None) is None
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (1280, 800)
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).size == (1280, 800)
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        snapshot = entry.runtime_data.data
         assert snapshot.using_cache
         assert Image.open(BytesIO(snapshot.image)).size == (1280, 800)
         assert await hass.config_entries.async_unload(entry.entry_id)

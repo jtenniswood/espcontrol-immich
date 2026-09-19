@@ -14,7 +14,26 @@ The current integration is a substantial and well-tested custom integration, but
 4. The current integration misses several Bronze requirements: `ConfigEntry.runtime_data`, transparent pinned dependencies, core manifest fields, Home Assistant website documentation, full config-flow coverage, and core-style error/logging behavior.
 5. Reaching the highest possible quality level is feasible, but it should be staged. Home Assistant explicitly asks new integrations to start at Bronze with a small, single-platform PR rather than submitting every Gold/Platinum feature at once.
 
-This is a research document only. No runtime behavior was changed by this audit.
+The audit began as research only. The follow-up implementation branch now contains a first readiness slice; the status below distinguishes code completed in this repository from external gates that still require a PyPI release, Home Assistant maintainer agreement, or changes in the Home Assistant Core and documentation repositories.
+
+## Implementation status on the readiness branch
+
+Completed in this repository:
+
+- Extracted the async Immich transport into `src/immich_frames/client.py`, with injectable `aiohttp.ClientSession`, retries, response validation, EXIF-aware image sizing, and compatibility methods used by the optional app.
+- Changed the Home Assistant integration and all platforms to use `ConfigEntry.runtime_data` instead of `hass.data`.
+- Injected Home Assistant's managed web session into the coordinator and config flow; the client does not close Home Assistant's session.
+- Added `ConfigEntryAuthFailed` handling, one-time unavailable/recovery logging, and a credential-only reauthentication flow with translations.
+- Added redacted config-entry diagnostics that never include image bytes or the API key.
+- Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
+- Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 341 tests on the readiness branch, and the shared-client/core contract tests pass separately.
+
+Still required before this can be proposed as a built-in integration:
+
+- Publish the reusable client as a maintained PyPI project with an sdist, public typed API, issue tracker, documentation, and a pinned release; then add that exact requirement to the Core manifest and generated Core requirements.
+- Decide with the existing Home Assistant `immich` integration maintainers whether this should depend on the existing Immich config entry or become additional functionality in that integration. The current branch is a transport/library preparation step and does not yet perform that account-ownership migration.
+- Create the actual `homeassistant/components/<domain>/` and `tests/components/<domain>/` Core PR, with the final domain/name and Home Assistant website documentation.
+- Complete Core-only gates: brands, CODEOWNERS, strict typing, full config-flow/error/coverage checks, translated exception text, default-disabled metadata decisions, and maintainer review.
 
 ## Important architectural decision
 
@@ -250,10 +269,10 @@ The first Core PR should not wait for every Gold/Platinum feature if Bronze is c
 
 | Home Assistant development checklist item | Current status | Gap/action |
 |---|---|---|
-| External communication in a PyPI library | **Gap** | Extract/extend an async PyPI client; the current `api.py`/`core/client.py` performs direct HTTP work inside the integration. |
-| Source distribution available | **Verify after library extraction** | The library must publish an sdist, not only wheels. |
+| External communication in a PyPI library | **Partial** | The transport now lives in `src/immich_frames/client.py`; publish it as the maintained dependency and remove the remaining repository-local compatibility dependency before the Core PR. |
+| Source distribution available | **Gap** | The release process must publish and verify an sdist, not only wheels. |
 | Issue tracker for external library | **Gap/verify** | Maintain an issue tracker and link it in the library project; do not use the custom integration repository as a substitute for library ownership. |
-| Requirements in `manifest.json` | **Gap** | Add exact pinned requirements and update HA's generated `requirements_all.txt`. |
+| Requirements in `manifest.json` | **Gap** | Add the exact published client requirement and update HA's generated `requirements_all.txt`; it is intentionally not pinned to an unpublished package in this branch. |
 | Code owners | **Partial** | The custom manifest names `@jtenniswood`; add the appropriate Core `CODEOWNERS` entry and confirm sustainable ownership. |
 | `.strict-typing` | **Gap** | Type the Core integration/library boundary and add it once it passes strict checks. |
 | Ruff formatting | **Verify** | Run Home Assistant's actual pre-commit/Ruff checks in a Core checkout; the repository CI check is not equivalent. |
@@ -282,7 +301,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `entity-event-setup` | N/A/decision | No entity event listeners are currently used. Reassess if the integration starts listening to Home Assistant events. |
 | `entity-unique-id` | Pass/verify | Entities use stable entry-ID/key IDs. Preserve them through custom-to-Core migration and test registry continuity. |
 | `has-entity-name` | Pass | The base entity sets `_attr_has_entity_name = True`. Keep this pattern. |
-| `runtime-data` | Gap | Current code stores coordinators in `hass.data`; assign a typed runtime object to `entry.runtime_data`. |
+| `runtime-data` | Pass locally / Core typing gap | The coordinator is assigned to `entry.runtime_data` and all platforms read it. Add the typed Core config-entry alias in the eventual Core layout. |
 | `test-before-configure` | Pass/partial | The flow validates Immich before advancing. Expand validation to the selected existing account/client and test all failure types. |
 | `test-before-setup` | Partial | First refresh tests setup, but Core should use translated `ConfigEntryAuthFailed`/`UpdateFailed` semantics and standard retry behavior. |
 | `unique-config-entry` | Partial | The current `url|frame_name` identity prevents duplicate names, but the final identity must be based on the selected Immich account plus frame identity and be tested across migrations. |
@@ -297,9 +316,9 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `docs-installation-parameters` | Partial | The current API-key permission and URL guidance is useful, but needs to be moved and aligned with the existing Immich account setup. |
 | `entity-unavailable` | Partial | Cached image behavior is intentional, but authentication and non-cache entities need explicit availability semantics. |
 | `integration-owner` | Partial | A custom code owner is present; Core needs confirmed maintainers and an appropriate `CODEOWNERS` entry. |
-| `log-when-unavailable` | Gap | Current failure handling returns status snapshots without the required once-on-failure/once-on-recovery logging behavior. |
+| `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs one warning per outage and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Gap | No explicit `PARALLEL_UPDATES` declarations were found in the platform modules. Choose and document safe values per platform. |
-| `reauthentication-flow` | Gap | Invalid API keys become a cached/status condition; add UI reauth that updates only credentials and preserves the frame. |
+| `reauthentication-flow` | Pass locally / verify in Core | Invalid API keys raise `ConfigEntryAuthFailed`; the new reauth flow updates only the key and preserves the frame entry. Add full Core flow coverage. |
 | `test-coverage` | Gap/unverified | Existing tests are extensive but there is no evidence of the Core >95% integration-module threshold. Add coverage measurement and fill lifecycle/error/metadata gaps. |
 
 ### Gold
@@ -307,7 +326,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | Rule | Status | Evidence and required development |
 |---|---|---|
 | `devices` | Pass/verify | The base entity creates one device per frame. Preserve device identity and decide whether the final design has one or many devices per Immich account. |
-| `diagnostics` | Gap | Add redacted diagnostics for safe support and troubleshooting. |
+| `diagnostics` | Pass locally / verify in Core | Added diagnostics that redact the API key and expose safe runtime state without image bytes; add the final Core diagnostics test and ensure URLs/account identifiers follow maintainer guidance. |
 | `discovery-update-info` | N/A/verify | No supported Immich discovery mechanism has been established. Investigate Zeroconf/SSDP/DHCP before declaring this N/A. |
 | `discovery` | N/A/verify | Current setup is manual by URL/account. Implement only if Immich exposes a stable, safe discovery protocol. |
 | `docs-data-update` | Partial | Polling/cache behavior is documented in repo files; move it to the website and state the final interval/backoff. |
@@ -321,7 +340,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `entity-category` | Partial | Configuration selects/numbers already use `CONFIG`; audit buttons and metadata against Core conventions. |
 | `entity-device-class` | Partial/N/A | Text photo metadata has no obvious standard class; numeric/date entities should be audited and justified. |
 | `entity-disabled-by-default` | Gap | Metadata sensors are all enabled by default today; disable low-value/noisy sensors unless the Core design intentionally keeps them enabled. |
-| `entity-translations` | Gap | Several entities use hard-coded `_attr_name`; add translation keys for every entity and state value. |
+| `entity-translations` | Pass locally / verify in Core | Buttons, switch, number, sensor, image, and select entities now expose translation keys; add the final Core translation validation. |
 | `exception-translations` | Gap | Raw `ImmichApiError` messages are not Core exception translations. Add translated exception keys/placeholders. |
 | `icon-translations` | Gap/verify | Icons are hard-coded in platform code and there is no icon translation resource. Add translated dynamic icons where applicable or document why only static defaults are needed. |
 | `reconfiguration-flow` | Partial | A source/frame reconfigure flow exists, but server/account changes are not reconfigurable without relying on the original credentials. Complete the connection path. |
@@ -332,8 +351,8 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 
 | Rule | Status | Required development |
 |---|---|---|
-| `async-dependency` | Partial | The current direct client is async, but the Core requirement is a maintained async external dependency. Use/extend `aioimmich` or publish the appropriate library. |
-| `inject-websession` | Gap | Current code creates its own `aiohttp.ClientSession`; accept Home Assistant's managed session, including SSL verification settings. |
+| `async-dependency` | Partial | The transport is now async and package-isolated, but the package must be published and maintained externally before it meets Core's dependency rule. |
+| `inject-websession` | Pass locally / verify in Core | The coordinator and config flow inject Home Assistant's managed session; the client only owns a session when used standalone by the optional app. |
 | `strict-typing` | Gap | Type the integration, runtime data, client models, config flow, entities, and exception boundary; add `.strict-typing` and pass Core checks. |
 
 ## Core packaging and repository boundaries
@@ -394,7 +413,7 @@ The following should be separated before opening a Home Assistant Core PR:
 - Read the current Home Assistant [creating an integration](https://developers.home-assistant.io/docs/creating_component_index/), [development checklist](https://developers.home-assistant.io/docs/development_checklist/), [component checklist](https://developers.home-assistant.io/docs/creating_component_code_review/), [manifest reference](https://developers.home-assistant.io/docs/creating_integration_manifest/), [Core contribution guidance](https://developers.home-assistant.io/docs/core/integration/contributing_to_core/), and [Integration Quality Scale checklist](https://developers.home-assistant.io/docs/core/integration-quality-scale/checklist/).
 - Compared the repository with the live Home Assistant [Immich integration](https://www.home-assistant.io/integrations/immich) and its current Core manifest/coordinator/config flow.
 - Inspected the repository status, local `main` and `origin/main` ancestry, manifest, config flow, coordinator, API/client, platform modules, translations, tests, architecture docs, and CI/release workflows.
-- No code tests were run because this was a research/documentation audit; no project files were changed outside this document.
+- The implementation follow-up was run in the isolated readiness worktree. `tests_native`: 341 passed. Shared client/core tests: 82 passed. The full repository run also contains one aiohttp test that needs socket permission under the Home Assistant test plugin; it passes with that test runner override. Ruff reports pre-existing repository-wide style findings, and the managed worktree prevents Ruff/Python cache writes, so Core linting still needs to be run in a normal writable Home Assistant Core checkout.
 
 ## References
 

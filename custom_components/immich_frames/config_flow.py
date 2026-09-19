@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
@@ -51,7 +52,11 @@ class FrameSettingsFlow:
         }), errors=errors or {})
 
     async def async_step_album(self, user_input: dict[str, Any] | None = None):
-        api = ImmichApi(self._data[CONF_URL], self._data[CONF_API_KEY])
+        api = ImmichApi(
+            self._data[CONF_URL],
+            self._data[CONF_API_KEY],
+            session=async_get_clientsession(self.hass),
+        )
         try:
             albums = await api.albums()
         except ImmichApiError as exc:
@@ -196,6 +201,29 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
         self._data.setdefault(CONF_FRAME_NAME, entry.title)
         return await self.async_step_source()
 
+    async def async_step_reauth(self, _entry_data: dict[str, Any] | None = None):
+        """Update credentials after Immich rejects the saved API key."""
+        self._reauth_entry = self._get_reauth_entry()
+        self._data = dict(self._reauth_entry.data)
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            data = {**self._data, CONF_API_KEY: user_input[CONF_API_KEY]}
+            errors = await self._async_check_connection(data)
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    self._reauth_entry,
+                    data_updates={CONF_API_KEY: data[CONF_API_KEY]},
+                    reason="reauth_successful",
+                )
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
+            errors=errors,
+        )
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         if user_input is None and self._saved_connections():
             return await self.async_step_connection()
@@ -251,7 +279,7 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
             if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
                 raise ValueError("invalid_url")
             api_key = str(data[CONF_API_KEY])
-            api = ImmichApi(url, api_key)
+            api = ImmichApi(url, api_key, session=async_get_clientsession(self.hass))
             try:
                 await api.validate_connection()
             finally:

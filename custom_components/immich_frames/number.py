@@ -5,18 +5,18 @@ from datetime import timedelta
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW, DOMAIN
+from .const import CONF_INTERVAL, CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW
 from .core.settings import SETTING_BY_KEY
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities([IntervalNumber(coordinator), PairWindowNumber(coordinator)])
 
 
 class IntervalNumber(ImmichFrameEntity, NumberEntity):
-    _attr_name = "Photo timer"
+    _attr_translation_key = "interval"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = SETTING_BY_KEY[CONF_INTERVAL].minimum
     _attr_native_max_value = SETTING_BY_KEY[CONF_INTERVAL].maximum

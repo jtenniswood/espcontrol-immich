@@ -104,15 +104,15 @@ async def test_shape_change_reloads_image_and_rejects_old_cache(hass, asset, jpe
         # A failing server must not restore the old landscape cache after changing shape.
         with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
             await set_value(hass, entry, "select", "output_size", "portrait")
-            assert entry.entry_id not in hass.data[DOMAIN]
+            assert getattr(entry, "runtime_data", None) is None
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == (800, 1280)
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).size == (800, 1280)
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        snapshot = entry.runtime_data.data
         assert snapshot.using_cache
         assert Image.open(BytesIO(snapshot.image)).size == (800, 1280)
         assert await hass.config_entries.async_unload(entry.entry_id)
@@ -132,7 +132,7 @@ async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         state_path = coordinator.cache_path.with_suffix(".json")
         state = json.loads(state_path.read_text())
         assert state["output_size"] == [1280, 800]
@@ -147,7 +147,7 @@ async def test_old_output_size_cache_is_rejected_after_upgrade(hass, asset, jpeg
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert entry.entry_id not in hass.data[DOMAIN]
+        assert getattr(entry, "runtime_data", None) is None
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")

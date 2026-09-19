@@ -53,12 +53,12 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
         # Exercise actual service calls, including changing back to landscape.
         for shape, label, size in SHAPES[1:] + SHAPES[:1]:
             assert async_translate_state(hass, shape, "select", DOMAIN, entity.translation_key, None) == label
-            previous = hass.data[DOMAIN][entry.entry_id]
+            previous = entry.runtime_data
             await hass.services.async_call("select", "select_option", {
                 "entity_id": entity_id, "option": shape,
             }, blocking=True)
             await hass.async_block_till_done()
-            coordinator = hass.data[DOMAIN][entry.entry_id]
+            coordinator = entry.runtime_data
             assert coordinator is not previous
             assert entry.data == {**original, "screen_shape": shape}
             assert hass.states.get(entity_id).state == shape
@@ -74,7 +74,7 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
                 assert await hass.config_entries.async_setup(entry.entry_id)
                 await hass.async_block_till_done()
-                coordinator = hass.data[DOMAIN][entry.entry_id]
+                coordinator = entry.runtime_data
                 assert hass.states.get(entity_id).state == shape
                 assert coordinator.data.using_cache
                 assert Image.open(BytesIO(coordinator.data.image)).size == size
@@ -84,14 +84,14 @@ async def test_output_size_control_saves_renders_and_survives_restart(hass, asse
             "entity_id": entity_id, "option": "landscape",
         }, blocking=True)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id] is coordinator
+        assert entry.runtime_data is coordinator
         assert await hass.config_entries.async_unload(entry.entry_id)
 
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.states.get(entity_id).state == "landscape"
-        assert hass.data[DOMAIN][entry.entry_id].data.using_cache
+        assert entry.runtime_data.data.using_cache
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -121,12 +121,12 @@ async def test_output_size_control_rejects_old_cache_when_offline(hass, asset, j
         }, blocking=True)
         await hass.async_block_till_done()
         assert entry.data["screen_shape"] == new
-        assert entry.entry_id not in hass.data[DOMAIN]
+        assert getattr(entry, "runtime_data", None) is None
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.states.get(entity_id).state == new
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == size
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).size == size
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -161,7 +161,7 @@ async def test_saved_device_preset_upgrades_and_rebuilds_cache(hass, asset, jpeg
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.data == {**original, "screen_shape": shape}
-        assert entry.entry_id not in hass.data.get(DOMAIN, {})
+        assert getattr(entry, "runtime_data", None) is None
 
     async def request(_api, method, path, **kwargs):
         return [asset] if path == "/api/search/random" else jpeg
@@ -171,12 +171,12 @@ async def test_saved_device_preset_upgrades_and_rebuilds_cache(hass, asset, jpeg
         await hass.async_block_till_done()
         entity_id = er.async_get(hass).async_get_entity_id("select", DOMAIN, f"{entry.entry_id}_output_size")
         assert hass.states.get(entity_id).state == shape
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).size == size
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).size == size
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        snapshot = entry.runtime_data.data
         assert snapshot.using_cache
         assert Image.open(BytesIO(snapshot.image)).size == size
         assert await hass.config_entries.async_unload(entry.entry_id)

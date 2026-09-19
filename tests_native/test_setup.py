@@ -30,7 +30,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         assert coordinator.data.primary["id"] == asset["id"]
         assert coordinator.cache_path.with_suffix(".json").is_file()
         assert hass.states.get("image.immich_frame_image") is not None
@@ -54,7 +54,7 @@ async def test_basic_setup_registers_entities_and_caches_image(hass, asset, jpeg
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id].data.using_cache
+        assert entry.runtime_data.data.using_cache
         assert hass.states.get("image.immich_frame_image").attributes["open_in_immich"] == (
             "http://immich.test/photos/portrait-a"
         )
@@ -73,7 +73,7 @@ async def test_failed_setup_closes_api(hass):
     ) as close:
         assert not await hass.config_entries.async_setup(entry.entry_id)
         close.assert_awaited_once()
-    assert entry.entry_id not in hass.data.get(DOMAIN, {})
+    assert getattr(entry, "runtime_data", None) is None
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -102,7 +102,7 @@ async def test_pair_details_use_left_photo_and_interval_survives_reload(hass, as
         timer_entity_id = registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_interval")
         assert registry.async_get(timer_entity_id).entity_category == EntityCategory.CONFIG
         assert hass.states.get("sensor.immich_frame_location").state == "Bath"
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         assert coordinator.data.secondary["filename"] == "b.jpg"
         assert hass.states.get("sensor.immich_frame_filename") is None
         assert hass.states.get("sensor.immich_frame_favourite").state == "No"
@@ -131,5 +131,5 @@ async def test_cache_write_failure_does_not_fail_setup(hass, asset, jpeg):
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id].data.image
+        assert entry.runtime_data.data.image
         assert await hass.config_entries.async_unload(entry.entry_id)

@@ -69,19 +69,19 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
         assert async_translate_state(hass, "any", "select", DOMAIN, "orientation", None) == "Mixed (landscapes and portraits)"
 
         # The JPEG visibly changes between full-image padding and edge-to-edge crop.
-        data = hass.data[DOMAIN][entry.entry_id].data
+        data = entry.runtime_data.data
         assert Image.open(BytesIO(data.image)).getpixel((0, 400))[2] < 150
         await set_value(hass, entry, "select", "photo_fit", "crop")
-        assert Image.open(BytesIO(hass.data[DOMAIN][entry.entry_id].data.image)).getpixel((0, 400))[2] > 240
+        assert Image.open(BytesIO(entry.runtime_data.data.image)).getpixel((0, 400))[2] > 240
         await set_value(hass, entry, "select", "mode", "pairs")
-        assert hass.data[DOMAIN][entry.entry_id].data.layout == "single"
+        assert entry.runtime_data.data.layout == "single"
         await set_value(hass, entry, "number", "pair_window_days", 3)
-        assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
+        assert entry.runtime_data.data.layout == "side_by_side"
         # Landscape photos still appear on their own in pair mode.
         for orientation, expected_id in [("landscape", "wide"), ("portrait", asset["id"])]:
             await set_value(hass, entry, "select", "orientation", orientation)
-            assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == expected_id
-        assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
+            assert entry.runtime_data.data.primary["id"] == expected_id
+        assert entry.runtime_data.data.layout == "side_by_side"
         await set_value(hass, entry, "number", "interval", 75)
         assert entry.data["interval"] == 75
         assert entry.data["pair_window_days"] == 3
@@ -102,8 +102,8 @@ async def test_device_settings_change_photos_fit_and_pairing_then_restore(hass, 
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id].data.using_cache
-        assert hass.data[DOMAIN][entry.entry_id].data.layout == "side_by_side"
+        assert entry.runtime_data.data.using_cache
+        assert entry.runtime_data.data.layout == "side_by_side"
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -124,7 +124,7 @@ async def test_changed_settings_do_not_restore_incompatible_cached_photos(hass, 
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         await set_value(hass, entry, domain, key, value)
         assert entry.data[key] == value
-        assert entry.entry_id not in hass.data[DOMAIN]
+        assert getattr(entry, "runtime_data", None) is None
 
 
 @pytest.mark.parametrize("mode,fit", [("single", "show_full"), ("pairs", "crop")])
@@ -156,18 +156,18 @@ async def test_pairs_only_device_setting_skips_single_cache_and_survives_reload(
     with patch("custom_components.immich_frames.api.ImmichApi._request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id].data.layout == "single"
+        assert entry.runtime_data.data.layout == "single"
         entity_id = await set_value(hass, entry, "select", "mode", "pairs_only")
         assert entry.data["mode"] == "pairs_only"
         assert hass.states.get(entity_id).state == "pairs_only"
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        snapshot = entry.runtime_data.data
         assert [photo["id"] for photo in snapshot.photos] == ["portrait-a", "b"]
         assert snapshot.layout == "side_by_side"
         assert await hass.config_entries.async_unload(entry.entry_id)
     with patch("custom_components.immich_frames.api.ImmichApi._request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        snapshot = hass.data[DOMAIN][entry.entry_id].data
+        snapshot = entry.runtime_data.data
         assert snapshot.using_cache
         assert snapshot.layout == "side_by_side"
         assert hass.states.get(entity_id).state == "pairs_only"

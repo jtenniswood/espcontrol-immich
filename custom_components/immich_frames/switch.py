@@ -2,17 +2,16 @@ from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
 
-from .const import DOMAIN
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities([SlideshowSwitch(coordinator)])
 
 
 class SlideshowSwitch(ImmichFrameEntity, SwitchEntity):
-    _attr_name = "Slideshow"
+    _attr_translation_key = "slideshow"
 
     def __init__(self, coordinator) -> None:
         ImmichFrameEntity.__init__(self, coordinator, "slideshow")

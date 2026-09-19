@@ -117,7 +117,7 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         await hass.async_block_till_done()
         entity_ids = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}
         device_ids = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
-        old_coordinator = hass.data[DOMAIN][entry.entry_id]
+        old_coordinator = entry.runtime_data
         result = await submit(hass, await reconfigure(hass, entry), source="Albums")
         assert result["data_schema"]({})["album_ids"] == ["a"]
         assert entry.data["album_ids"] == ["a"]
@@ -129,7 +129,7 @@ async def test_reconfigure_reloads_same_device_and_entities_with_new_album(hass,
         assert len(hass.config_entries.async_entries(DOMAIN)) == 1
         assert entry.data["album_ids"] == ["a", "b"]
         assert album_queries == [{"any": ["a"]}, {"any": ["a", "b"]}]
-        assert hass.data[DOMAIN][entry.entry_id] is not old_coordinator
+        assert entry.runtime_data is not old_coordinator
         assert {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)} == entity_ids
         assert {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)} == device_ids
         assert await hass.config_entries.async_unload(entry.entry_id)

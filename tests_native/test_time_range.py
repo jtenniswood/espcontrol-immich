@@ -133,13 +133,13 @@ async def test_control_labels_persistence_reload_and_filtering(hass, asset, jpeg
         assert entity.original_name == "Time range"
         assert hass.states.get(entity_id).state == "all_time"
         assert hass.states.get(entity_id).attributes["options"] == [choice[0] for choice in CHOICES]
-        assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == "older"
+        assert entry.runtime_data.data.primary["id"] == "older"
         for option, label, start in CHOICES[1:] + CHOICES[:1]:
             assert async_translate_state(hass, option, "select", DOMAIN, "time_range", None) == label
             await set_value(hass, entry, "select", "time_range", option)
             assert entry.data["time_range"] == option
             assert hass.states.get(entity_id).state == option
-            coordinator = hass.data[DOMAIN][entry.entry_id]
+            coordinator = entry.runtime_data
             assert len(coordinator.history) == 1
             assert coordinator.data.primary["id"] == (asset["id"] if start else "older")
             if start:
@@ -147,16 +147,16 @@ async def test_control_labels_persistence_reload_and_filtering(hass, asset, jpeg
             else:
                 assert "takenAt" not in requests[-1]
         await set_value(hass, entry, "select", "time_range", "3_months")
-        previous = hass.data[DOMAIN][entry.entry_id]
+        previous = entry.runtime_data
         await set_value(hass, entry, "select", "time_range", "3_months")
-        assert hass.data[DOMAIN][entry.entry_id] is previous
+        assert entry.runtime_data is previous
         assert await hass.config_entries.async_unload(entry.entry_id)
 
     with patch.object(ImmichApi, "_request", side_effect=ImmichApiError("Offline")):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert hass.states.get(entity_id).state == "3_months"
-        assert hass.data[DOMAIN][entry.entry_id].data.using_cache
+        assert entry.runtime_data.data.using_cache
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -178,7 +178,7 @@ async def test_cache_without_provenance_is_rejected(hass, asset, jpeg, option, r
     with patch.object(ImmichApi, "_request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        state_path = hass.data[DOMAIN][entry.entry_id].cache_path.with_suffix(".json")
+        state_path = entry.runtime_data.cache_path.with_suffix(".json")
         assert await hass.config_entries.async_unload(entry.entry_id)
     state = json.loads(state_path.read_text())
     state.pop("signature")
@@ -188,7 +188,7 @@ async def test_cache_without_provenance_is_rejected(hass, asset, jpeg, option, r
         assert await hass.config_entries.async_setup(entry.entry_id) is restores
         await hass.async_block_till_done()
         if restores:
-            assert hass.data[DOMAIN][entry.entry_id].data.using_cache
+            assert entry.runtime_data.data.using_cache
             assert await hass.config_entries.async_unload(entry.entry_id)
         else:
-            assert entry.entry_id not in hass.data[DOMAIN]
+            assert getattr(entry, "runtime_data", None) is None

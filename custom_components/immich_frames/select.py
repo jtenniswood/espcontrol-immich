@@ -3,15 +3,13 @@ from __future__ import annotations
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import (
-    CONF_PHOTO_FIT, DOMAIN, photo_fit,
-)
+from .const import CONF_PHOTO_FIT, photo_fit
 from .core.settings import SETTINGS
 from .entity import ImmichFrameEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities([
         FrameSettingSelect(coordinator, spec.entity_key or spec.key,
                            list(dict(spec.choices)), spec.default, spec.icon, config_key=spec.key)

@@ -39,7 +39,7 @@ async def test_thumbnail_follows_frame_and_previous(hass, hass_client_no_auth, a
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         client = await hass_client_no_auth()
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
 
         async def thumbnail_url(snapshot):
             state = hass.states.get("image.frame_image")

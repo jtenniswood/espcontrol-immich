@@ -57,6 +57,13 @@
         "data": {
           "frame_name": "Frame name"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Immich",
+        "description": "The saved Immich API key was rejected. Enter a replacement key with asset.read permission.",
+        "data": {
+          "api_key": "Read-only API key"
+        }
       }
     },
     "error": {
@@ -75,7 +82,8 @@
     },
     "abort": {
       "already_configured": "A frame with this name is already configured.",
-      "reconfigure_successful": "Frame settings updated."
+      "reconfigure_successful": "Frame settings updated.",
+      "reauth_successful": "Immich credentials updated."
     }
   },
   "entity": {
@@ -91,6 +99,24 @@
           }
         }
       }
+    },
+    "sensor": {
+      "photo_date": {"name": "Date"},
+      "photo_location": {"name": "Location"},
+      "photo_people": {"name": "People"},
+      "photo_tags": {"name": "Tags"},
+      "photo_rating": {"name": "Rating"},
+      "photo_camera": {"name": "Camera"},
+      "photo_favourite": {"name": "Favourite"}
+    },
+    "button": {
+      "next": {"name": "Next"},
+      "previous": {"name": "Previous"},
+      "refresh": {"name": "Refresh"},
+      "clear_cache": {"name": "Clear cache"}
+    },
+    "switch": {
+      "slideshow": {"name": "Slideshow"}
     },
     "select": {
       "output_size": {
@@ -142,9 +168,8 @@
       }
     },
     "number": {
-      "pair_window_days": {
-        "name": "Pairing window"
-      }
+      "interval": {"name": "Photo timer"},
+      "pair_window_days": {"name": "Pairing window"}
     }
   },
   "options": {

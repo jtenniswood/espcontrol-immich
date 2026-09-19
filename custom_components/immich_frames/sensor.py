@@ -19,7 +19,7 @@ def _friendly_date(value: str | None) -> str | None:
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    coordinator = hass.data["immich_frames"][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities([PhotoSensor(coordinator, key, name, value) for key, name, value in (
         ("photo_date", "Date", lambda p, d: _friendly_date(p.get("captured"))),
         ("photo_location", "Location", lambda p, d: ", ".join(x for x in (p.get("exif", {}).get("city"), p.get("exif", {}).get("state"), p.get("exif", {}).get("country")) if x) or None),
@@ -34,7 +34,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 class PhotoSensor(ImmichFrameEntity, SensorEntity):
     def __init__(self, coordinator, key, name, value) -> None:
         ImmichFrameEntity.__init__(self, coordinator, key)
-        self._attr_name = name
+        self._attr_translation_key = key
         self._value = value
 
     @property

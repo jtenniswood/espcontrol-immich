@@ -58,7 +58,7 @@ async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asse
         await hass.async_block_till_done()
         entities = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)}
         devices = {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)}
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         result = await open_settings(hass, entry, "source")
         result = await submit(hass, result, source="All photos")
         result = await finish_settings(hass.config_entries.options, result)
@@ -71,7 +71,7 @@ async def test_source_edit_reloads_same_frame_without_fetching_albums(hass, asse
         assert entry.data["api_key"] == "test-key"
         assert not entry.options
         assert len(hass.config_entries.async_entries(DOMAIN)) == 1
-        assert hass.data[DOMAIN][entry.entry_id] is not coordinator
+        assert entry.runtime_data is not coordinator
         assert {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)} == entities
         assert {d.id for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)} == devices
         assert await hass.config_entries.async_unload(entry.entry_id)

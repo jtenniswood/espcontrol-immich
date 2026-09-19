@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,6 +9,7 @@ if TYPE_CHECKING:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from homeassistant.helpers import entity_registry as er
+
     from .const import DOMAIN, PLATFORMS
     from .coordinator import FrameCoordinator
     # Remove retired entities even when Immich is offline during this upgrade.
@@ -28,21 +30,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = FrameCoordinator(hass, entry)
     try:
         await coordinator.async_config_entry_first_refresh()
-        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+        entry.runtime_data = coordinator
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         await coordinator.async_close()
         raise
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    from .const import DOMAIN, PLATFORMS
+    from .const import PLATFORMS
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-        await coordinator.async_close()
+        await entry.runtime_data.async_close()
+        entry.runtime_data = None
     return unloaded
 
 

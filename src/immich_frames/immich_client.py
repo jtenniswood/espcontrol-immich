@@ -1,6 +1,6 @@
-"""Compatibility adapter for the app's Photo objects; HTTP behavior is shared."""
-from custom_components.immich_frames.core.client import ImmichApi
-from custom_components.immich_frames.core.errors import ImmichApiError as ImmichError
+"""Compatibility adapter for the app's Photo objects."""
+from .client import ImmichClient as ImmichApi
+from .client import ImmichClientError as ImmichError  # noqa: F401
 from .models import Photo
 
 

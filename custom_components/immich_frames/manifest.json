@@ -4,8 +4,10 @@
   "codeowners": ["@jtenniswood"],
   "config_flow": true,
   "documentation": "https://github.com/jtenniswood/espcontrol-immich",
+  "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jtenniswood/espcontrol-immich/issues",
+  "loggers": ["immich_frames"],
   "requirements": [],
   "version": "0.2.13"
 }

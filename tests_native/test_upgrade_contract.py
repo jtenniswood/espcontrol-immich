@@ -25,13 +25,13 @@ async def test_changed_source_or_account_cannot_restore_old_image_offline(hass, 
     with patch.object(ImmichApi, "_request", request):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.data[DOMAIN][entry.entry_id].data.primary["id"] == asset["id"]
+        assert entry.runtime_data.data.primary["id"] == asset["id"]
         assert await hass.config_entries.async_unload(entry.entry_id)
     hass.config_entries.async_update_entry(entry, data={**entry.data, **changes})
     with patch.object(ImmichApi, "_request", side_effect=ImmichApiError("offline")):
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert entry.entry_id not in hass.data[DOMAIN]
+        assert getattr(entry, "runtime_data", None) is None
 
 
 async def test_version_one_upgrade_preserves_device_and_entity_identifiers(hass, asset, jpeg):
@@ -54,7 +54,7 @@ async def test_version_one_upgrade_preserves_device_and_entity_identifiers(hass,
         assert entry.data["photo_fit"] == "show_full"
         assert registry.async_get_entity_id("image", DOMAIN, f"{entry.entry_id}_image") == old_entity.entity_id
         assert {device.id for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)} == {old_device.id}
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         with patch.object(ImmichApi, "snapshot", side_effect=NoMatchingPhotos("No photos match this frame")):
             await coordinator.async_refresh()
             assert coordinator.data.status == "no_matching_photos"
