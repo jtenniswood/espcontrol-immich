@@ -30,14 +30,15 @@ The Core maintainer requested a single platform for the first contribution. The 
 
 The documentation and Brands PR checks are green. Current non-code blockers are the contributor CLA signature, completion of the latest Core checks, and maintainer review/approval. These are external workflow gates, not missing implementation in the candidate.
 
-The latest Core candidate head is `18fea38a`. Its focused suite has 37 passing tests with 95% branch-aware coverage across the integration modules. The latest push is ready for review; the prior CI run passed Hassfest, mypy, requirements, deterministic, dependency, and license checks; its only code-quality failure was a translation-key ordering fix now pushed in this head. The contributor CLA remains an external blocker.
+The latest Core candidate head is `92f56530`. Its focused suite has 42 passing tests with 96% branch-aware coverage across the integration modules. The candidate is ready for review; local Ruff, Hassfest generation, focused tests, and coverage pass. The latest Core CI run is evaluating this head; the contributor CLA and maintainer review remain external blockers.
 
 Current development gaps identified during the latest Core review pass are tracked explicitly rather than hidden by the Bronze target:
 
 - The source search path is intentionally bounded to 2,000 matching assets per source. The website documentation now states that limit; pagination or a maintained `aioimmich` API for larger libraries is a future performance/scale improvement.
-- Source permissions are checked for album selection, but All photos and Smart Search can still complete setup before a first source request. A future Core review should decide whether to add source-specific preflight checks or keep the first refresh as the validation point.
-- Pairs-only mode should reject or normalize incompatible non-portrait orientation settings before setup completes. This is a config-flow correctness follow-up.
-- Full Core config-flow branch coverage, source-specific API error coverage, and a released-HACS-to-Core config-entry migration remain follow-up work even though the initial slice has focused coverage.
+- The setup flow now performs a small source preflight for All photos and Smart Search, and album setup already loads and validates the available album list. It maps transport and upstream API failures to translated flow errors. Full source-specific branch coverage remains a follow-up.
+- Pairs-only mode now rejects incompatible landscape and square orientation settings, and the image coordinator now honors the configured crop/full fitting choice for an unpaired portrait.
+- The cache now persists the rendered timestamp and invalidates the previous cache schema safely; pairs-only candidate filtering uses indexed timestamp ranges rather than rescanning all candidates for every primary.
+- Full Core config-flow branch coverage and a released-HACS-to-Core config-entry migration remain follow-up work even though the initial slice has focused coverage.
 - Repair issues, metadata/control platforms, dynamic discovery, default-disabled entity decisions, and higher quality-scale tiers remain intentionally unimplemented for the image-only first contribution.
 
 ## Implementation status on the readiness branch
@@ -51,8 +52,8 @@ Completed in this repository:
 - Added redacted config-entry diagnostics that never include image bytes or the API key.
 - Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
 - Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 343 tests on the readiness branch, and the shared-client/core contract tests pass separately.
-- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commit `18fea38a`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and includes one image platform with config/options/reconfigure flows, exact-size rendering, source filtering, portrait pairing, atomic persistent cache, migration, diagnostics, translated selectors, fixed polling, parent reauthentication, parent-reload recovery, cache cleanup, and cached-image availability semantics.
-- The Core candidate has 37 focused tests covering setup, migration behavior, config-flow branches, image behavior, exact output sizes, pairing, source API calls, cache integrity and cleanup, error/recovery paths, diagnostics, translated setup errors, and reconfiguration persistence. The measured branch-aware coverage is 95% for the integration modules. Ruff, focused tests, integration-specific mypy, generated mypy configuration, and the full local Hassfest generation/validation path pass; the latest Core CI run is the remaining automated check.
+- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commit `92f56530`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and includes one image platform with config/options/reconfigure flows, source preflight, exact-size rendering, source filtering, portrait pairing, atomic persistent cache with timestamped recovery, migration, diagnostics, translated selectors, fixed polling, parent reauthentication, parent-reload recovery, cache cleanup, and cached-image availability semantics.
+- The Core candidate has 42 focused tests covering setup, migration behavior, config-flow branches, source preflight and API errors, image behavior, exact output sizes, pairing, source API calls, cache integrity/timestamps/cleanup, error/recovery paths, diagnostics, translated setup errors, fitting behavior, and reconfiguration persistence. The measured branch-aware coverage is 96% for the integration modules. Ruff, focused tests, integration-specific mypy configuration, generated mypy configuration, and the full local Hassfest generation/validation path pass; the latest Core CI run is still external and in progress.
 
 Still required before this can be proposed as a built-in integration:
 
