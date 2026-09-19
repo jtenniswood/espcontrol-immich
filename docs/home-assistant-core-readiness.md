@@ -258,7 +258,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Large
 
-The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 52 tests and 98% branch-aware integration-module coverage, including 100% config-flow coverage; the remaining coverage work is follow-up platform/migration behavior.
+The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 54 collected tests and 98% branch-aware integration-module coverage, including 100% config-flow coverage; the remaining coverage work is follow-up platform/migration behavior.
 
 Development needed:
 
@@ -351,7 +351,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs the first unavailable transition at info level and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | N/A for the initial slice | Authentication is owned by the parent `immich` entry; the frame coordinator starts that parent reauth flow on an unauthorized response. Add full parent/child lifecycle coverage if maintainers keep this boundary. |
-| `test-coverage` | Pass locally / verify in CI | The 52-test focused Core suite measures 98% branch-aware coverage across the initial integration modules, including 100% config-flow coverage. Preserve this threshold as follow-up platforms and migrations are added. |
+| `test-coverage` | Pass locally / verify in CI | The 54-test focused Core suite measures 98% branch-aware coverage across the initial integration modules, including 100% config-flow coverage. Preserve this threshold as follow-up platforms and migrations are added. |
 
 ### Gold
 
@@ -443,7 +443,7 @@ The following boundaries are now in place for the open Home Assistant Core PR:
 - Read the current Home Assistant [creating an integration](https://developers.home-assistant.io/docs/creating_component_index/), [development checklist](https://developers.home-assistant.io/docs/development_checklist/), [component checklist](https://developers.home-assistant.io/docs/creating_component_code_review/), [manifest reference](https://developers.home-assistant.io/docs/creating_integration_manifest/), [Core contribution guidance](https://developers.home-assistant.io/docs/core/integration/contributing_to_core/), and [Integration Quality Scale checklist](https://developers.home-assistant.io/docs/core/integration-quality-scale/checklist/).
 - Compared the repository with the live Home Assistant [Immich integration](https://www.home-assistant.io/integrations/immich) and its current Core manifest/coordinator/config flow.
 - Inspected the repository status, local `main` and `origin/main` ancestry, manifest, config flow, coordinator, API/client, platform modules, translations, tests, architecture docs, and CI/release workflows.
-- The implementation follow-up was run in isolated worktrees. The custom repository's existing native/client suites remain separate from the Core evidence. In the Home Assistant Core candidate at `fb14fd43`, `tests/components/immich_frames`: 52 passed, branch-aware integration coverage is 98% overall with 100% config-flow coverage, Ruff passes, generated `mypy.ini` validates, and the full local Hassfest validation path passes after regenerating translated integration metadata. A direct repository-wide mypy run reports unrelated baseline/import errors outside `immich_frames`; the Core CI typing gate is the final authority.
+- The implementation follow-up was run in isolated worktrees. The custom repository's existing native/client suites remain separate from the Core evidence. In the Home Assistant Core candidate at `58aefeef`, 54 tests are collected, branch-aware integration coverage is 98% overall with 100% config-flow coverage, Ruff passes, generated `mypy.ini` validates, and the full local Hassfest validation path passes after regenerating translated integration metadata. A direct repository-wide mypy run reports unrelated baseline/import errors outside `immich_frames`; the Core CI typing gate is the final authority.
 
 ## References
 
