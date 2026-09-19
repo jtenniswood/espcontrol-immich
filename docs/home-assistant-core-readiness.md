@@ -25,6 +25,7 @@ Open upstream pull requests:
 - Home Assistant Core: [#182693](https://github.com/home-assistant/core/pull/182693) — initial image-only integration contribution.
 - Home Assistant documentation: [home-assistant.io #48258](https://github.com/home-assistant/home-assistant.io/pull/48258) — setup, options, entity, cache, troubleshooting, and removal documentation.
 - Home Assistant brands: [#11193](https://github.com/home-assistant/brands/pull/11193) — Immich Frames icon and logo assets.
+- Maintained `aioimmich`: [#73](https://github.com/mib1185/aioimmich/pull/73) — backward-compatible `max_pages=None` support for following all search pages.
 
 The Core maintainer requested a single platform for the first contribution. The Core candidate therefore ships only the `image` platform; buttons, sensors, and the slideshow switch remain in the custom product and are documented as follow-up Core work. This keeps the first reviewable contribution small without discarding the product implementation.
 
@@ -34,7 +35,7 @@ The latest Core candidate head is `3fe4ab93`. Its focused suite has 52 passing t
 
 Current development gaps identified during the latest Core review pass are tracked explicitly rather than hidden by the Bronze target:
 
-- The source search path is intentionally bounded to 2,000 matching assets per source. The website documentation now states that limit; pagination or a maintained `aioimmich` API for larger libraries is a future performance/scale improvement.
+- The current Core source search path is intentionally bounded to 2,000 matching assets per source because the pinned `aioimmich==0.17.0` client stops after 20 pages. The maintained client now has an upstream patch for backward-compatible `max_pages=None` pagination in [aioimmich #73](https://github.com/mib1185/aioimmich/pull/73); Core adoption still requires that PR to merge, a released version, a Core requirements update, and a follow-up change to opt into unbounded paging. The website documentation correctly states the current limit until that dependency path is released and validated.
 - The setup, options, and reconfiguration flows now perform a small source preflight for All photos, albums, and Smart Search, and album setup loads and validates the available album list. They map transport and upstream API failures to translated flow errors. Full source-specific branch coverage remains a follow-up.
 - Pairs-only mode now rejects incompatible landscape and square orientation settings, and the image coordinator now honors the configured crop/full fitting choice for an unpaired portrait.
 - The cache now persists the rendered timestamp and invalidates the previous cache schema safely; pairs-only candidate filtering uses indexed timestamp ranges rather than rescanning all candidates for every primary.
@@ -63,7 +64,7 @@ Still required before this can be proposed as a built-in integration:
 - Complete the external Core PR gates: final CI, maintainer review, and merge of the Core, documentation, and Brands pull requests.
 - Keep the existing custom integration and the Core image-only contribution clearly separated. If the custom repository continues to maintain a standalone transport/library, publish and support that package independently; it is not required by the current Core design.
 - Complete the remaining feature and migration decisions: the custom integration still covers album/keyword selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata/status entities, and its existing migration behavior. The Core candidate intentionally starts with the image platform only. Migration from released HACS entries still needs a maintained mapping to an existing Core `immich` account, and the current `aioimmich` API does not expose the memories operation used by the custom integration.
-- Complete the upstream gates: latest Core CI, maintainer review, and eventual merge of the three PRs. Strict typing and the Silver coverage threshold are evidenced locally for the candidate; higher-tier work remains documented below, including unsupported memories until the shared client has a supported API.
+- Complete the upstream gates: latest Core CI, maintainer review, and eventual merge of the Core, documentation, Brands, and `aioimmich` PRs. After the pagination dependency is released, update the Core requirement and add a bounded/unbounded integration test before removing the documented source limit. Strict typing and the Silver coverage threshold are evidenced locally for the candidate; higher-tier work remains documented below, including unsupported memories until the shared client has a supported API.
 
 ## Important architectural decision
 
@@ -409,7 +410,7 @@ The following boundaries are now in place for the open Home Assistant Core PR:
 
 - Implement the async API and rendering boundaries.
 - Inject the Home Assistant web session.
-- The initial Core path reuses the existing pinned `aioimmich` release; publish a separate package only if future APIs require it.
+- The initial Core path reuses the existing pinned `aioimmich` release. The maintained client’s unbounded-pagination PR is prepared separately; once released, Core can adopt it without introducing a second transport package.
 - Add characterization tests for current output dimensions, pairing, fit, cache identity, and failure behavior.
 
 ### Phase 2 — Bronze Core integration (submitted)
