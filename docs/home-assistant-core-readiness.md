@@ -26,14 +26,17 @@ Completed in this repository:
 - Added `ConfigEntryAuthFailed` handling, one-time unavailable/recovery logging, and a credential-only reauthentication flow with translations.
 - Added redacted config-entry diagnostics that never include image bytes or the API key.
 - Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
-- Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 341 tests on the readiness branch, and the shared-client/core contract tests pass separately.
+- Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 343 tests on the readiness branch, and the shared-client/core contract tests pass separately.
+- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` at commit `58bc0696`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, provides a first `image` platform, translated setup/errors, diagnostics, and five focused Core tests.
+- The Core candidate passes focused Ruff checks, focused mypy checks for its own modules, five focused tests, and Hassfest schema validation. Hassfest correctly leaves the candidate below Bronze until the external website documentation and Brands work are completed.
 
 Still required before this can be proposed as a built-in integration:
 
 - Publish the reusable client as a maintained PyPI project with an sdist, public typed API, issue tracker, documentation, and a pinned release; then add that exact requirement to the Core manifest and generated Core requirements.
 - Decide with the existing Home Assistant `immich` integration maintainers whether this should depend on the existing Immich config entry or become additional functionality in that integration. The current branch is a transport/library preparation step and does not yet perform that account-ownership migration.
 - Create the actual `homeassistant/components/<domain>/` and `tests/components/<domain>/` Core PR, with the final domain/name and Home Assistant website documentation.
-- Complete Core-only gates: brands, CODEOWNERS, strict typing, full config-flow/error/coverage checks, translated exception text, default-disabled metadata decisions, and maintainer review.
+- Expand the Core candidate beyond its reviewable first slice: album/keyword/memories selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata entities, and the migration path from the current HACS entries still need Core-owned designs and tests. The current `aioimmich` API does not expose the memories operation used by the custom integration.
+- Complete Core-only gates: brands, CODEOWNERS, strict typing, full config-flow/error/coverage checks, translated exception text, default-disabled metadata decisions, website documentation, generated dependency updates, and maintainer review.
 
 ## Important architectural decision
 
