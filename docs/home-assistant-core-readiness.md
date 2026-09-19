@@ -36,7 +36,7 @@ Still required before this can be proposed as a built-in integration:
 - Decide with the existing Home Assistant `immich` integration maintainers whether this should depend on the existing Immich config entry or become additional functionality in that integration. The current branch is a transport/library preparation step and does not yet perform that account-ownership migration.
 - Create the actual `homeassistant/components/<domain>/` and `tests/components/<domain>/` Core PR, with the final domain/name and Home Assistant website documentation.
 - Complete the remaining feature and migration decisions: the candidate now covers album/keyword selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata/status entities, and a version migration for its initial Core shape. Migration from released HACS entries still needs a maintained mapping to an existing Core `immich` account, and the current `aioimmich` API does not expose the memories operation used by the custom integration.
-- Complete Core-only gates: brands, CODEOWNERS, strict typing declaration, full config-flow/error/coverage checks, website documentation, generated dependency updates, and maintainer review. The candidate deliberately does not expose the unsupported memories source until the shared client has a supported API; this remains a dependency/library gap rather than a hidden raw-HTTP workaround.
+- Complete Core-only gates: brands, CODEOWNERS, full config-flow/error/coverage checks, website documentation, generated dependency updates, and maintainer review. Strict typing is now enabled for the candidate; the remaining external/library gap is the unsupported memories source, which is deliberately not exposed until the shared client has a supported API.
 
 ## Important architectural decision
 
@@ -356,7 +356,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 |---|---|---|
 | `async-dependency` | Partial | The transport is now async and package-isolated, but the package must be published and maintained externally before it meets Core's dependency rule. |
 | `inject-websession` | Pass locally / verify in Core | The coordinator and config flow inject Home Assistant's managed session; the client only owns a session when used standalone by the optional app. |
-| `strict-typing` | Gap | Type the integration, runtime data, client models, config flow, entities, and exception boundary; add `.strict-typing` and pass Core checks. |
+| `strict-typing` | Pass locally / verify in Core | The candidate is listed in Core's `.strict-typing`, uses typed config-entry/runtime-data aliases, and passes focused mypy. Re-run the full Core typing gate in the eventual PR. |
 
 ## Core packaging and repository boundaries
 
