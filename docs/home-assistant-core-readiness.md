@@ -28,18 +28,19 @@ Open upstream pull requests:
 
 The Core maintainer requested a single platform for the first contribution. The Core candidate therefore ships only the `image` platform; buttons, sensors, and the slideshow switch remain in the custom product and are documented as follow-up Core work. This keeps the first reviewable contribution small without discarding the product implementation.
 
-The documentation and Brands PR checks are green. Current non-code blockers are the contributor CLA signature, completion of the latest Core checks, and maintainer review/approval. These are external workflow gates, not missing implementation in the candidate.
+The documentation and Brands PR checks are green, and the contributor CLA check is now passing. Current non-code blockers are completion of the latest Core checks and maintainer review/approval. These are external workflow gates, not missing implementation in the candidate.
 
-The latest Core candidate head is `5ab74f21`. Its focused suite has 44 passing tests with 96% branch-aware coverage across the integration modules. The candidate is ready for review; local Ruff, Hassfest generation, focused tests, and coverage pass. The latest Core CI run is evaluating this head; maintainer review remains the external approval gate.
+The latest Core candidate head is `599827b6`. Its focused suite has 49 passing tests with 96% branch-aware coverage across the integration modules. The candidate is ready for review; local Ruff, Hassfest validation, focused tests, and coverage pass. The latest Core CI run is evaluating this head; maintainer review remains the external approval gate.
 
 Current development gaps identified during the latest Core review pass are tracked explicitly rather than hidden by the Bronze target:
 
 - The source search path is intentionally bounded to 2,000 matching assets per source. The website documentation now states that limit; pagination or a maintained `aioimmich` API for larger libraries is a future performance/scale improvement.
-- The setup flow now performs a small source preflight for All photos and Smart Search, and album setup already loads and validates the available album list. It maps transport and upstream API failures to translated flow errors. Full source-specific branch coverage remains a follow-up.
+- The setup, options, and reconfiguration flows now perform a small source preflight for All photos, albums, and Smart Search, and album setup loads and validates the available album list. They map transport and upstream API failures to translated flow errors. Full source-specific branch coverage remains a follow-up.
 - Pairs-only mode now rejects incompatible landscape and square orientation settings, and the image coordinator now honors the configured crop/full fitting choice for an unpaired portrait.
 - The cache now persists the rendered timestamp and invalidates the previous cache schema safely; pairs-only candidate filtering uses indexed timestamp ranges rather than rescanning all candidates for every primary.
 - Cache signatures now include a non-secret fingerprint of the parent Immich endpoint and API key, preventing an image from the previous server/account being served after parent reconfiguration.
 - Recent-photo history is bounded and resets after the candidate pool is exhausted, preserving rotation behavior without unbounded memory growth or permanent immediate repeats.
+- Candidate retrieval is cached for five minutes and explicitly invalidated for manual refreshes or parent-account identity changes, avoiding a full 2,000-asset request on every 30-second rotation while retaining a predictable refresh path. First unavailable transitions are logged at info level and recovery is logged once.
 - Full Core config-flow branch coverage and a released-HACS-to-Core config-entry migration remain follow-up work even though the initial slice has focused coverage.
 - Repair issues, metadata/control platforms, dynamic discovery, default-disabled entity decisions, and higher quality-scale tiers remain intentionally unimplemented for the image-only first contribution.
 
@@ -54,15 +55,15 @@ Completed in this repository:
 - Added redacted config-entry diagnostics that never include image bytes or the API key.
 - Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
 - Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 343 tests on the readiness branch, and the shared-client/core contract tests pass separately.
-- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commit `5ab74f21`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and includes one image platform with config/options/reconfigure flows, source preflight, exact-size rendering, source filtering, portrait pairing, bounded recent-photo history, atomic persistent cache with account-identity protection and timestamped recovery, migration, diagnostics, translated selectors, fixed polling, parent reauthentication, parent-reload recovery, cache cleanup, and cached-image availability semantics.
-- The Core candidate has 44 focused tests covering setup, migration behavior, config-flow branches, source preflight and API errors, image behavior, exact output sizes, pairing, source API calls, cache integrity/timestamps/identity/cleanup, error/recovery paths, diagnostics, translated setup errors, fitting behavior, recent-history behavior, and reconfiguration persistence. The measured branch-aware coverage is 96% for the integration modules. Ruff, focused tests, integration-specific mypy configuration, generated mypy configuration, and the full local Hassfest generation/validation path pass; the latest Core CI run is still external and in progress.
+- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commit `599827b6`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and includes one image platform with config/options/reconfigure flows, source preflight, exact-size rendering, source filtering, portrait pairing, bounded recent-photo history, bounded candidate retrieval caching, atomic persistent cache with account-identity protection and timestamped recovery, migration, diagnostics, translated selectors, fixed polling, parent reauthentication, parent-reload recovery, cache cleanup, and cached-image availability semantics.
+- The Core candidate has 49 focused tests covering setup, migration behavior, config-flow branches, source preflight and API errors, image behavior, exact output sizes, pairing, source API calls, cache integrity/timestamps/identity/cleanup, error/recovery paths, diagnostics, translated setup errors, fitting behavior, recent-history behavior, candidate cache invalidation, and reconfiguration persistence. The measured branch-aware coverage is 96% for the integration modules. Ruff, focused tests, integration-specific mypy configuration, generated mypy configuration, and the full local Hassfest validation path pass; a repository-wide mypy run still reports unrelated baseline errors outside this integration, and the latest Core CI run is still external and in progress.
 
 Still required before this can be proposed as a built-in integration:
 
-- Complete the external Core PR gates: contributor CLA, final CI, maintainer review, and merge of the documentation and Brands companion PRs.
+- Complete the external Core PR gates: final CI, maintainer review, and merge of the Core, documentation, and Brands pull requests.
 - Keep the existing custom integration and the Core image-only contribution clearly separated. If the custom repository continues to maintain a standalone transport/library, publish and support that package independently; it is not required by the current Core design.
 - Complete the remaining feature and migration decisions: the custom integration still covers album/keyword selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata/status entities, and its existing migration behavior. The Core candidate intentionally starts with the image platform only. Migration from released HACS entries still needs a maintained mapping to an existing Core `immich` account, and the current `aioimmich` API does not expose the memories operation used by the custom integration.
-- Complete the upstream gates: latest Core CI, contributor CLA, maintainer review, and eventual merge of the three PRs. Strict typing and the Silver coverage threshold are evidenced locally for the candidate; higher-tier work remains documented below, including unsupported memories until the shared client has a supported API.
+- Complete the upstream gates: latest Core CI, maintainer review, and eventual merge of the three PRs. Strict typing and the Silver coverage threshold are evidenced locally for the candidate; higher-tier work remains documented below, including unsupported memories until the shared client has a supported API.
 
 ## Important architectural decision
 
@@ -256,7 +257,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Large
 
-The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 42 tests and 96% branch-aware integration-module coverage; the remaining coverage work is follow-up platform/migration behavior.
+The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 49 tests and 96% branch-aware integration-module coverage; the remaining coverage work is follow-up platform/migration behavior.
 
 Development needed:
 
@@ -346,10 +347,10 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `docs-installation-parameters` | Partial | The current API-key permission and URL guidance is useful, but needs to be moved and aligned with the existing Immich account setup. |
 | `entity-unavailable` | Pass for the initial slice | The image entity is unavailable when the coordinator reports a connection failure, while the last verified image remains cached for recovery. |
 | `integration-owner` | Partial | A custom code owner is present; Core needs confirmed maintainers and an appropriate `CODEOWNERS` entry. |
-| `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs one warning per outage and one info message on recovery; verify the final exception paths against Core's logging tests. |
+| `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs the first unavailable transition at info level and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | N/A for the initial slice | Authentication is owned by the parent `immich` entry; the frame coordinator starts that parent reauth flow on an unauthorized response. Add full parent/child lifecycle coverage if maintainers keep this boundary. |
-| `test-coverage` | Pass locally / verify in CI | The 42-test focused Core suite measures 96% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
+| `test-coverage` | Pass locally / verify in CI | The 49-test focused Core suite measures 96% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
 
 ### Gold
 
@@ -441,7 +442,7 @@ The following boundaries are now in place for the open Home Assistant Core PR:
 - Read the current Home Assistant [creating an integration](https://developers.home-assistant.io/docs/creating_component_index/), [development checklist](https://developers.home-assistant.io/docs/development_checklist/), [component checklist](https://developers.home-assistant.io/docs/creating_component_code_review/), [manifest reference](https://developers.home-assistant.io/docs/creating_integration_manifest/), [Core contribution guidance](https://developers.home-assistant.io/docs/core/integration/contributing_to_core/), and [Integration Quality Scale checklist](https://developers.home-assistant.io/docs/core/integration-quality-scale/checklist/).
 - Compared the repository with the live Home Assistant [Immich integration](https://www.home-assistant.io/integrations/immich) and its current Core manifest/coordinator/config flow.
 - Inspected the repository status, local `main` and `origin/main` ancestry, manifest, config flow, coordinator, API/client, platform modules, translations, tests, architecture docs, and CI/release workflows.
-- The implementation follow-up was run in isolated worktrees. The custom repository's existing native/client suites remain separate from the Core evidence. In the Home Assistant Core candidate at `5ab74f21`, `tests/components/immich_frames`: 44 passed, branch-aware integration coverage is 96%, Ruff passes, generated `mypy.ini` validates, and the full local Hassfest generation path passes after regenerating translated integration metadata. A direct repository-wide mypy run reports unrelated baseline/import errors outside `immich_frames`; the Core CI typing gate is the final authority.
+- The implementation follow-up was run in isolated worktrees. The custom repository's existing native/client suites remain separate from the Core evidence. In the Home Assistant Core candidate at `599827b6`, `tests/components/immich_frames`: 49 passed, branch-aware integration coverage is 96%, Ruff passes, generated `mypy.ini` validates, and the full local Hassfest validation path passes after regenerating translated integration metadata. A direct repository-wide mypy run reports unrelated baseline/import errors outside `immich_frames`; the Core CI typing gate is the final authority.
 
 ## References
 
