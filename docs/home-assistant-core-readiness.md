@@ -27,8 +27,8 @@ Completed in this repository:
 - Added redacted config-entry diagnostics that never include image bytes or the API key.
 - Added manifest `integration_type`/logger metadata and focused diagnostics coverage.
 - Preserved the existing rendering, pairing, cache, output-size, migration, and entity-identity contracts; the Home Assistant-native test suite passes 343 tests on the readiness branch, and the shared-client/core contract tests pass separately.
-- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commits `b12fb77c` and `8b906697`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and now includes the image platform plus translated buttons, slideshow switch, metadata/status sensors, config/options/reconfigure flows, exact-size rendering, source filtering, portrait pairing, atomic persistent cache, migration, diagnostics, icons, and entity defaults/parallel-update declarations.
-- The Core candidate has 12 focused tests covering setup, migration behavior, exact output sizes, pairing, source API calls, cache integrity, and diagnostics. Ruff and focused mypy pass for the integration; translation generation/validation, `git diff --check`, and all Hassfest schema checks pass. Hassfest correctly leaves the candidate below Bronze only for the external website documentation and Brands work.
+- Built an isolated Home Assistant Core candidate on branch `feature/immich-frames-core` through commits `b12fb77c`, `8b906697`, `21ee8236`, and `eba4bb36`. It depends on the existing Core `immich` config entry, reuses its `aioimmich` client/session, uses typed `runtime_data`, and now includes the image platform plus translated buttons, slideshow switch, metadata/status sensors, config/options/reconfigure flows, exact-size rendering, source filtering, portrait pairing, atomic persistent cache, migration, diagnostics, icons, and entity defaults/parallel-update declarations.
+- The Core candidate has 31 focused tests covering setup, migration behavior, config-flow branches, entity behavior, exact output sizes, pairing, source API calls, cache integrity, error/recovery paths, and diagnostics. The measured branch-aware coverage is 96% for the integration modules, above the documented Silver threshold. Ruff and focused mypy pass; translation generation/validation, `git diff --check`, and the integration Hassfest validation pass apart from the four external Bronze gates for website documentation and Brands work.
 
 Still required before this can be proposed as a built-in integration:
 
@@ -36,7 +36,7 @@ Still required before this can be proposed as a built-in integration:
 - Decide with the existing Home Assistant `immich` integration maintainers whether this should depend on the existing Immich config entry or become additional functionality in that integration. The current branch is a transport/library preparation step and does not yet perform that account-ownership migration.
 - Create the actual `homeassistant/components/<domain>/` and `tests/components/<domain>/` Core PR, with the final domain/name and Home Assistant website documentation.
 - Complete the remaining feature and migration decisions: the candidate now covers album/keyword selection, time/orientation filtering, pairing, rendering/output-size contracts, persistent cache, next/previous/refresh/clear controls, slideshow state, metadata/status entities, and a version migration for its initial Core shape. Migration from released HACS entries still needs a maintained mapping to an existing Core `immich` account, and the current `aioimmich` API does not expose the memories operation used by the custom integration.
-- Complete Core-only gates: brands, CODEOWNERS, full config-flow/error/coverage checks, website documentation, generated dependency updates, and maintainer review. Strict typing is now enabled for the candidate; the remaining external/library gap is the unsupported memories source, which is deliberately not exposed until the shared client has a supported API.
+- Complete Core-only gates: brands, CODEOWNERS, the remaining full config-flow/error and migration checks, website documentation, generated dependency updates, and maintainer review. Strict typing and the Silver coverage threshold are now evidenced locally for the candidate; the remaining external/library gap is the unsupported memories source, which is deliberately not exposed until the shared client has a supported API.
 
 ## Important architectural decision
 
@@ -277,7 +277,7 @@ The first Core PR should not wait for every Gold/Platinum feature if Bronze is c
 | Issue tracker for external library | **Gap/verify** | Maintain an issue tracker and link it in the library project; do not use the custom integration repository as a substitute for library ownership. |
 | Requirements in `manifest.json` | **Gap** | Add the exact published client requirement and update HA's generated `requirements_all.txt`; it is intentionally not pinned to an unpublished package in this branch. |
 | Code owners | **Partial** | The custom manifest names `@jtenniswood`; add the appropriate Core `CODEOWNERS` entry and confirm sustainable ownership. |
-| `.strict-typing` | **Gap** | Type the Core integration/library boundary and add it once it passes strict checks. |
+| `.strict-typing` | **Pass locally / verify in Core** | The candidate is listed in Core's `.strict-typing` and passes focused mypy; re-run the full Core typing gate in the eventual PR. |
 | Ruff formatting | **Verify** | Run Home Assistant's actual pre-commit/Ruff checks in a Core checkout; the repository CI check is not equivalent. |
 | Deprecation process | **Gap to plan** | Document migration from the custom integration and use Core config-entry migrations for saved data. |
 | `home-assistant.io` documentation | **Gap** | Add the complete integration page and link it from the Core manifest. |
@@ -322,7 +322,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs one warning per outage and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | Pass locally / verify in Core | Invalid API keys raise `ConfigEntryAuthFailed`; the new reauth flow updates only the key and preserves the frame entry. Add full Core flow coverage. |
-| `test-coverage` | Gap/unverified | Existing tests are extensive but there is no evidence of the Core >95% integration-module threshold. Add coverage measurement and fill lifecycle/error/metadata gaps. |
+| `test-coverage` | Pass locally / verify in Core | The 31-test focused Core suite measures 96% branch-aware coverage across the integration modules. Preserve this threshold as the implementation and dependency boundary change in the eventual PR. |
 
 ### Gold
 
