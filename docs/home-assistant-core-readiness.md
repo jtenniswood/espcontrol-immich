@@ -355,7 +355,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs the first unavailable transition at info level and one info message on recovery; verify the final exception paths against Core's logging tests. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | N/A for the initial slice | Authentication is owned by the parent `immich` entry; the frame coordinator starts that parent reauth flow on an unauthorized response. Add full parent/child lifecycle coverage if maintainers keep this boundary. |
-| `test-coverage` | Pass locally / verify in CI | The 63-test focused Core suite measures 98% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
+| `test-coverage` | Pass locally / verify in CI | The 66-test focused Core suite measures 98% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
 
 ### Gold
 
