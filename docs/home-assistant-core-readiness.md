@@ -326,7 +326,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 |---|---|---|
 | `action-setup` | N/A/decision | No custom service actions are currently defined. If custom actions are added later, register them in `async_setup`, not per entry. |
 | `appropriate-polling` | Pass/verify | The Core candidate uses a fixed 30-second `DataUpdateCoordinator` interval, independent of user options; the website PR documents the cadence and request/render cost. |
-| `brands` | Partial | The custom integration has local brand images. Core assets must be submitted to the Home Assistant brands repository. |
+| `brands` | In review | Companion Brands PR #11193 supplies the Core assets; automated image checks pass and maintainer merge remains outstanding. |
 | `common-modules` | Pass | `coordinator.py`, `entity.py`, `selection.py`, `rendering.py`, and `cache.py` centralize shared behavior in the Core candidate. |
 | `config-flow-test-coverage` | Pass for the initial slice | Core flow tests cover setup, parent availability, source-specific validation/errors, options, reconfigure, and translation paths. HACS-to-Core migration remains a future design because the initial PR does not migrate custom entries. |
 | `config-flow` | Pass for the initial slice | The candidate uses `probatio`, translated selectors, descriptions, options/reconfigure flows, and an existing Immich account. HACS migration remains out of scope for the initial PR. |
@@ -339,8 +339,8 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `entity-unique-id` | Pass/verify | Entities use stable entry-ID/key IDs. Preserve them through custom-to-Core migration and test registry continuity. |
 | `has-entity-name` | Pass | The base entity sets `_attr_has_entity_name = True`. Keep this pattern. |
 | `runtime-data` | Pass | The coordinator is assigned to `entry.runtime_data` and all platforms read it through a typed Core config-entry alias. |
-| `test-before-configure` | Pass/partial | The flow validates a loaded Immich account before advancing and validates selected albums. Add full tests for all upstream failure types. |
-| `test-before-setup` | Pass/partial | First refresh tests setup and translated update/auth failures are present; add standard Core retry/auth association coverage. |
+| `test-before-configure` | Pass for the initial slice | The flow validates a loaded Immich account, selected albums, and all-photo/Smart Search source access before saving; recovery tests cover corrected source errors. |
+| `test-before-setup` | Pass for the initial slice | First refresh, translated setup errors, parent availability, retry, and authentication association paths are covered and pass Core CI. |
 | `unique-config-entry` | Pass for the initial slice | The candidate uses the selected Immich entry plus a generated stable frame ID, avoiding mutable names as config-entry unique IDs. HACS mapping is future work. |
 
 ### Silver
@@ -349,11 +349,11 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 |---|---|---|
 | `action-exceptions` | N/A/decision | No custom service actions exist. Entity button failures still need normal HA exception handling and tests. |
 | `config-entry-unloading` | Pass for the initial slice | `async_unload_entry` unloads the image platform; the shared `aioimmich` client remains owned by the parent `immich` entry and must not be closed by the frame integration. |
-| `docs-configuration-parameters` | Partial | Repository docs are detailed; the required Core website page is missing and must separate installation parameters from runtime configuration. |
-| `docs-installation-parameters` | Partial | The current API-key permission and URL guidance is useful, but needs to be moved and aligned with the existing Immich account setup. |
+| `docs-configuration-parameters` | In review | Companion docs PR #48258 separates installation parameters from frame runtime configuration; checks pass and merge remains outstanding. |
+| `docs-installation-parameters` | In review | Companion docs PR #48258 aligns setup with the existing Immich account and documents the supported parameters. |
 | `entity-unavailable` | Pass for the initial slice | The image entity is unavailable unless the coordinator has a current `ready` frame; verified cached bytes remain available internally for recovery and diagnostics. |
-| `integration-owner` | Partial | A custom code owner is present; Core needs confirmed maintainers and an appropriate `CODEOWNERS` entry. |
-| `log-when-unavailable` | Pass locally / verify in Core | The coordinator logs the first unavailable transition at info level and one info message on recovery; verify the final exception paths against Core's logging tests. |
+| `integration-owner` | Pass for the submitted candidate | Core `CODEOWNERS` entries are present; maintainer review remains the external approval gate. |
+| `log-when-unavailable` | Pass in Core CI | The coordinator logs the first unavailable/upstream-failure transition and one recovery message; focused assertions and Core CI pass. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | N/A for the initial slice | Authentication is owned by the parent `immich` entry; the frame coordinator starts that parent reauth flow on an unauthorized response. Add full parent/child lifecycle coverage if maintainers keep this boundary. |
 | `test-coverage` | Pass locally / verify in CI | The 76-test focused Core suite measures 98% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
@@ -363,7 +363,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | Rule | Status | Evidence and required development |
 |---|---|---|
 | `devices` | Pass/verify | The base entity creates one device per frame. Preserve device identity and decide whether the final design has one or many devices per Immich account. |
-| `diagnostics` | Pass locally / verify in Core | Added diagnostics that expose safe runtime state without image bytes; add the final Core diagnostics test and ensure URLs/account identifiers follow maintainer guidance. |
+| `diagnostics` | Pass in Core CI | Diagnostics expose safe runtime state without image bytes or sensitive identifiers; the no-rendered-frame and redaction tests pass in Core CI. |
 | `discovery-update-info` | N/A/verify | No supported Immich discovery mechanism has been established. Investigate Zeroconf/SSDP/DHCP before declaring this N/A. |
 | `discovery` | N/A/verify | Current setup is manual by URL/account. Implement only if Immich exposes a stable, safe discovery protocol. |
 | `docs-data-update` | In review | Companion PR #48258 documents the fixed 30-second polling and cache behavior. |
