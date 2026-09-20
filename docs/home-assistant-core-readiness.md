@@ -311,7 +311,7 @@ The first Core PR should not wait for every Gold/Platinum feature if Bronze is c
 | Issue tracker for external library | **Pass** | The maintained library has its own GitHub repository and issue tracker at [mib1185/aioimmich](https://github.com/mib1185/aioimmich). |
 | Requirements in `manifest.json` | **Pass for the initial Core path** | The Core manifest uses the existing exact `aioimmich==0.17.0` requirement and the generated Core requirements file was regenerated and validated. |
 | Code owners | **Pass for the submitted candidate** | Core `CODEOWNERS` contains entries for both `homeassistant/components/immich_frames/` and its tests; ongoing maintainer approval remains an external gate. |
-| `.strict-typing` | **Pass locally / verify in CI** | The candidate is listed in Core's `.strict-typing`, generated `mypy.ini` is committed, and integration-specific mypy reports no findings; re-run the full Core typing gate in CI. |
+| `.strict-typing` | **Pass in Core CI** | The candidate is listed in Core's `.strict-typing`, generated `mypy.ini` is committed, and the full Core CI mypy job passed for head `8a8e69c1`. |
 | Ruff formatting | **Pass in Core CI** | The Core candidate's pre-commit/Ruff and formatting checks passed in full CI run `35480419567`. |
 | Deprecation process | **Gap to plan** | Document migration from the custom integration and use Core config-entry migrations for saved data. |
 | `home-assistant.io` documentation | **In review** | Companion PR #48258 adds the integration page and links to the Core domain; merge remains an external gate. |
@@ -356,7 +356,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `log-when-unavailable` | Pass in Core CI | The coordinator logs the first unavailable/upstream-failure transition and one recovery message; focused assertions and Core CI pass. |
 | `parallel-updates` | Pass | Each candidate platform declares `PARALLEL_UPDATES = 1`; validate the final value against the shared-client concurrency behavior. |
 | `reauthentication-flow` | N/A for the initial slice | Authentication is owned by the parent `immich` entry; the frame coordinator starts that parent reauth flow on an unauthorized response. Add full parent/child lifecycle coverage if maintainers keep this boundary. |
-| `test-coverage` | Pass locally / verify in CI | The 76-test focused Core suite measures 98% branch-aware coverage across the initial integration modules. Preserve this threshold as follow-up platforms and migrations are added. |
+| `test-coverage` | Pass in Core CI | The 77-test focused Core suite measures 98% branch-aware coverage across the initial integration modules, and full Core CI passed. Preserve this threshold as follow-up platforms and migrations are added. |
 
 ### Gold
 
@@ -377,7 +377,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `entity-category` | N/A for the initial slice | The initial image entity has no configuration-only or diagnostic category. Follow-up platforms need a separate audit. |
 | `entity-device-class` | Partial/N/A | Text photo metadata has no obvious standard class; numeric/date entities should be audited and justified. |
 | `entity-disabled-by-default` | N/A for the initial slice | The initial image entity is enabled by default. Follow-up metadata sensors need explicit default-enabled decisions. |
-| `entity-translations` | Pass locally / verify in Core | The initial image entity and all shipped config/options selectors expose translation keys; follow-up platform entities need their own translations. |
+| `entity-translations` | Pass in Core CI | The initial image entity and all shipped config/options selectors expose translation keys; translation compilation and the full Core CI run passed. Follow-up platform entities need their own translations. |
 | `exception-translations` | Pass for the initial slice | The Core candidate uses translated coordinator exceptions for setup, connection, image, empty-selection, and unsupported-source failures. |
 | `icon-translations` | N/A for the initial slice | The initial Core contribution has only the image platform and no dynamic icon translations. Button/sensor/switch icon work belongs to follow-up platform PRs. |
 | `reconfiguration-flow` | Pass for the initial slice | Source/frame reconfiguration is covered; server/account changes remain intentionally owned by the parent Immich entry. HACS account association is future work. |
@@ -389,8 +389,8 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | Rule | Status | Required development |
 |---|---|---|
 | `async-dependency` | Pass for the initial Core path | The candidate reuses the existing asynchronous `aioimmich` dependency through the built-in Immich integration. |
-| `inject-websession` | Pass locally / verify in Core | The coordinator and config flow inject Home Assistant's managed session; the client only owns a session when used standalone by the optional app. |
-| `strict-typing` | Pass locally / verify in Core | The candidate is listed in Core's `.strict-typing`, uses typed config-entry/runtime-data aliases, and passes focused mypy. Re-run the full Core typing gate in the eventual PR. |
+| `inject-websession` | Pass in Core CI | The coordinator and config flow inject Home Assistant's managed session; the client only owns a session when used standalone by the optional app, and the full Core CI run passed. |
+| `strict-typing` | Pass in Core CI | The candidate is listed in Core's `.strict-typing`, uses typed config-entry/runtime-data aliases, and the full Core CI mypy job passed for head `8a8e69c1`. |
 
 ## Core packaging and repository boundaries
 
