@@ -381,7 +381,7 @@ Status meanings: **Pass** means evidence exists in the current tree; **Partial**
 | `exception-translations` | Pass for the initial slice | The Core candidate uses translated coordinator exceptions for setup, connection, image, empty-selection, and unsupported-source failures. |
 | `icon-translations` | N/A for the initial slice | The initial Core contribution has only the image platform and no dynamic icon translations. Button/sensor/switch icon work belongs to follow-up platform PRs. |
 | `reconfiguration-flow` | Pass for the initial slice | Source/frame reconfiguration is covered; server/account changes remain intentionally owned by the parent Immich entry. HACS account association is future work. |
-| `repair-issues` | Gap/decision | Add repairs for actionable migration/auth conditions only; avoid repair spam for normal empty libraries. |
+| `repair-issues` | N/A/decision | The quality-scale file exempts this initial slice because authentication recovery is owned by the parent Immich integration; do not create repair spam for normal empty, unavailable, or source-filtered states. Reassess if custom migration or frame-specific user repair conditions are added. |
 | `stale-devices` | N/A/decision | No service-side dynamic frame discovery currently exists. Revisit if frames become dynamic children of an Immich account. |
 
 ### Platinum
