@@ -263,7 +263,7 @@ Importance: High
 Recommendation strength: Strong  
 Work required: Large
 
-The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 76 collected tests and 98% branch-aware integration-module coverage; current config-flow recovery and local capture-clock assertions cover the initial image-only path, with follow-up platform/migration behavior still requiring its own tests.
+The existing `tests_native` suite provides valuable behavior coverage, especially for setup, config flow, migrations, cache compatibility, output sizes, photo fitting, albums, memories, and navigation. The Core candidate now has a dedicated `tests/components/immich_frames/` suite with 77 collected tests and 98% branch-aware integration-module coverage; current config-flow recovery, local capture-clock, and parent identity transition assertions cover the initial image-only path, with follow-up platform/migration behavior still requiring its own tests.
 
 Development needed:
 
