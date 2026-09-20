@@ -48,6 +48,7 @@ Current development gaps identified during the latest Core review pass are track
 - Older Immich servers need an explicit compatibility decision for album searches: the pinned `aioimmich` path can ignore the page bound on pre-v3 servers. The Core contribution should either require/document a supported server version or land an upstream pagination strategy before claiming bounded retrieval for those servers.
 - A released-HACS-to-Core config-entry migration remains follow-up work; the initial image-only flow has explicit recovery coverage for its current source branches.
 - Repair issues, metadata/control platforms, dynamic discovery, default-disabled entity decisions, and higher quality-scale tiers remain intentionally unimplemented for the image-only first contribution.
+- The latest automated Core review also needs human thread closure. The parent-removal and executor-cache findings are implemented and covered at `94d3245e`; the remaining review topics are mapped as follows: sources over 2,000 assets still depend on the released `aioimmich` pagination change, entity availability/strict typing/upstream outage logging and version-1 migration coverage have implementation and CI evidence but await review-thread resolution, successful-retry coverage should be expanded across every config/options/reconfigure error branch, and the documentation/PR-template threads need final maintainer confirmation.
 
 ## Implementation status on the readiness branch
 
