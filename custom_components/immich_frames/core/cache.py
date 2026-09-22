@@ -48,14 +48,21 @@ class SnapshotStore:
     def __init__(self, path: Path):
         self.path = path
 
-    def write(self, snapshot: FrameSnapshot, options: dict, connection: str) -> None:
+    def write(
+        self,
+        snapshot: FrameSnapshot,
+        options: FrameSettings,
+        connection: str,
+        *,
+        today: date | None = None,
+    ) -> None:
         settings = FrameSettings.from_options(options)
         if image_size(snapshot.image) != settings.output_size:
             raise ValueError("Snapshot dimensions do not match the frame")
         state = {
             "cache_version": CACHE_VERSION,
             "render_version": RENDER_VERSION,
-            "signature": signature(options, connection),
+            "signature": signature(settings, connection, today=today),
             "output_size": settings.output_size,
             "generation": snapshot.generation,
             "layout": snapshot.layout,
@@ -90,7 +97,14 @@ class SnapshotStore:
             if name is not None:
                 Path(name).unlink(missing_ok=True)
 
-    def read(self, options: dict, connection: str) -> FrameSnapshot | None:
+    def read(
+        self,
+        options: FrameSettings,
+        connection: str,
+        *,
+        now: datetime | None = None,
+        today: date | None = None,
+    ) -> FrameSnapshot | None:
         try:
             state = json.loads(self.path.read_text())
             if not isinstance(state, dict):
@@ -106,7 +120,7 @@ class SnapshotStore:
                 or state["render_version"] != RENDER_VERSION
             ):
                 return None
-            if state["signature"] != signature(options, connection):
+            if state["signature"] != signature(options, connection, today=today):
                 return None
             settings = FrameSettings.from_options(options)
             if state["output_size"] != list(settings.output_size):
@@ -134,7 +148,7 @@ class SnapshotStore:
                 from .engine import _with_time_range, _datetime
 
                 bounds = _with_time_range(
-                    {}, settings.time_range, datetime.now(timezone.utc)
+                    {}, settings.time_range, now or datetime.now(timezone.utc)
                 )["takenAt"]
                 lower, upper = _datetime(bounds["gte"]), _datetime(bounds["lte"])
                 for photo in photos:

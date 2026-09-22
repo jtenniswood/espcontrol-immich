@@ -11,31 +11,43 @@ from homeassistant.helpers import selector
 
 from .api import ImmichApi, ImmichApiError, selected_album_ids
 from .const import (
-    CONF_ALBUM_ID, CONF_ALBUM_IDS, CONF_API_KEY, CONF_FALLBACK, CONF_FRAME_NAME, CONF_INTERVAL, CONF_MEMORY_WINDOW,
-    CONF_ORIGINAL_ASPECT_RATIO, CONF_PHOTO_FIT, CONF_SMART_QUERY,
-    CONF_SCREEN_SHAPE, CONF_SOURCE, CONF_URL, DEFAULT_INTERVAL, DEFAULT_SCREEN_SHAPE, DOMAIN,
-    PHOTO_SELECTION_DEFAULTS, photo_fit, screen_shape,
+    CONF_ALBUM_ID,
+    CONF_ALBUM_IDS,
+    CONF_API_KEY,
+    CONF_FALLBACK,
+    CONF_FRAME_NAME,
+    CONF_INTERVAL,
+    CONF_MEMORY_WINDOW,
+    CONF_ORIGINAL_ASPECT_RATIO,
+    CONF_PHOTO_FIT,
+    CONF_SMART_QUERY,
+    CONF_SCREEN_SHAPE,
+    CONF_SOURCE,
+    CONF_URL,
+    DEFAULT_INTERVAL,
+    DEFAULT_SCREEN_SHAPE,
+    DOMAIN,
+    PHOTO_SELECTION_DEFAULTS,
+    photo_fit,
+    screen_shape,
 )
 
-SOURCE_LABELS = {"all": "All photos", "album": "Albums", "memories": "Memories", "smart": "Keywords"}
-SOURCE_FIELDS = {
-    "album": (CONF_ALBUM_ID, CONF_ALBUM_IDS),
-    "memories": (CONF_MEMORY_WINDOW, CONF_FALLBACK),
-    "smart": (CONF_SMART_QUERY,),
-}
+from .core.settings import SOURCE_LABELS, SOURCE_FIELDS, FrameSettings
 
 
 class FrameSettingsFlow:
     """Shared photo source and frame name forms for setup and later edits."""
 
-    async def async_step_source(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
+    async def async_step_source(
+        self,
+        user_input: dict[str, Any] | None = None,
+        *,
+        errors: dict[str, str] | None = None,
+    ):
         if user_input:
-            source = {
-                "All photos": "all",
-                "Albums": "album",
-                "Memories": "memories",
-                "Keywords": "smart",
-            }.get(user_input[CONF_SOURCE], user_input[CONF_SOURCE])
+            source = {label: key for key, label in SOURCE_LABELS.items()}.get(
+                user_input[CONF_SOURCE], user_input[CONF_SOURCE]
+            )
             self._data[CONF_SOURCE] = source
             if source == "album":
                 return await self.async_step_album()
@@ -46,16 +58,31 @@ class FrameSettingsFlow:
             if source == "smart":
                 return await self.async_step_smart()
             return await self._async_finish_source()
-        return self.async_show_form(step_id="source", data_schema=vol.Schema({
-            vol.Required(CONF_SOURCE, default=SOURCE_LABELS.get(self._data.get(CONF_SOURCE), "All photos")): vol.In(list(SOURCE_LABELS.values())),
-        }), errors=errors or {})
+        return self.async_show_form(
+            step_id="source",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SOURCE,
+                        default=SOURCE_LABELS.get(
+                            self._data.get(CONF_SOURCE), "All photos"
+                        ),
+                    ): vol.In(list(SOURCE_LABELS.values())),
+                }
+            ),
+            errors=errors or {},
+        )
 
     async def async_step_album(self, user_input: dict[str, Any] | None = None):
         api = ImmichApi(self._data[CONF_URL], self._data[CONF_API_KEY])
         try:
             albums = await api.albums()
         except ImmichApiError as exc:
-            error = "album_access_denied" if exc.status in (401, 403) else "albums_unavailable"
+            error = (
+                "album_access_denied"
+                if exc.status in (401, 403)
+                else "albums_unavailable"
+            )
             return await self.async_step_source(errors={"base": error})
         except OSError:
             return await self.async_step_source(errors={"base": "albums_unavailable"})
@@ -63,11 +90,21 @@ class FrameSettingsFlow:
             await api.close()
         if not albums:
             return await self.async_step_source(errors={"base": "no_albums"})
-        names = {album["id"]: album["albumName"].strip() or "Untitled album" for album in albums}
+        names = {
+            album["id"]: album["albumName"].strip() or "Untitled album"
+            for album in albums
+        }
         counts = Counter(name.casefold() for name in names.values())
         options = [
-            {"value": album_id, "label": f"{name} ({album_id})" if counts[name.casefold()] > 1 else name}
-            for album_id, name in sorted(names.items(), key=lambda item: (item[1].casefold(), item[0]))
+            {
+                "value": album_id,
+                "label": f"{name} ({album_id})"
+                if counts[name.casefold()] > 1
+                else name,
+            }
+            for album_id, name in sorted(
+                names.items(), key=lambda item: (item[1].casefold(), item[0])
+            )
         ]
         errors: dict[str, str] = {}
         if user_input:
@@ -80,14 +117,31 @@ class FrameSettingsFlow:
                 self._data[CONF_ALBUM_IDS] = album_ids
                 self._data.pop(CONF_ALBUM_ID, None)
                 return await self._async_finish_source()
-        saved_albums = [album_id for album_id in selected_album_ids(user_input if user_input is not None else self._data) if album_id in names]
+        saved_albums = [
+            album_id
+            for album_id in selected_album_ids(
+                user_input if user_input is not None else self._data
+            )
+            if album_id in names
+        ]
         album_field = vol.Optional(CONF_ALBUM_IDS, default=saved_albums)
-        return self.async_show_form(step_id="album", data_schema=vol.Schema({
-            album_field: selector.SelectSelector(selector.SelectSelectorConfig(
-                options=options, mode=selector.SelectSelectorMode.DROPDOWN,
-                custom_value=False, multiple=True,
-            )),
-        }), errors=errors, last_step=self._settings_entry is not None)
+        return self.async_show_form(
+            step_id="album",
+            data_schema=vol.Schema(
+                {
+                    album_field: selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            custom_value=False,
+                            multiple=True,
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+            last_step=self._settings_entry is not None,
+        )
 
     async def async_step_smart(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
@@ -97,16 +151,30 @@ class FrameSettingsFlow:
                 errors["base"] = "smart_query_required"
             else:
                 return await self._async_finish_source()
-        return self.async_show_form(step_id="smart", data_schema=vol.Schema({
-            vol.Optional(CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")): str,
-        }), errors=errors, last_step=self._settings_entry is not None)
+        return self.async_show_form(
+            step_id="smart",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_SMART_QUERY, default=self._data.get(CONF_SMART_QUERY, "")
+                    ): str,
+                }
+            ),
+            errors=errors,
+            last_step=self._settings_entry is not None,
+        )
 
     async def _async_finish_source(self):
         if self._settings_entry is not None:
             return await self._async_finish_settings()
         return await self.async_step_display()
 
-    async def async_step_display(self, user_input: dict[str, Any] | None = None, *, errors: dict[str, str] | None = None):
+    async def async_step_display(
+        self,
+        user_input: dict[str, Any] | None = None,
+        *,
+        errors: dict[str, str] | None = None,
+    ):
         errors = errors or {}
         if user_input:
             self._data.update(user_input)
@@ -114,23 +182,37 @@ class FrameSettingsFlow:
             if not errors:
                 return await self._async_finish_settings()
         names = {
-            entry.title for entry in self.hass.config_entries.async_entries(DOMAIN)
-            if str(entry.data.get(CONF_URL, "")).rstrip("/") == self._data[CONF_URL].rstrip("/")
+            entry.title
+            for entry in self.hass.config_entries.async_entries(DOMAIN)
+            if str(entry.data.get(CONF_URL, "")).rstrip("/")
+            == self._data[CONF_URL].rstrip("/")
         }
         name = "Immich Frame"
         suffix = 2
         while name in names:
             name = f"Immich Frame {suffix}"
             suffix += 1
-        fields = {vol.Required(CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)): str}
-        return self.async_show_form(step_id="display", data_schema=vol.Schema(fields), errors=errors, last_step=True)
+        fields = {
+            vol.Required(
+                CONF_FRAME_NAME, default=self._data.get(CONF_FRAME_NAME, name)
+            ): str
+        }
+        return self.async_show_form(
+            step_id="display",
+            data_schema=vol.Schema(fields),
+            errors=errors,
+            last_step=True,
+        )
 
     def _name_errors(self) -> dict[str, str]:
         name = self._data[CONF_FRAME_NAME].strip()
         if not name:
             return {CONF_FRAME_NAME: "name_required"}
         unique_id = f"{self._data[CONF_URL]}|{name}"
-        if any(other.unique_id == unique_id and other is not self._settings_entry for other in self.hass.config_entries.async_entries(DOMAIN)):
+        if any(
+            other.unique_id == unique_id and other is not self._settings_entry
+            for other in self.hass.config_entries.async_entries(DOMAIN)
+        ):
             return {CONF_FRAME_NAME: "name_in_use"}
         return {}
 
@@ -143,13 +225,22 @@ class FrameSettingsFlow:
         # Keep the latest device-page preferences, including edits made while this form was open.
         settings = dict(self._data)
         if entry is not None:
-            for field in (*PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL, CONF_SCREEN_SHAPE,
-                          CONF_PHOTO_FIT, CONF_ORIGINAL_ASPECT_RATIO):
+            for field in (
+                *PHOTO_SELECTION_DEFAULTS,
+                CONF_INTERVAL,
+                CONF_SCREEN_SHAPE,
+                CONF_PHOTO_FIT,
+                CONF_ORIGINAL_ASPECT_RATIO,
+            ):
                 settings.pop(field, None)
                 if field in entry.data:
                     settings[field] = entry.data[field]
-        data = {**PHOTO_SELECTION_DEFAULTS, CONF_INTERVAL: DEFAULT_INTERVAL,
-                CONF_SCREEN_SHAPE: DEFAULT_SCREEN_SHAPE, **settings}
+        data = {
+            **PHOTO_SELECTION_DEFAULTS,
+            CONF_INTERVAL: DEFAULT_INTERVAL,
+            CONF_SCREEN_SHAPE: DEFAULT_SCREEN_SHAPE,
+            **settings,
+        }
         data[CONF_SCREEN_SHAPE] = screen_shape(data.get(CONF_SCREEN_SHAPE))
         data[CONF_PHOTO_FIT] = photo_fit(data)
         if entry is None:
@@ -163,12 +254,16 @@ class FrameSettingsFlow:
             if source != data.get(CONF_SOURCE):
                 for field in fields:
                     data.pop(field, None)
+        data.pop(CONF_ALBUM_ID, None)
         data.pop("filter", None)
         data.pop(CONF_ORIGINAL_ASPECT_RATIO, None)
+        FrameSettings.from_options(data)
         return await self._async_save_settings(data, name, unique_id)
 
 
-class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN):
+class ImmichFramesConfigFlow(
+    FrameSettingsFlow, config_entries.ConfigFlow, domain=DOMAIN
+):
     VERSION = 2
 
     @staticmethod
@@ -184,10 +279,35 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
 
     async def _async_save_settings(self, data, name, unique_id):
         if (entry := self._settings_entry) is not None:
-            return self.async_update_reload_and_abort(entry, title=name, unique_id=unique_id, data=data)
+            if coordinator := self.hass.data.get(DOMAIN, {}).get(entry.entry_id):
+                coordinator.session.invalidate()
+            return self.async_update_reload_and_abort(
+                entry, title=name, unique_id=unique_id, data=data
+            )
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
         return self.async_create_entry(title=name, data=data)
+
+    async def async_step_reauth(self, entry_data):
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        entry = self._get_reauth_entry()
+        errors = {}
+        if user_input is not None:
+            errors = await self._async_check_connection({**entry.data, **user_input})
+            if not errors:
+                coordinator = self.hass.data.get(DOMAIN, {}).get(entry.entry_id)
+                if coordinator:
+                    coordinator.session.invalidate()
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_API_KEY: self._data[CONF_API_KEY]}
+                )
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
+            errors=errors,
+        )
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
         """Edit a copy; the running frame changes only when the user saves."""
@@ -208,7 +328,12 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             url = entry.data.get(CONF_URL)
             api_key = entry.data.get(CONF_API_KEY)
-            if not isinstance(url, str) or not isinstance(api_key, str) or not url.strip() or not api_key.strip():
+            if (
+                not isinstance(url, str)
+                or not isinstance(api_key, str)
+                or not url.strip()
+                or not api_key.strip()
+            ):
                 continue
             identity = (url.strip().rstrip("/"), api_key)
             if identity not in seen:
@@ -236,9 +361,17 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
             for entry_id, entry in connections.items()
         }
         options["new"] = "Connect to another Immich server"
-        return self.async_show_form(step_id="connection", data_schema=vol.Schema({
-            vol.Required("connection_id", default=next(iter(options))): vol.In(options),
-        }), errors=errors)
+        return self.async_show_form(
+            step_id="connection",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("connection_id", default=next(iter(options))): vol.In(
+                        options
+                    ),
+                }
+            ),
+            errors=errors,
+        )
 
     async def async_step_new_connection(self, user_input: dict[str, Any] | None = None):
         return await self._async_connection_form("new_connection", user_input)
@@ -248,7 +381,10 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
         errors: dict[str, str] = {}
         try:
             url = str(data[CONF_URL]).strip()
-            if urlparse(url).scheme not in ("http", "https") or not urlparse(url).netloc:
+            if (
+                urlparse(url).scheme not in ("http", "https")
+                or not urlparse(url).netloc
+            ):
                 raise ValueError("invalid_url")
             api_key = str(data[CONF_API_KEY])
             api = ImmichApi(url, api_key)
@@ -259,7 +395,9 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
         except ValueError:
             errors["base"] = "invalid_url"
         except ImmichApiError as exc:
-            errors["base"] = "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
+            errors["base"] = (
+                "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
+            )
         except OSError:
             errors["base"] = "cannot_connect"
         else:
@@ -272,10 +410,16 @@ class ImmichFramesConfigFlow(FrameSettingsFlow, config_entries.ConfigFlow, domai
             errors = await self._async_check_connection(user_input)
             if not errors:
                 return await self.async_step_source()
-        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({
-            vol.Required(CONF_URL): str,
-            vol.Required(CONF_API_KEY): str,
-        }), errors=errors)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_URL): str,
+                    vol.Required(CONF_API_KEY): str,
+                }
+            ),
+            errors=errors,
+        )
 
 
 class ImmichFramesOptionsFlow(FrameSettingsFlow, config_entries.OptionsFlow):
@@ -294,6 +438,10 @@ class ImmichFramesOptionsFlow(FrameSettingsFlow, config_entries.OptionsFlow):
         # Runtime controls and existing installations store settings in entry.data.
         # Keep that single source of truth; only apply the draft on Save frame.
         entry = self.config_entry
-        if self.hass.config_entries.async_update_entry(entry, title=name, unique_id=unique_id, data=data):
+        if self.hass.config_entries.async_update_entry(
+            entry, title=name, unique_id=unique_id, data=data
+        ):
+            if coordinator := self.hass.data.get(DOMAIN, {}).get(entry.entry_id):
+                coordinator.session.invalidate()
             self.hass.config_entries.async_schedule_reload(entry.entry_id)
         return self.async_create_entry(title="", data=dict(entry.options))

@@ -117,6 +117,7 @@ class Setting:
     maximum: int | None = None
     icon: str | None = None
     entity_key: str | None = None
+    effect: str = "selection"
 
 
 SETTINGS = (
@@ -150,6 +151,7 @@ SETTINGS = (
         tuple(SCREEN_SHAPE_LABELS.items()),
         icon="mdi:aspect-ratio",
         entity_key="output_size",
+        effect="render",
     ),
     Setting(
         CONF_PHOTO_FIT,
@@ -157,6 +159,7 @@ SETTINGS = (
         "Photo fit",
         ((PHOTO_FIT_CROP, "Crop to fit"), (PHOTO_FIT_FULL, "Show full image")),
         icon="mdi:image-size-select-large",
+        effect="render",
     ),
     Setting(
         CONF_MODE,
@@ -188,9 +191,37 @@ SETTINGS = (
         maximum=7,
         icon="mdi:calendar-range",
     ),
-    Setting(CONF_INTERVAL, DEFAULT_INTERVAL, "Slideshow Timer", minimum=10, maximum=86400),
+    Setting(
+        CONF_INTERVAL,
+        DEFAULT_INTERVAL,
+        "Slideshow Timer",
+        minimum=10,
+        maximum=86400,
+        effect="timer",
+    ),
 )
 SETTING_BY_KEY = {setting.key: setting for setting in SETTINGS}
+
+
+@dataclass(frozen=True)
+class Source:
+    key: str
+    label: str
+    fields: tuple[str, ...] = ()
+    effect: str = "selection"
+    native: bool = True
+
+
+SOURCES = (
+    Source("all", "All photos"),
+    Source("album", "Albums", (CONF_ALBUM_IDS,)),
+    Source("memories", "Memories", (CONF_MEMORY_WINDOW, CONF_FALLBACK)),
+    Source("smart", "Keywords", (CONF_SMART_QUERY, "smart_reference_asset_id")),
+    Source("filter", "Custom filter", (CONF_FILTER,), native=False),
+)
+SOURCE_BY_KEY = {source.key: source for source in SOURCES}
+SOURCE_LABELS = {source.key: source.label for source in SOURCES if source.native}
+SOURCE_FIELDS = {source.key: source.fields for source in SOURCES if source.fields}
 
 
 @dataclass(frozen=True)
@@ -216,23 +247,19 @@ class FrameSettings:
 
     @classmethod
     def from_options(cls, options: dict) -> FrameSettings:
-        data = deepcopy(options)
-        albums = data.get(
-            CONF_ALBUM_IDS, [data[CONF_ALBUM_ID]] if data.get(CONF_ALBUM_ID) else []
-        )
-        if not isinstance(albums, (list, tuple)) or any(
-            not isinstance(x, str) or not x.strip() for x in albums
-        ):
+        if isinstance(options, cls):
+            return options
+        from ..settings import native_settings
+
+        return native_settings(options)
+
+    def __post_init__(self) -> None:
+        # Copy caller-owned collections before validating the canonical value.
+        if not isinstance(self.album_ids, (tuple, list)):
             raise ValueError("album_ids must contain album IDs")
-        data[CONF_ALBUM_IDS] = tuple(dict.fromkeys(x.strip() for x in albums))
-        data[CONF_SCREEN_SHAPE] = screen_shape(data.get(CONF_SCREEN_SHAPE))
-        data[CONF_PHOTO_FIT] = photo_fit(data)
-        values = {
-            key: value for key, value in data.items() if key in cls.__dataclass_fields__
-        }
-        settings = cls(**values)
-        settings.validate()
-        return settings
+        object.__setattr__(self, "album_ids", tuple(self.album_ids))
+        object.__setattr__(self, "filter", deepcopy(self.filter))
+        self.validate()
 
     def validate(self) -> None:
         for spec in SETTINGS:
@@ -250,8 +277,21 @@ class FrameSettings:
                 raise ValueError(
                     f"{spec.key} must be between {spec.minimum} and {spec.maximum}"
                 )
-        if self.source not in ("all", "album", "smart", "memories", "filter"):
+        if self.source not in SOURCE_BY_KEY:
             raise ValueError("Invalid source")
+        if any(
+            not isinstance(value, str) or not value.strip() for value in self.album_ids
+        ):
+            raise ValueError("album_ids must contain album IDs")
+        if self.source == "album" and not self.album_ids:
+            raise ValueError("Choose at least one album (album_ids)")
+        if self.source == "smart" and not (
+            isinstance(self.smart_query, str)
+            and self.smart_query.strip()
+            or isinstance(self.smart_reference_asset_id, str)
+            and self.smart_reference_asset_id.strip()
+        ):
+            raise ValueError("smart_query or a reference photo is required")
         if (
             type(self.memory_window_days) is not int
             or not 0 <= self.memory_window_days <= 7
@@ -261,6 +301,14 @@ class FrameSettings:
             raise ValueError("fallback_to_all must be a boolean")
         if not isinstance(self.smart_query, str) or not isinstance(self.filter, dict):
             raise ValueError("Invalid photo source settings")
+        from .filtering import validate_filter
+
+        validate_filter(self.filter)
+        if self.smart_reference_asset_id is not None and (
+            not isinstance(self.smart_reference_asset_id, str)
+            or not self.smart_reference_asset_id.strip()
+        ):
+            raise ValueError("Invalid reference photo")
         if self.order_direction not in ("random", "asc", "desc"):
             raise ValueError("Invalid order_direction")
         if self.order_field not in (
@@ -276,31 +324,22 @@ class FrameSettings:
         data[CONF_ALBUM_IDS] = list(self.album_ids)
         return data
 
+    def fit_for(self, photos) -> str:
+        if (
+            self.mode == "pairs"
+            and len(photos) == 1
+            and photos[0].get("orientation") == "portrait"
+        ):
+            return PHOTO_FIT_FULL
+        return self.photo_fit
+
     @property
     def output_size(self) -> tuple[int, int]:
         return SCREEN_SIZES[self.screen_shape]
 
 
 def migrate_settings(data: dict, version: int = 1) -> dict:
-    """Upgrade v1 frame dictionaries without modifying credentials or identity."""
-    if version > SETTINGS_VERSION:
-        raise ValueError("Settings were saved by a newer version")
-    result = deepcopy(data)
-    if version == 1:
-        result[CONF_SCREEN_SHAPE] = screen_shape(result.get(CONF_SCREEN_SHAPE))
-        result[CONF_PHOTO_FIT] = photo_fit(result)
-        if CONF_ALBUM_ID in result and CONF_ALBUM_IDS not in result:
-            result[CONF_ALBUM_IDS] = (
-                [result[CONF_ALBUM_ID]] if result[CONF_ALBUM_ID] else []
-            )
-        result.pop(CONF_ALBUM_ID, None)
-        result.pop(CONF_ORIGINAL_ASPECT_RATIO, None)
-        result.pop("pairs_only", None)
-        # Native v1 ignored custom filters for All photos/Albums and always
-        # constrained visibility to timeline. Preserve that effective behavior.
-        if result.get(CONF_SOURCE, "all") in ("all", "album"):
-            result.pop("filter", None)
-        elif result.get("filter"):
-            result["filter"]["visibility"] = {"eq": "timeline"}
-    FrameSettings.from_options(result)
-    return result
+    """Compatibility import; saved-entry translation belongs to the native boundary."""
+    from ..settings import migrate_settings as migrate
+
+    return migrate(data, version)

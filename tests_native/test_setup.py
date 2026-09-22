@@ -126,7 +126,7 @@ async def test_cache_write_failure_does_not_fail_setup(hass, asset, jpeg):
     entry = MockConfigEntry(domain=DOMAIN, title="Frame", data={"url": "http://immich.test", "api_key": "test-key"})
     entry.add_to_hass(hass)
     with patch("custom_components.immich_frames.api.ImmichApi._request", request), patch(
-        "custom_components.immich_frames.coordinator.FrameCoordinator._write_cache", side_effect=OSError("Disk full")
+        "custom_components.immich_frames.core.cache.SnapshotStore.write", side_effect=OSError("Disk full")
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

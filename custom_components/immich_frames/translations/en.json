@@ -57,6 +57,13 @@
         "data": {
           "frame_name": "Frame name"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Immich",
+        "description": "Enter a new read-only API key for this frame’s Immich server. Your frame settings and entity identities will be kept.",
+        "data": {
+          "api_key": "Read-only API key"
+        }
       }
     },
     "error": {
@@ -75,7 +82,8 @@
     },
     "abort": {
       "already_configured": "A frame with this name is already configured.",
-      "reconfigure_successful": "Frame settings updated."
+      "reconfigure_successful": "Frame settings updated.",
+      "reauth_successful": "Immich connection updated."
     }
   },
   "entity": {

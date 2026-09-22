@@ -1,6 +1,9 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
+ARG SOURCE_COMMIT=local
+LABEL org.opencontainers.image.revision=$SOURCE_COMMIT
+
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src

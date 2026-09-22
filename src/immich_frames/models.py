@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 Mode = Literal["single", "pairs", "pairs_only"]
 from custom_components.immich_frames.core.settings import SCREEN_SIZES, FrameSettings
+
 OUTPUT_SIZE = SCREEN_SIZES["landscape"]
 
 
@@ -40,33 +41,64 @@ class Photo:
     @classmethod
     def from_api(cls, value: dict[str, Any]) -> "Photo":
         exif = value.get("exifInfo") or {}
-        people = tuple(name.strip() for person in value.get("people") or []
-                       if isinstance(name := person.get("name"), str) and name.strip())
+        people = tuple(
+            name.strip()
+            for person in value.get("people") or []
+            if isinstance(name := person.get("name"), str) and name.strip()
+        )
         tags = tuple(t.get("name") or t.get("id", "") for t in value.get("tags") or [])
         return cls(
-            id=value["id"], width=value.get("width"), height=value.get("height"),
+            id=value["id"],
+            width=value.get("width"),
+            height=value.get("height"),
             file_created_at=parse_datetime(value.get("fileCreatedAt")),
             local_date_time=parse_datetime(value.get("localDateTime")),
             original_file_name=value.get("originalFileName", value["id"]),
             original_mime_type=value.get("originalMimeType"),
-            is_favorite=bool(value.get("isFavorite")), is_archived=bool(value.get("isArchived")),
-            is_trashed=bool(value.get("isTrashed")), visibility=value.get("visibility", "timeline"),
-            exif=exif, people=people, tags=tags, checksum=value.get("checksum"), thumbhash=value.get("thumbhash"),
+            is_favorite=bool(value.get("isFavorite")),
+            is_archived=bool(value.get("isArchived")),
+            is_trashed=bool(value.get("isTrashed")),
+            visibility=value.get("visibility", "timeline"),
+            exif=exif,
+            people=people,
+            tags=tags,
+            checksum=value.get("checksum"),
+            thumbhash=value.get("thumbhash"),
         )
 
     def record(self) -> dict:
         capture = self.capture_time
-        return {"id": self.id, "filename": self.original_file_name, "width": self.width,
-                "height": self.height, "orientation": self.orientation, "captured": capture.isoformat() if capture else None,
-                "capture_dt": capture, "exif": self.exif, "people": list(self.people), "tags": list(self.tags),
-                "favorite": self.is_favorite, "rating": self.exif.get("rating"), "checksum": self.checksum}
+        return {
+            "id": self.id,
+            "filename": self.original_file_name,
+            "width": self.width,
+            "height": self.height,
+            "orientation": self.orientation,
+            "captured": capture.isoformat() if capture else None,
+            "capture_dt": capture,
+            "exif": self.exif,
+            "people": list(self.people),
+            "tags": list(self.tags),
+            "favorite": self.is_favorite,
+            "rating": self.exif.get("rating"),
+            "checksum": self.checksum,
+        }
 
     @classmethod
     def from_record(cls, photo):
-        return cls(photo["id"], photo.get("width"), photo.get("height"),
-                   parse_datetime(photo.get("captured")), parse_datetime(photo.get("captured")),
-                   photo.get("filename", photo["id"]), is_favorite=photo.get("favorite"),
-                   exif=photo.get("exif", {}), people=tuple(photo.get("people", ())), tags=tuple(photo.get("tags", ())), checksum=photo.get("checksum"))
+        return cls(
+            photo["id"],
+            photo.get("width"),
+            photo.get("height"),
+            parse_datetime(photo.get("captured")),
+            parse_datetime(photo.get("captured")),
+            photo.get("filename", photo["id"]),
+            is_favorite=photo.get("favorite"),
+            exif=photo.get("exif", {}),
+            people=tuple(photo.get("people", ())),
+            tags=tuple(photo.get("tags", ())),
+            checksum=photo.get("checksum"),
+        )
 
     @property
     def capture_time(self) -> datetime | None:
@@ -83,10 +115,23 @@ class Photo:
     @classmethod
     def from_cache(cls, value: dict[str, Any]) -> "Photo":
         return cls(
-            id=value.get("asset_id", "unknown"), width=(value.get("dimensions") or {}).get("width"), height=(value.get("dimensions") or {}).get("height"),
-            file_created_at=parse_datetime(value.get("taken_at")), local_date_time=parse_datetime(value.get("taken_at")),
-            original_file_name=value.get("filename", "unknown"), exif={"city": value.get("city"), "state": value.get("state"), "country": value.get("country"), "description": value.get("description"), "rating": value.get("rating"), **(value.get("camera") or {})},
-            people=tuple(value.get("people") or ()), tags=tuple(value.get("tags") or ()), is_favorite=bool(value.get("favorite")),
+            id=value.get("asset_id", "unknown"),
+            width=(value.get("dimensions") or {}).get("width"),
+            height=(value.get("dimensions") or {}).get("height"),
+            file_created_at=parse_datetime(value.get("taken_at")),
+            local_date_time=parse_datetime(value.get("taken_at")),
+            original_file_name=value.get("filename", "unknown"),
+            exif={
+                "city": value.get("city"),
+                "state": value.get("state"),
+                "country": value.get("country"),
+                "description": value.get("description"),
+                "rating": value.get("rating"),
+                **(value.get("camera") or {}),
+            },
+            people=tuple(value.get("people") or ()),
+            tags=tuple(value.get("tags") or ()),
+            is_favorite=bool(value.get("favorite")),
         )
 
 
@@ -105,7 +150,9 @@ class FrameConfig:
     fallback_to_all: bool = False
     smart_query: str | None = None
     smart_reference_asset_id: str | None = None
-    order_field: Literal["fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"] = "fileCreatedAt"
+    order_field: Literal[
+        "fileCreatedAt", "localDateTime", "fileSizeInBytes", "rating"
+    ] = "fileCreatedAt"
     order_direction: Literal["asc", "desc", "random"] = "desc"
     output_width: int = OUTPUT_SIZE[0]
     output_height: int = OUTPUT_SIZE[1]
@@ -118,15 +165,31 @@ class FrameConfig:
     time_range: str = "all_time"
     settings_version: int = 2
 
-    def settings(self) -> dict:
+    def settings(self) -> FrameSettings:
         data = asdict(self)
         data["interval"] = self.slideshow_interval
         # Legacy app cover/contain preferences migrate to the common fit policy.
-        data["photo_fit"] = self.photo_fit or ("show_full" if self.fit == "contain" else "crop")
+        data["photo_fit"] = self.photo_fit or (
+            "show_full" if self.fit == "contain" else "crop"
+        )
         data["smart_query"] = self.smart_query or ""
-        if self.album_ids is None:
-            data.pop("album_ids")
-        return FrameSettings.from_options(data).options()
+        albums = (
+            self.album_ids
+            if self.album_ids is not None
+            else ([self.album_id] if self.album_id else [])
+        )
+        if not isinstance(albums, (list, tuple)) or any(
+            not isinstance(x, str) or not x.strip() for x in albums
+        ):
+            raise ValueError("album_ids must contain album IDs")
+        data["album_ids"] = tuple(dict.fromkeys(x.strip() for x in albums))
+        return FrameSettings(
+            **{
+                key: value
+                for key, value in data.items()
+                if key in FrameSettings.__dataclass_fields__
+            }
+        )
 
     def __post_init__(self) -> None:
         if self.settings_version != 2:
@@ -155,28 +218,55 @@ class Slide:
     def secondary(self) -> Photo | None:
         return self.photos[1] if len(self.photos) > 1 else None
 
-    def metadata(self, role: Literal["primary", "secondary"] = "primary") -> dict[str, Any]:
+    def metadata(
+        self, role: Literal["primary", "secondary"] = "primary"
+    ) -> dict[str, Any]:
         photo = self.secondary if role == "secondary" else self.primary
         if photo is None:
-            return {"slide_id": f"{self.frame_id}:{self.generation}", "role": role, "available": False}
+            return {
+                "slide_id": f"{self.frame_id}:{self.generation}",
+                "role": role,
+                "available": False,
+            }
         return {
-            "slide_id": f"{self.frame_id}:{self.generation}", "role": role, "available": True,
-            "asset_id": photo.id, "filename": photo.original_file_name,
+            "slide_id": f"{self.frame_id}:{self.generation}",
+            "role": role,
+            "available": True,
+            "asset_id": photo.id,
+            "filename": photo.original_file_name,
             "taken_at": photo.capture_time.isoformat() if photo.capture_time else None,
-            "orientation": photo.orientation, "favorite": photo.is_favorite,
-            "rating": photo.exif.get("rating"), "city": photo.exif.get("city"),
-            "state": photo.exif.get("state"), "country": photo.exif.get("country"),
-            "description": photo.exif.get("description"), "people": list(photo.people), "tags": list(photo.tags),
-            "camera": {k: photo.exif.get(k) for k in ("make", "model", "lensModel", "fNumber", "focalLength", "iso") if photo.exif.get(k) is not None},
+            "orientation": photo.orientation,
+            "favorite": photo.is_favorite,
+            "rating": photo.exif.get("rating"),
+            "city": photo.exif.get("city"),
+            "state": photo.exif.get("state"),
+            "country": photo.exif.get("country"),
+            "description": photo.exif.get("description"),
+            "people": list(photo.people),
+            "tags": list(photo.tags),
+            "camera": {
+                k: photo.exif.get(k)
+                for k in ("make", "model", "lensModel", "fNumber", "focalLength", "iso")
+                if photo.exif.get(k) is not None
+            },
             "dimensions": {"width": photo.width, "height": photo.height},
-            "latitude": photo.exif.get("latitude"), "longitude": photo.exif.get("longitude"),
+            "latitude": photo.exif.get("latitude"),
+            "longitude": photo.exif.get("longitude"),
         }
 
-    def state(self, role: Literal["primary", "secondary"] = "primary") -> dict[str, Any]:
+    def state(
+        self, role: Literal["primary", "secondary"] = "primary"
+    ) -> dict[str, Any]:
         primary = self.metadata("primary")
         secondary = self.metadata("secondary")
         return {
-            "slide_id": primary["slide_id"], "generation": self.generation, "layout": self.layout, "selected_role": role,
-            "asset_ids": [photo.id for photo in self.photos], "primary": primary, "secondary": secondary, "selected": secondary if role == "secondary" else primary,
+            "slide_id": primary["slide_id"],
+            "generation": self.generation,
+            "layout": self.layout,
+            "selected_role": role,
+            "asset_ids": [photo.id for photo in self.photos],
+            "primary": primary,
+            "secondary": secondary,
+            "selected": secondary if role == "secondary" else primary,
             "created_at": self.created_at.isoformat(),
         }

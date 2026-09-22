@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
@@ -31,13 +30,7 @@ class IntervalNumber(ImmichFrameEntity, NumberEntity):
         return self.coordinator.options.get(CONF_INTERVAL, 30)
 
     async def async_set_native_value(self, value: float) -> None:
-        interval = max(10, min(86400, int(value)))
-        self.coordinator.options[CONF_INTERVAL] = interval
-        self.coordinator.update_interval = timedelta(seconds=interval)
-        self.hass.config_entries.async_update_entry(
-            self.coordinator.entry,
-            data={**self.coordinator.entry.data, CONF_INTERVAL: interval},
-        )
+        self.coordinator.async_update_settings({CONF_INTERVAL: int(value)})
         self.async_write_ha_state()
 
 

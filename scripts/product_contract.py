@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from custom_components.immich_frames.core.settings import SETTINGS
+from custom_components.immich_frames.core.settings import SETTINGS, SOURCES
 
 
 def outputs():
@@ -36,8 +36,8 @@ def outputs():
         "",
         "Generated from `core/settings.py`. Run `python scripts/product_contract.py` after changing the contract.",
         "",
-        "| Control | Service values, in order | Default |",
-        "|---|---|---|",
+        "| Control | Service values, in order | Default | Effect |",
+        "|---|---|---|---|",
     ]
     for spec in SETTINGS:
         values = (
@@ -45,7 +45,7 @@ def outputs():
             if spec.choices
             else f"{spec.minimum}–{spec.maximum}"
         )
-        rows.append(f"| {spec.label} | {values} | `{spec.default}` |")
+        rows.append(f"| {spec.label} | {values} | `{spec.default}` | {spec.effect} |")
     rows += [
         "",
         "Screen outputs are exactly Landscape 1280 × 800, Portrait 800 × 1280, and Square 720 × 720.",
@@ -53,6 +53,21 @@ def outputs():
         "Square-only photo selection is retained for old saved configurations, but is not offered as a new native control choice. Square photos remain included in Mixed.",
         "",
         "Setup and Configure edit the photo source; the device page owns these display and timing controls.",
+        "",
+    ]
+    rows += [
+        "## Photo sources",
+        "",
+        "| Source | Saved value | Fields |",
+        "|---|---|---|",
+    ]
+    for source in SOURCES:
+        rows.append(
+            f"| {source.label} | `{source.key}` | {', '.join(source.fields) or 'None'} |"
+        )
+    rows += [
+        "",
+        "Timer changes reschedule playback without invalidating photos. Render and selection changes invalidate incompatible snapshots.",
         "",
     ]
     yield ROOT / "docs/settings-reference.md", "\n".join(rows)

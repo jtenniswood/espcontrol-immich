@@ -74,7 +74,7 @@ if kind == "wheel":
                 raise AssertionError("The standalone engine imported Home Assistant")
     sys.meta_path.insert(0, NoHomeAssistant())
 modules = ["custom_components.immich_frames.core." + name for name in
-           ("client", "engine", "cache", "history", "models", "settings", "rendering")]
+           ("client", "engine", "cache", "history", "models", "settings", "rendering", "session")]
 modules += ["immich_frames.app"] if kind == "wheel" else ["custom_components.immich_frames." + name for name in
            ("config_flow", "coordinator", "image", "select", "number", "button", "sensor", "switch")]
 if kind == "wheel":

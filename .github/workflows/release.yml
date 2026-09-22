@@ -82,21 +82,40 @@ jobs:
             base: ghcr.io/home-assistant/aarch64-base:latest
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: container-${{ matrix.name }}
+          path: ${{ runner.temp }}/candidate
+      - name: Verify the tested archive and source commit
+        env:
+          CANDIDATE_IMAGE: immich-frames:candidate-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.name }}
+        run: python scripts/container_artifact.py verify --archive "$RUNNER_TEMP/candidate/image.tar" --image "$CANDIDATE_IMAGE" --commit "$GITHUB_SHA"
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
+      - name: Publish the tested image without rebuilding
+        env:
+          ARCH: ${{ matrix.name }}
+        run: |
+          CANDIDATE_ID=$(python -c 'import json, os; print(json.load(open(os.environ["RUNNER_TEMP"] + "/candidate/image.json"))["image_id"])')
+          docker tag "$CANDIDATE_ID" "${IMAGE}:${RELEASE_TAG}-${ARCH}"
+          docker push "${IMAGE}:${RELEASE_TAG}-${ARCH}"
+          docker buildx imagetools inspect "${IMAGE}:${RELEASE_TAG}-${ARCH}" --raw > "$RUNNER_TEMP/candidate/registry.json"
+          python scripts/check_published_image.py "$RUNNER_TEMP/candidate"
+      - uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: immich_frames/Dockerfile
-          platforms: ${{ matrix.platform }}
-          build-args: BUILD_FROM=${{ matrix.base }}
-          push: true
-          tags: ${{ env.IMAGE }}:${{ env.RELEASE_TAG }}-${{ matrix.name }}
+          name: published-${{ matrix.name }}
+          path: |
+            ${{ runner.temp }}/candidate/image.json
+            ${{ runner.temp }}/candidate/registry.json
+            ${{ runner.temp }}/candidate/digest.txt
+          if-no-files-found: error
 
   manifest:
     runs-on: [self-hosted, Linux, X64, espcontrol-immich]
@@ -108,12 +127,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create multi-architecture manifest
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: published-*
+          path: ${{ runner.temp }}/published
+      - name: Create multi-architecture manifest from verified digests
         run: |
-          docker buildx imagetools create \
-            --tag "${IMAGE}:${RELEASE_TAG}" \
-            "${IMAGE}:${RELEASE_TAG}-amd64" \
-            "${IMAGE}:${RELEASE_TAG}-arm64"
+          AMD_DIGEST=$(cat "$RUNNER_TEMP/published/published-amd64/digest.txt")
+          ARM_DIGEST=$(cat "$RUNNER_TEMP/published/published-arm64/digest.txt")
+          docker buildx imagetools create --tag "${IMAGE}:${RELEASE_TAG}" "${IMAGE}@${AMD_DIGEST}" "${IMAGE}@${ARM_DIGEST}"
 
   github-release:
     if: github.event_name == 'workflow_dispatch'
@@ -122,6 +144,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: published-*
+          path: ${{ runner.temp }}/published
       - name: Publish the checked commit after both container images are available
         uses: actions/github-script@v9
         with:
@@ -131,5 +157,16 @@ jobs:
               tag_name: process.env.RELEASE_TAG,
               target_commitish: context.sha,
               generate_release_notes: true,
+              draft: true,
             });
+            const fs = require('fs');
+            const path = require('path');
+            for (const arch of ['amd64', 'arm64']) {
+              const file = path.join(process.env.RUNNER_TEMP, 'published', `published-${arch}`, 'image.json');
+              await github.rest.repos.uploadReleaseAsset({
+                ...context.repo, release_id: data.id, name: `container-${arch}-provenance.json`,
+                data: fs.readFileSync(file),
+              });
+            }
+            await github.rest.repos.updateRelease({...context.repo, release_id: data.id, draft: false});
             core.notice(`Published ${data.html_url}`);

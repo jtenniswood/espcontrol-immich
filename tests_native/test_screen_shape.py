@@ -185,7 +185,7 @@ async def test_cached_jpeg_must_match_selected_limits(hass, shape, original, pai
         "screen_shape": shape, "photo_fit": "show_full" if original else "crop",
         "output_size": SCREEN_SIZES[shape],
     }))
-    await hass.async_add_executor_job(coordinator._load_cache)
+    coordinator.data = await coordinator.session.restore()
     assert coordinator.data is None  # Legacy cache has no source/account signature.
     await coordinator.async_close()
 
