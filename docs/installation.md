@@ -1,57 +1,61 @@
 # Installation
 
-The recommended installation is the native Home Assistant integration in `custom_components/immich_frames`. It works on Home Assistant OS, Supervised, Container, and Core; MQTT is not required. The repository also contains an optional supervised renderer app for deployments that specifically want an app container.
+Use the Home Assistant integration for native frame devices, dashboards and automations. It runs within Home Assistant and does not need MQTT or a separate container. You need an **Immich 3.2 or later** server reachable from Home Assistant, plus a read-only API key.
+
+For the separate browser/API experience, follow the [optional add-on guide](container.md).
 
 ## HACS installation
 
-This repository can be installed through HACS as a custom repository before its default-list submission. It is not yet included in the default list.
+1. Open **HACS → ⋮ → Custom repositories**.
+2. Add `https://github.com/jtenniswood/espcontrol-immich` with category **Integration**.
+3. Find **EspControl Immich Companion**, download it and restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
+5. Enter your Immich server address and API key, choose a photo source and name your frame.
+6. Open the frame's device page and select **Configuration → Screen shape** to match your display.
 
-1. Open **HACS**, select the **⋮** menu, then **Custom repositories**.
-2. Enter `https://github.com/jtenniswood/espcontrol-immich` and choose **Integration**.
-3. Add the repository, search for **EspControl Immich Companion**, and download it.
-4. Restart Home Assistant.
-5. Open **Settings → Devices & services → Add integration** and select **EspControl Immich Companion**.
-6. Supply the Immich connection details and API key described below, then choose your frame's photo source and name. Change display settings on the frame's device page.
-
-Add the integration again to create another frame. To update, download the new version in HACS and restart Home Assistant; the existing frame settings are retained.
-
-The bundled EspControl icon is displayed by Home Assistant 2026.3 and later. Earlier versions may show a placeholder icon.
+See [Using your frame](native-integration.md) for all controls. Add the integration again for more frames. For updates, download the new version in HACS and restart Home Assistant; frame settings are retained.
 
 ## Manual installation
 
-Copy the entire `custom_components/immich_frames` directory from the desired release or development branch into `<config>/custom_components/immich_frames`, where `<config>` is the directory containing Home Assistant's `configuration.yaml`. Restart Home Assistant and add **EspControl Immich Companion** under **Settings → Devices & services**.
+Copy the entire `custom_components/immich_frames` directory from your chosen release into `<config>/custom_components/immich_frames`, where `<config>` contains Home Assistant's `configuration.yaml`. Restart Home Assistant and add the integration as above.
 
-For a development build, copy this directory from the feature branch you want to test. Keep only one installed copy of the `immich_frames` integration. Back up the existing directory before replacing it, then restart Home Assistant.
+The same process works for a development branch. Back up the existing integration and Home Assistant configuration before replacing it, and keep only one installed copy. See [migration and rollback](architecture.md#settings-upgrades-and-rollback) when testing an upgrade.
 
 ## Immich connection and permissions
 
-Enter the Immich server URL and a read-only API key with these permissions:
+Use the Immich server's base address, for example `https://photos.example.com`, and an API key for the account whose photos you want to display. Keep the key private; it grants access to that account's photos. HTTPS connections use certificate verification.
+
+Give the key these read permissions for the features you use:
 
 | Permission | Used for |
 |---|---|
-| `asset.read` | Search and metadata |
-| `asset.view` | Full-size image requests and preview fallback |
-| `asset.download` | Full-quality originals (recommended; otherwise previews may be used) |
-| `album.read` | Album catalog and album filters |
-| `person.read` | People catalog and people filters |
-| `tag.read` | Tag catalog and tag filters |
-| `memory.read` | On This Day and saved memories |
-| `asset.statistics` | Optional matching counts |
+| `asset.read` | Connection check, photo searches and metadata |
+| `asset.view` | Image requests and preview fallback |
+| `asset.download` | Full-quality originals; recommended for best image quality |
+| `album.read` | Browsing and selecting albums |
+| `memory.read` | Memories source |
+| `person.read`, `tag.read` | People and tag catalogs in the optional add-on API |
 
-The integration checks `/api/server/version` for Immich 3.2 or later, then performs an authenticated metadata search to verify the API key and its `asset.read` permission before continuing. An empty library can pass this connection check. TLS verification remains enabled by default; using an `http://` URL is an explicit local-network choice.
-
-The integration keeps the last complete rendered slide in Home Assistant's `.storage` directory. If Immich becomes unavailable, the image remains available.
+Setup checks the server version and verifies the key by searching for photos. An empty library can still pass the connection check. Shared albums must be accessible to the account that owns the key.
 
 ## Image quality
 
-The native integration and optional renderer app request Immich's full-size image first for every photo, in **Show full image** and **Crop to fit**, including both halves of a pair and unmatched portraits. The full-size source is used even when a preview would already fit the screen. It is then resized to your selected screen dimensions; the photo fit and layout stay the same. A successful full-size request does not also download a preview.
+Every layout requests full-size photos before resizing them to your screen, including both halves of a pair and unmatched portraits. Rendered images use high-quality JPEG output (quality 95 with full colour detail).
 
-Allow `asset.download` on your read-only API key to let Immich serve originals. Full-size downloads use more bandwidth and may take longer on slower connections. Immich serves original files for web-compatible formats; formats such as HEIC or RAW may need full-size image generation enabled to provide a compatible converted image. Immich can return a preview itself if no full-size conversion is available. Missing permissions, unavailable full-size images and unsupported or corrupt images fall back to the preview without interrupting the slideshow.
+Full-size downloads use more bandwidth and can take longer on slower connections. Allow `asset.download` for originals. Formats such as HEIC or RAW may need a compatible full-size conversion from Immich. If a full-size request fails or its image cannot be decoded, the companion tries the preview; Immich may also supply a preview when a full-size conversion is unavailable.
 
-Both the native integration and optional renderer app save JPEGs at quality 95 with full colour detail. Existing cached photos remain available offline; the improved quality takes effect as new slides are rendered. No cache clearing is needed.
+Improved quality appears as new slides are rendered; you do not need to clear the cache. If fallback photos look soft, check Immich's preview quality and image-generation settings.
 
-You can also raise preview resolution and quality in Immich under **Administration → Settings → Image Settings**, then regenerate existing previews. This can help photos that cannot use a full-size image. See [Immich's image settings](https://docs.immich.app/administration/system-settings/).
+## Troubleshooting
 
-## Optional renderer app
+| Problem | What to check |
+|---|---|
+| Cannot connect | Check the base address, server version and network access **from Home Assistant**. For HTTPS, check the certificate. |
+| Invalid API key | Check the key and `asset.read` permission. For an existing frame, use Home Assistant's reconnect prompt; repeat for other frames using the old key. |
+| Albums missing | Check `album.read` and access from the key's Immich account. Create or share an album, then choose Albums again to retry. |
+| No matching photos | Try All photos, All time, Mixed orientations and individual photos, then narrow the selection. Memories may be empty; paired-only portraits need a partner within the date window. |
+| Keywords return nothing | Try a broader description and check that smart search works in Immich. |
+| Photo will not change | Check that Slideshow is on and the timer is suitable. Next resumes playback. If Immich is unreachable, the last saved photo may remain visible. |
+| Photo details are blank | Details come from Immich and may not exist for that photo. For pairs, sensors describe the left photo. |
 
-For the optional renderer app, add the repository under **Settings → Apps → App store → Repositories**, install **EspControl Immich Companion**, and open its ingress page. This app path does not create native entities by itself; use the integration for Home Assistant devices and controls.
+If you still need help, [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues) with your integration and Immich versions, installation method, selected source and relevant logs. Remove API keys and other private details before sharing logs.

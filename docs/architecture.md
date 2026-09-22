@@ -25,7 +25,7 @@ The shared engine has no Home Assistant dependency. It lives inside the integrat
 
 The native controls and their order are listed in [the generated reference](settings-reference.md). Settings remain on the device page; setup and Configure edit the source. Frame and entity identities are unchanged.
 
-The container now uses the native renderer: exact screen dimensions, centred full images, sampled colour padding, independent fit for each paired tile, the one-pixel divider, and full-size fallback for undersized crops. Unmatched portraits in mixed pairing mode are shown in full. These are deliberate changes from the old container's black, top-left padding and forced cropping of pairs.
+The container now uses the native renderer: exact screen dimensions, centred full images, sampled colour padding, independent fit for each paired tile, and the one-pixel divider. Both interfaces request full-size photos for every layout, with preview fallback. Unmatched portraits in mixed pairing mode are shown in full. These are deliberate changes from the old container's black, top-left padding and forced cropping of pairs.
 
 Legacy container records keep their landscape size and saved cover/contain preference. New frames default to Show full image; `screen_shape`, `photo_fit` and `time_range` are available through its existing frame API and its creation form. Explicit sort order and legacy square-only orientation remain supported. Display firmware and the native Home Assistant experience are unaffected by these container-specific migration changes.
 

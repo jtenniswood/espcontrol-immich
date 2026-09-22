@@ -6,11 +6,14 @@ Implemented sources and search features:
 
 - All photos source with the safe image/timeline constraints applied automatically.
 - Albums source with multiple selections by name using Immich's `albumIds` metadata filter.
-- Keywords text/reference-photo requests.
-- On This Day memory windows and optional fallback to All photos when no memories are available.
+- Keywords text searches; reference-photo searches through the optional add-on API.
+- On This Day memories; adjustable memory windows and optional fallback through the add-on. New native frames use a two-day window with no fallback.
+- Custom filters through the add-on API, including favourites, people, tags, locations, dates, ratings, camera details and OCR text.
 - Explicit image, non-trashed, non-locked safety constraints.
 - Single-image and capture-date matching-pair output.
 - Local orientation selection (`any`, portrait, landscape, or square) applied after Immich metadata retrieval.
+
+See [Using your frame](native-integration.md) for the native controls and [the optional add-on guide](container.md) for browser and API capabilities. Square-only selection is retained for older configurations and API use; the native selector offers Mixed, portrait and landscape.
 
 The integration does not modify Immich assets. Uploading, editing, tagging, rating changes, library administration, and video playback are outside the read-only frame scope.
 

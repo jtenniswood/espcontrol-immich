@@ -1,45 +1,65 @@
-# Native Home Assistant integration
+# Using your frame
 
-Install EspControl Immich Companion through HACS or copy `custom_components/immich_frames` into Home Assistant's configuration directory. Restart Home Assistant and add **EspControl Immich Companion** under **Settings → Devices & services**. MQTT and a separate container are not required.
+Each frame is a Home Assistant device with an **Image** entity, playback controls and photo details. [Install the integration](installation.md), then open its device page under **Settings → Devices & services → EspControl Immich Companion**.
 
-## Setup and sources
+## Choose what to show
 
-Enter an Immich URL and read-only API key. The integration verifies the connection, then offers **All photos**, **Albums**, **Memories** or **Keywords**. Albums loads a searchable list, including shared albums, and allows multiple selections. Keywords asks for search text. All photos and Memories continue directly to the frame name.
+Choose a source during setup or select **Configure** on an existing frame's integration entry.
 
-New frames start at Landscape (1280 × 800), Show full image, mixed photo orientations, individual photos and a 30-second timer. Memories uses a two-day window with no fallback. Existing saved memory-window and fallback settings are retained; the current native interface does not provide a separate memory-settings editor.
+| Source | What it shows |
+|---|---|
+| **All photos** | Photos from your Immich timeline |
+| **Albums** | Photos from one or more albums; search by name and combine your own or shared albums |
+| **Memories** | Immich memories around today's date, including two days before and after |
+| **Keywords** | Photos matching a description such as “beach at sunset”, using Immich's smart search |
 
-To change sources, choose **Configure** on the integration entry. It opens the source selector with the current source selected. Albums and Keywords open their corresponding editor; All photos and Memories save directly. The frame name, display settings and entity identities are kept. Closing the editor without saving leaves the frame unchanged.
+Sources include still images and exclude trashed and locked photos. Videos are not played. The companion reads your library without changing photos, albums, tags or ratings.
 
-Add the integration again for another frame. Existing server/key combinations can be reused and are verified again. Each native frame keeps its own copy of the connection details: deleting one does not disconnect the others, and changing a key does not update other frames.
+Albums and Keywords open their own editor; All photos and Memories save directly. Changing a source keeps the frame's name and entities. Closing the editor without saving leaves it unchanged.
 
-## Display controls
+New Memories frames have no fallback: if there are no matching memories, they do not switch to your whole library. Older saved memory-window and fallback choices are retained. The native interface does not offer editors for those choices, custom filters, reference-photo searches or sort order; see the [optional add-on](container.md) for those capabilities.
 
-Use the frame device page for display and timing settings. See [the settings reference](settings-reference.md) for exact values, ordering, defaults and limits.
+## Fit the screen and select photos
 
-- **Screen shape:** Landscape is exactly 1280 × 800, Portrait 800 × 1280 and Square 720 × 720. This controls the output, independently of the orientation of selected photos.
-- **Photo fit:** Crop to fit fills the screen by trimming edges. Show full image retains the photo's proportions and fills empty space with a dim colour sampled from that photo.
-- **Portrait images:** Single portrait photos only; Single and Paired portrait photos; or Paired portrait photos only. Landscapes and square photos can still appear individually when permitted by the independent orientation filter.
-- **Photo orientation:** Mixed includes landscapes, portraits and square photos. Portrait-only and landscape-only choices restrict the source. Older square-only saved settings remain supported, but are not offered as a new choice.
-- **Portrait image window:** 0–7 calendar days, default 2. Zero pairs photos captured on the same date. A pair stays side by side with a one-pixel black divider; each tile has its own fit and sampled background.
-- **Photo time range:** All time, or a rolling month/year range. It applies to every source, both photos in pairs, and the All photos fallback for Memories. Calendar ranges are measured in UTC.
-- **Slideshow Timer:** in the **Controls** panel alongside pause/resume and photo navigation; 10–86,400 seconds between slides. Changing this updates the timer without a reload.
+Use **Configuration** on the device page. Changes save immediately.
 
-In mixed pairing mode, an unmatched portrait is shown in full with a sampled background even if Photo fit is Crop to fit. Paired-only mode skips unmatched and undated portraits. Combine paired-only mode with portrait-only orientation for exclusively portrait pairs.
+| Setting | What it does |
+|---|---|
+| **Screen shape** | Outputs Landscape **1280 × 800**, Portrait **800 × 1280** or Square **720 × 720**. This sets the image size, independently of which photo orientations you include. |
+| **Photo fit** | **Show full image** keeps the whole photo with a dim, colour-matched background. **Crop to fit** fills the screen by trimming edges. |
+| **Photo orientation** | Includes a mix, portraits only or landscapes only. Mixed also includes square photos. |
+| **Photo time range** | Shows All time, the last **1, 3 or 6 months**, or **1, 2, 3, 4, 5 or 10 years**. Applies to every source and both photos in a pair; rolling date ranges use UTC. |
+| **Portrait images** | Shows individual portraits, a mix of individual and paired portraits, or paired portraits only. |
+| **Portrait image window** | Allows **0–7 days** between the capture dates of paired portraits. Default **2**; **0** means the same date. |
 
-Display-rule changes save immediately and reload the frame. Reloading restarts the slideshow and clears Previous history. Incompatible cached images are rejected. The slideshow keeps the last compatible image if no eligible photos remain, or reports no matching photos if none is available.
+Pairs appear side by side with a thin divider and the selected fit applied to each photo. In mixed pairing mode, an unmatched portrait is always shown in full with a matching background. Paired-only mode skips portraits without a dated partner, but still allows landscapes and squares when your orientation setting permits them. For a slideshow made entirely of portrait pairs, combine **Paired portrait photos only** with **Portrait photos only**.
 
-Crop to fit requests a full-size photo only when the preview is too small for the tile. If unavailable, rendering continues with the preview. Images use high JPEG quality with full colour detail. See [image permissions and quality](installation.md#image-quality).
+New frames default to landscape output, Show full image, mixed orientations, individual photos and All time. Display or source changes reload the frame, restart playback and clear Previous history. Timer changes keep the current image and history.
 
-## Navigation and photo details
+Full-size photos are requested for every layout, then resized to the chosen screen dimensions. If a full-size image is unavailable or cannot be decoded, the companion tries its preview. See [image quality](installation.md#image-quality).
 
-The device provides pause/resume, Next, Previous and Clear cache controls. Metadata sensors describe the single photo or the left photo in a pair. Dates use the photo's recorded date, displayed as **14 May, 2007**. Missing details remain blank; a rating of zero remains 0.
+## Playback, details and automations
 
-To open a photo, expand the Image entity's Attributes and follow **Open in Immich**. Paired slides also expose **Open second photo in Immich**. Image, metadata and links follow the same displayed snapshot, including Previous navigation and cached slides. Links contain no API key. Your browser must reach the configured Immich server and may require sign-in.
+| Control | Action |
+|---|---|
+| **Slideshow** | Turn off to pause; turn on to resume automatic playback |
+| **Slideshow Timer** | Set **10–86,400 seconds** between slides; default **30 seconds** |
+| **Next** | Resume playback and request another photo |
+| **Previous** | Return to an earlier slide with its matching details; does not pause playback |
+| **Clear cache** | Remove the saved disk copy; the currently displayed photo stays visible |
 
-## Upgrades and outages
+Previous history lasts for the current session. Restarting Home Assistant starts playback again and clears that history.
 
-Updates preserve frame settings and entity identities. Legacy device presets map to their corresponding screen shape: JC1060P470 to Landscape, JC4880P443 to Portrait and 4848S040 to Square. Existing aspect-ratio choices become explicit Photo fit settings.
+Photo sensors show **Date, Location, People, Tags, Rating, Camera** and **Favourite** for the single photo or the **left photo** in a pair. Missing details stay blank. To see the original, expand the Image entity's **Attributes → Open in Immich**; pairs also have **Open second photo in Immich**. Your browser needs access to Immich and may ask you to sign in.
 
-The shared-engine upgrade changes native saved settings to version 2. Back up Home Assistant before testing it. Old image caches are regenerated because they cannot establish their source and account; **Immich must be reachable for the first image after this upgrade**. Later restarts can restore complete compatible slides during outages. Source, album, keywords, account, display settings, image dimensions and checksums are checked before reuse.
+Use the Image entity on a dashboard and the switch, buttons, selects and numbers in Home Assistant automations. For example, turn **Slideshow** off at bedtime and on in the morning, or connect a physical button to **Next**. Select the entities belonging to your frame; exact automation values are in the [settings reference](settings-reference.md).
 
-See [architecture, migration and rollback](architecture.md) and [the entity contract](entity-contract.md).
+Add the integration again for another frame, reusing a saved connection or entering a new one. Each native frame keeps its own credentials: replacing a key on one frame does not update the others, and deleting one frame leaves the rest connected.
+
+## Updates and outages
+
+Update in HACS, then restart Home Assistant. Settings and entity identities are preserved. Older device presets automatically become their matching screen shape; automations using retired preset values need the [new shape values](entity-contract.md).
+
+During a temporary outage, the last complete compatible slide remains visible. This is a saved slide, not an offline copy of your library. Restarts can restore it while its source, account and display settings still match; Memories and date-limited caches must also remain valid for the current date. Clearing the cache removes this restart fallback until another slide is saved.
+
+Upgrading from the older cache format regenerates the saved image, so **Immich must be reachable for the first image after that upgrade**. If an API key stops working, use Home Assistant's reconnect prompt to replace it without recreating the frame. For connection or empty-selection problems, see [troubleshooting](installation.md#troubleshooting). Development-build migration and rollback guidance is in the [architecture guide](architecture.md#settings-upgrades-and-rollback).
