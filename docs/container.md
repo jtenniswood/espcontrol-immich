@@ -1,47 +1,85 @@
-# Optional container compatibility
+# Optional browser/API add-on
 
-HACS is the primary installation path and creates native Home Assistant devices.
-The optional container remains supported for existing HTTP/SQLite users. It now
-has an explicit image-delivery path and uses the same slideshow runtime as the
-native integration. It does not create native Home Assistant entities.
+The add-on turns Immich photos into slides you can preview in a browser or retrieve as JPEGs through an HTTP API. Use it when you want to build your own display client or manage frames outside Home Assistant's entity controls.
 
-Open the add-on's ingress page, connect Immich, and create a frame. Its preview
-and Previous/Pause/Next controls use the HTTP interface below. Relative browser
-URLs keep requests within Home Assistant ingress. No API key is included in a
-frame response or configuration export.
+For Home Assistant devices, dashboards and automations, use the [HACS integration](installation.md). Installing the add-on alone does not create native entities, and its frames and connections are separate from those in the integration.
 
-| Request | Result |
+## Get started
+
+The add-on supports **amd64** and **aarch64** systems and requires **Immich 3.2 or later**.
+
+1. In Home Assistant, open **Settings → Apps → App store → Repositories** and add `https://github.com/jtenniswood/espcontrol-immich`.
+2. Install **EspControl Immich Companion**, start it and open its web UI.
+3. Under **Immich connection**, enter a name, server address and [read-only API key](installation.md#immich-connection-and-permissions), then choose **Connect**.
+4. Name your frame, select a connection and photo source, choose display settings and select **Create frame**.
+5. Use the frame's preview and **Previous**, **Pause/Resume** and **Next** buttons.
+
+You can add multiple connections and create independent frames for each. The browser page supports creation and playback; editing, deleting and transferring frame settings use the API below.
+
+## Photo and display options
+
+The creation form offers **All photos**, multiple **Albums**, **Memories** and **Keywords**, plus the same screen shapes, photo fit, orientation, time range, portrait pairing and timer settings described in [Using your frame](native-integration.md#fit-the-screen-and-select-photos).
+
+It also offers:
+
+- **Memory window:** 0–7 days on either side of today; default 2. Zero uses today's memories only.
+- **Memory fallback:** optionally use your normal photo filter when the memory search returns no candidates. Orientation and time-range rules still apply.
+- **Order:** Random, Newest first or Oldest first for normal photo searches. Keywords uses Immich's search results; Memories uses date-ordered results.
+
+Full-size images, preview fallback and saved-slide recovery work as described in [image quality](installation.md#image-quality) and [updates and outages](native-integration.md#updates-and-outages).
+
+Optional add-on configuration values:
+
+| Option | Purpose |
 |---|---|
-| `GET /api/frames` | Frame list |
-| `GET /api/frames/{id}/state` | Complete current metadata, playback state, and a versioned image URL |
+| `immich_url`, `immich_api_key` | Seed a default connection on first use; leave empty to connect in the browser. Later changes do not replace an already saved connection. |
+| `cache_limit_mb` | Total disk cache budget; default 256 MB, minimum effective value 16 MB. Older saved slides are removed when the budget is exceeded. |
+
+## Advanced selection through the API
+
+Send JSON to the frame creation or update endpoints. Alongside the [standard settings](settings-reference.md), the API accepts a `filter` for favourites, people, tags, locations, dates, ratings, camera details, filenames and OCR text. Rules combine with the source and time range; `or` supports alternatives. Album, person and tag rules use IDs from the catalog endpoints.
+
+For example, create a frame showing favourite photos rated at least four:
+
+```json
+{
+  "name": "Favourites",
+  "connection_id": "YOUR_CONNECTION_ID",
+  "source": "filter",
+  "filter": {
+    "isFavorite": {"eq": true},
+    "rating": {"gte": 4}
+  }
+}
+```
+
+Filters default to timeline photos. An explicit `visibility` rule can include archived or hidden photos; locked and trashed assets and videos remain excluded. See the [supported filter fields and operators](../custom_components/immich_frames/core/filtering.py) for the full list.
+
+For similar-photo searches, use `source: "smart"` with `smart_reference_asset_id`; `smart_query` supplies search text. For normal searches, `order_direction` accepts `random`, `asc` or `desc`, and `order_field` accepts `fileCreatedAt` (default), `localDateTime`, `fileSizeInBytes` or `rating`. The timer field is `slideshow_interval`, in seconds.
+
+## HTTP API
+
+Paths are relative to the add-on's web UI. Home Assistant manages ingress access. A standalone container serves port **8099** without its own login, so keep it on a trusted network.
+
+| Request | Purpose |
+|---|---|
+| `GET /api/connections` | List saved connections without keys |
+| `POST /api/connections` | Validate and save `name`, `url`, `api_key`; supply an existing `id` to replace that connection |
+| `DELETE /api/connections/{id}` | Remove an unused connection; a configured default cannot be deleted |
+| `GET /api/catalog/{kind}?connection_id=ID` | List `albums`, `people`, `tags` or `memories` |
+| `GET /api/capabilities?connection_id=ID` | Report server version and supported search capabilities |
+| `GET /api/frames` | List frames |
+| `POST /api/frames` | Create a frame; returns its `frame_id` |
+| `PUT /api/frames/{id}` | Update supplied frame settings |
+| `DELETE /api/frames/{id}` | Delete a frame |
+| `GET /api/frames/{id}/state` | Current photo metadata, playback state and versioned `image_url` |
 | `GET /api/frames/{id}/image` | Current rendered JPEG |
-| `GET /api/frames/{id}/image?generation=N` | The JPEG for that retained generation, or 409 if it is no longer available |
-| `POST /api/frames/{id}/commands/next` | Resume and advance |
-| `POST /api/frames/{id}/commands/previous` | Return to the previous complete slide |
-| `POST /api/frames/{id}/commands/pause` | Pause |
-| `POST /api/frames/{id}/commands/resume` | Resume automatic playback |
-| `POST /api/frames/{id}/commands/clear_cache` | Remove the disk cache |
+| `POST /api/frames/{id}/commands/{command}` | Run `next`, `previous`, `pause`, `resume` or `clear_cache` |
+| `POST /api/frames/{id}/refresh` | Refresh a frame, respecting pause |
+| `GET /api/export` | Export frame settings without connection credentials |
+| `POST /api/import` | Import a `frames` array in the export format; matching frame IDs are updated |
+| `GET /api/health` | Check service status and version |
 
-A client needing matching metadata and image should fetch state, then use its
-`image_url`. If the image returns 409, refetch state. Before the first available
-image, state/image requests return 503; deleted or unknown frames return 404.
-The browser page follows this interface. Ingress access is managed by Home
-Assistant; the standalone HTTP service should remain on a trusted network.
+For matching image and metadata, fetch state and then resolve its `image_url` relative to the web UI root. If that image returns **409**, fetch state again: the requested slide is no longer retained. Before the first image, state and unversioned image requests return **503**; unknown frames return **404**.
 
-Existing frame create/edit/delete, connection, catalog, import/export and refresh
-endpoints remain. Old field names and saved dimensions retain their migration
-behavior. New out-of-range values and non-boolean fallback flags now return 400
-instead of being silently coerced. Next now resumes playback, matching the native
-integration. Native identities, settings and credentials are not merged with
-container records.
-
-The previous code contained unconnected publisher hooks but no configured
-publisher or image route. Those hooks have been replaced by the documented HTTP
-path. The repository contains no other publisher consumers; external usage
-cannot be measured from the checkout, so the container has not been retired.
-
-`scripts/check_container.py` exercises an installed image against a local fake
-Immich service: validate a connection, create a paired frame, retrieve matching
-state/JPEG, and navigate. This runs inside both release candidates. It does not
-claim live-server or physical-display acceptance; those remain in the device
-acceptance checklist in the architecture guide.
+Replacing a connection updates all add-on frames that use it. When importing elsewhere, create the connections first and match their IDs in the imported frames. Exports do not include API keys, so they are not a complete backup. Back up the add-on's data for a full restore; see [migration and rollback](architecture.md#settings-upgrades-and-rollback).

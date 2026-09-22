@@ -2,47 +2,46 @@
 
 <img src="https://raw.githubusercontent.com/jtenniswood/espcontrol-immich/HEAD/custom_components/immich_frames/brand/icon.png" alt="EspControl" width="128" height="128">
 
-Turn your Immich photo library into a slideshow for your EspControl display, managed through Home Assistant.
+Bring your photo library into everyday view. EspControl Immich Companion connects **Immich**, your self-hosted photo library, to **Home Assistant**, turning selected photos into a slideshow for your EspControl display or Home Assistant dashboard.
 
-Choose **All photos**, combine **Albums**, revisit **Memories** from around this date, or use **Keywords** such as “beach at sunset”. Show photos individually or pair portrait photos side by side.
+Immich stores and organises your photos; the companion chooses what to show, sizes it for your screen and provides playback controls. Rediscover old memories, keep a family album on display or create a different slideshow for each room. Your originals stay in Immich, and the companion never edits or deletes them.
 
-## What you need
+## What you can do
 
-- Home Assistant with [HACS](https://hacs.xyz/) installed.
-- An Immich server running version **3.2 or later**, accessible from Home Assistant.
-- Your Immich server address and a **read-only API key** — a key that lets Home Assistant access your photos. See the [required permissions](docs/installation.md#immich-connection-and-permissions).
+- **Choose your photos:** show your library, combine albums (including shared albums), revisit Memories around today's date, or search with descriptions such as “beach at sunset”.
+- **Narrow the selection:** include recent photos, portrait photos, landscape photos or a mix.
+- **Fit your display:** choose landscape, portrait or square output; show the whole photo against a matching background or crop to fill the screen.
+- **Pair portraits:** place two photos taken around the same date side by side, with control over how close their dates must be.
+- **Control playback:** pause, resume, go back, advance and set the slideshow interval from 10 seconds to 24 hours.
+- **See the story:** view the photo's date, location, people, tags, rating, camera and favourite status, with links to open the originals in Immich.
+- **Make each frame independent:** reuse an Immich connection with different sources and settings, and use Home Assistant entities in dashboards and automations.
+- **Keep a photo on screen during outages:** retain the last compatible rendered slide when Immich is temporarily unavailable.
 
 ## Get started
 
-1. In Home Assistant, open **HACS → ⋮ → Custom repositories**.
-2. Add `https://github.com/jtenniswood/espcontrol-immich` and choose **Integration**.
-3. Find **EspControl Immich Companion**, download it, and restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration** and select **EspControl Immich Companion**.
-5. Enter your Immich server address and API key, choose which photos to show, and name your frame.
-6. Open the new frame’s device page. Under **Configuration → Screen shape**, choose **Landscape (1280 × 800)**, **Portrait (800 × 1280)**, or **Square (720 × 720)**.
+You need Home Assistant, [HACS](https://hacs.xyz/), and an **Immich 3.2 or later** server reachable from Home Assistant. Have your server address and a [read-only API key](docs/installation.md#immich-connection-and-permissions) ready.
 
-Each frame has its own photo image and slideshow controls in Home Assistant. To create another frame, add the integration again; you can reuse your saved Immich connection.
+1. Open **HACS → ⋮ → Custom repositories**. Add `https://github.com/jtenniswood/espcontrol-immich` as an **Integration**.
+2. Download **EspControl Immich Companion** and restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration → EspControl Immich Companion**.
+4. Enter your Immich address and API key, choose a photo source and name your frame.
+5. Open the frame's device page. Set **Configuration → Screen shape** to match your display, then use its **Image** entity and playback controls.
 
-## Make it yours
+Each frame starts with individual photos, landscape output, the full image visible and a 30-second timer. Add the integration again to create more frames. The companion supplies the image and controls; connecting a physical screen to that image depends on your display's software.
 
-On the frame’s device page:
+HACS is the recommended route for Home Assistant devices and controls; MQTT and a separate add-on are not required. If you want a browser preview and HTTP API instead, use the [optional add-on](docs/container.md). Its frames are managed separately.
 
-- **Controls:** pause or resume the slideshow, or move to the next or previous photo.
-- **Slideshow Timer:** choose how often photos change.
-- **Photo fit:** choose **Show full image** to keep the whole photo with a matching background, or **Crop to fit** to fill the screen by trimming the edges.
-- **Portrait images:** show one photo or pair portrait photos taken around the same date. A portrait without a matching partner is shown in full with a colour-matched background, even when paired photos use **Crop to fit**.
-- **Photo orientation:** choose which photo shapes to include.
+## Everyday use and help
 
-To change albums, keywords or other photo sources, open **Settings → Devices & services → EspControl Immich Companion → Configure** for your frame. This opens the photo source editor directly, with the current source selected. As in setup, Albums opens the album picker and Keywords opens the keyword field. All photos and Memories save without another source screen. Your frame name is kept. Display settings are managed on the device page.
+Change albums or keywords through the frame's **Configure** option under **Settings → Devices & services**. Change display settings and timing on its device page.
 
-Every photo is requested at full size before being resized for your display, in both **Show full image** and **Crop to fit**, including paired photos. Photos are saved at high JPEG quality, keeping fine colour detail. Full-size photos use more bandwidth; if one is unavailable, the slideshow continues using the preview. See [image quality and permissions](docs/installation.md#image-quality).
+| Guide | What you will find |
+|---|---|
+| [Installation](docs/installation.md) | API permissions, manual installation, image quality and connection help |
+| [Using your frame](docs/native-integration.md) | All sources, display controls, portrait pairing, photo details and automations |
+| [Optional add-on](docs/container.md) | Browser setup, extra filtering options and the HTTP API |
+| [Settings reference](docs/settings-reference.md) | Exact values and limits for automation and API use |
 
-## Updates and help
+Update through HACS and restart Home Assistant; frame settings are kept. Upgrading from the older cache format requires Immich to be reachable for the first new image. See [updates and outages](docs/native-integration.md#updates-and-outages) or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
 
-Update through HACS, then restart Home Assistant. HACS remains the primary installation path. If an API key expires, Home Assistant offers a reconnect form that keeps your frame and its controls. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
-
-See the [installation guide](docs/installation.md) for manual installation and connection help, or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
-
-Development and upgrade details are in [the architecture guide](docs/architecture.md). The shared-engine upgrade regenerates old image caches; Immich must be reachable for the first image after updating. Frame settings and entity identities are preserved.
-
-The optional container provides a separate browser/API frame interface. It is not required for HACS. See [container compatibility and image delivery](docs/container.md).
+For contributors: [architecture and development](docs/architecture.md), [entity reference](docs/entity-contract.md) and [compatibility](docs/compatibility.md).
