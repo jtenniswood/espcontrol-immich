@@ -9,6 +9,7 @@ The integration supports HACS custom-repository installation. Inclusion in the d
 - Keep relevant GitHub topics configured, including `hacs`, `home-assistant`, `custom-component`, `immich`, and `espcontrol`. Topics are repository settings, not files in a release.
 - Keep the installation and usage instructions in the root README and linked guides current.
 - Ship exactly one integration under `custom_components/immich_frames`, including all its runtime files and the local `brand/icon.png` asset.
+- Keep the supplied EspControl icon exports current; see [branding](branding/README.md) for regeneration, Home Assistant version support, and the HACS dashboard icon limitation.
 - Maintain the required fields in `custom_components/immich_frames/manifest.json`, including the version, owner, documentation, and issue tracker.
 - Keep `hacs.json` at the repository root. HACS downloads the integration directory from the selected Git ref; no release ZIP or `filename` setting is needed.
 

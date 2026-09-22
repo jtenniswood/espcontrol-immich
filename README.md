@@ -1,5 +1,7 @@
 # EspControl Immich Companion
 
+<img src="https://raw.githubusercontent.com/jtenniswood/espcontrol-immich/HEAD/custom_components/immich_frames/brand/icon.png" alt="EspControl" width="128" height="128">
+
 Turn your Immich photo library into a slideshow for your EspControl display, managed through Home Assistant.
 
 Choose **All photos**, combine **Albums**, revisit **Memories** from around this date, or use **Keywords** such as “beach at sunset”. Show photos individually or pair portrait photos side by side.
