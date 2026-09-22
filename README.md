@@ -37,8 +37,10 @@ Every photo is requested at full size before being resized for your display, in 
 
 ## Updates and help
 
-Update through HACS, then restart Home Assistant. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
+Update through HACS, then restart Home Assistant. HACS remains the primary installation path. If an API key expires, Home Assistant offers a reconnect form that keeps your frame and its controls. Your frame settings are kept. Older device presets automatically switch to the matching screen shape and use its dimensions.
 
 See the [installation guide](docs/installation.md) for manual installation and connection help, or [report a problem](https://github.com/jtenniswood/espcontrol-immich/issues).
 
 Development and upgrade details are in [the architecture guide](docs/architecture.md). The shared-engine upgrade regenerates old image caches; Immich must be reachable for the first image after updating. Frame settings and entity identities are preserved.
+
+The optional container provides a separate browser/API frame interface. It is not required for HACS. See [container compatibility and image delivery](docs/container.md).

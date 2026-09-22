@@ -6,12 +6,14 @@ Home Assistant is the primary interface. The optional container uses the same ph
 
 | Location | Owns |
 |---|---|
-| `custom_components/immich_frames/core/settings.py` | Valid settings, default values, control descriptions, screen dimensions and native settings migration |
+| `custom_components/immich_frames/core/settings.py` | Valid settings, default values, control/source descriptions, screen dimensions and update effects |
 | `core/client.py` | Immich requests, validated responses, retries, previews and full-size downloads |
 | `core/engine.py` and `core/filtering.py` | Source queries, date/orientation filtering, pairing and complete-slide creation |
 | `core/rendering.py` | EXIF rotation, crop/full-image layout, sampled backgrounds and JPEG encoding |
 | `core/history.py` | Bounded history, recent-photo exclusion and Previous navigation |
 | `core/cache.py` | Atomic, checksummed, source-aware slide storage |
+| `core/session.py` | Playback, complete snapshot publication, refresh ordering and recovery |
+| Native `settings.py` and container `compatibility.py` | Historical saved-format translation |
 | Home Assistant platform modules | Forms, entities, timers, native lifecycle and stable identifiers |
 | `src/immich_frames` | Container HTTP interface, handwritten web page, SQLite configuration and compatibility adapters for its existing Photo/Slide objects |
 | `scripts/product_contract.py` | Generated English control descriptions and settings reference |
@@ -53,7 +55,7 @@ Generate a repeatable visual acceptance sheet with `python scripts/render_exampl
 
 Run `python scripts/product_contract.py --check` to check generated content, or omit `--check` to regenerate it after a settings change. Run `python scripts/check_release.py` to verify package/container versions. Native integration and container versions are separate; a release tag must match the native manifest and identifies the exact source commit used for both container images.
 
-The supported release path is **Actions → Publish Immich Frames → Run workflow**: select the reviewed ref and supply its matching version tag. It validates the exact commit, checks for conflicting tags/releases, publishes both container architectures and their manifest, and only then creates the public GitHub release. No release is created if a prerequisite fails. Container images are published in the same workflow because releases created with the workflow token do not start a second release-triggered run.
+The supported release path is **Actions → Publish Immich Frames → Run workflow**: select the reviewed ref and supply its matching version tag. It validates the exact commit, checks for conflicting tags/releases, publishes both container architectures and their manifest, and only then creates the public GitHub release. No public release is created if a prerequisite fails. Container images are published in the same workflow because releases created with the workflow token do not start a second release-triggered run.
 
 The existing `release: published` trigger remains for releases created outside that path; it validates before publishing container images. A manually published GitHub release is already visible to HACS while those checks run. This automation cannot prevent a repository administrator from bypassing the supported release path.
 
@@ -62,3 +64,66 @@ Hassfest copies the integration into its validation container. It does not bind-
 ## Device acceptance
 
 Use an isolated worktree and a ready-for-review feature PR. Install that branch on a test Home Assistant instance, keeping production unchanged. Verify all three screen shapes, individual and paired portraits, an unmatched portrait, both fit settings, Next/Previous, pause/resume, source changes and a restart with Immich offline. Confirm images, metadata and links describe the same photo on the physical display. Record the tested commit, Home Assistant/Immich versions and display in the PR. Automated pixel and package tests do not replace that check.
+
+## Runtime consolidation
+
+`core/session.py` owns a frame's current snapshot, history, pause state,
+monotonic generation, refresh serialization and cache recovery. Home Assistant
+retains its `DataUpdateCoordinator` and scheduling; the container retains its
+HTTP server, task timers and SQLite storage. Neither adapter implements its own
+slide publication policy.
+
+The engine and session receive validated `FrameSettings` values. Native saved
+entries are translated in `custom_components/immich_frames/settings.py`;
+container HTTP and stored records are translated in
+`src/immich_frames/compatibility.py`. The older container `FrameConfig`, `Photo`
+and `Slide` shapes remain serialization/compatibility interfaces, not a second
+runtime. New invalid ranges and booleans are rejected instead of silently
+clamped or converted. Historical container cover/contain and native fit rules
+remain distinct in their translators.
+
+The control registry also describes source fields and update effects. Timer
+changes preserve the current image and history; selection/render changes reject
+incompatible snapshots. Labels and reference tables are generated, while the
+native setup interaction and lightweight container page remain handwritten.
+
+Playback contract:
+
+- Pause retains the current snapshot and invalidates an in-flight refresh.
+- Next resumes playback and requests a new complete slide in both adapters.
+- Previous changes image and metadata together and wins over an older in-flight
+  refresh. History remains bounded and does not persist across restarts.
+- Restart restores the last successfully generated compatible slide, as before;
+  Previous does not rewrite the cache. Playback starts unpaused.
+- Source/account changes invalidate running and queued work before replacement.
+- Cache writes finish before cancellation releases the refresh lock. An older
+  source's record cannot restore under the replacement source's signature.
+- Authentication failure opens Home Assistant's reauthentication flow. A valid
+  cached image remains visible while the key is replaced; the new key keeps the
+  config entry and entity identities and requires a newly compatible image.
+
+The deterministic playback scenarios in `tests_native/test_playback_scenarios.py`
+run through both adapters. Historical expected settings live in
+`tests_core/fixtures/historical-settings.json`. Session clock tests cover cache
+date expiry without waiting for the wall clock. These complement the existing
+upgrade-identity, cancellation, pixel, package and device acceptance checks.
+
+## Tested release artifacts
+
+CI exports one Docker archive per architecture, runs the installed application's
+connection → frame creation → JPEG delivery → navigation acceptance check, and
+records the archive checksum, image/config digests, source commit, architecture,
+Python packages and OS packages. Artifacts are retained for seven days.
+
+The release workflow downloads those same archives from its validation run,
+checks their provenance, and publishes them without a second build. It verifies
+that each registry manifest references the tested configuration, then assembles
+the multi-architecture manifest from the verified registry digests. Provenance
+files are attached to a draft GitHub release before it becomes public. HACS
+continues to install the integration from the release's checked source commit.
+
+Mutable dependency ranges may resolve differently in a later run; that does
+not change the bytes promoted from this run. For local rehearsal, build an
+archive with `SOURCE_COMMIT` set to a clearly identified local candidate, then
+run `scripts/container_artifact.py record` and `verify`. Public publication is a
+separate release operation.

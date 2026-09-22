@@ -3,7 +3,7 @@
 from html import escape
 from importlib.resources import files
 
-from custom_components.immich_frames.core.settings import SETTINGS
+from custom_components.immich_frames.core.settings import SETTINGS, SOURCES
 
 
 def home_page() -> str:
@@ -20,4 +20,11 @@ def home_page() -> str:
             control = f'<input name="{key}" type="number" min="{spec.minimum}" max="{spec.maximum}" value="{spec.default}">'
         controls.append(f"<label>{escape(spec.label)} {control}</label>")
     template = files("immich_frames").joinpath("web/index.html").read_text()
-    return template.replace("{{display_controls}}", "".join(controls))
+    sources = "".join(
+        f'<option value="{source.key}">{escape(source.label)}</option>'
+        for source in SOURCES
+        if source.native
+    )
+    return template.replace("{{display_controls}}", "".join(controls)).replace(
+        "{{sources}}", sources
+    )

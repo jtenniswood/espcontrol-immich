@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-import logging
-from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import logging
 
-from .api import FrameSnapshot, ImmichApi, ImmichApiError, NoMatchingPhotos
-from .core.cache import SnapshotStore, connection_identity, finish_write
-from .core.settings import FrameSettings
-from .core.history import SlideHistory
-from .const import CONF_INTERVAL, CONF_PHOTO_FIT, photo_fit
+from .api import FrameSnapshot, ImmichApi, ImmichApiError
+from .core.cache import SnapshotStore, connection_identity
+from .core.session import FrameSession
+from .core.settings import FrameSettings, SETTING_BY_KEY
+from .const import CONF_PHOTO_FIT, photo_fit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,86 +23,104 @@ class FrameCoordinator(DataUpdateCoordinator[FrameSnapshot]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
-        self.options = {**entry.data, **FrameSettings.from_options(dict(entry.data)).options()}
-        self.api = ImmichApi(self.options["url"], self.options["api_key"])
-        self.paused = False
-        self.generation = 0
-        self.history = SlideHistory()
-        self.cache_path = Path(hass.config.path(".storage", f"immich_frames_{entry.entry_id}"))
+        self.api = ImmichApi(entry.data["url"], entry.data["api_key"])
+        self.cache_path = Path(
+            hass.config.path(".storage", f"immich_frames_{entry.entry_id}")
+        )
+        settings = FrameSettings.from_options(dict(entry.data))
+
+        async def produce(settings, generation, recent_ids, **clock):
+            return await self.api.snapshot(settings, generation, recent_ids, **clock)
+
+        self.session = FrameSession(
+            settings,
+            connection_identity(self.api.base_url, self.api.api_key),
+            SnapshotStore(self.cache_path.with_suffix(".json")),
+            produce,
+        )
         super().__init__(
             hass,
             logger=LOGGER,
             name=f"EspControl Immich Companion {entry.title}",
-            update_interval=timedelta(seconds=int(self.options.get(CONF_INTERVAL, 30))),
+            update_interval=timedelta(seconds=settings.interval),
             config_entry=entry,
         )
 
-    async def _async_setup(self) -> None:
-        await self.hass.async_add_executor_job(self._load_cache)
+    @property
+    def options(self):
+        """Read-only compatibility view for host entities and diagnostics."""
+        return {**self.entry.data, **self.session.settings.options()}
 
-    def _load_cache(self) -> None:
-        self.data = self.store.read(self.options, self.connection_identity)
-        if self.data:
-            self.generation = self.data.generation
-            self.history = SlideHistory([self.data])
+    @property
+    def history(self):
+        return self.session.history
+
+    @property
+    def paused(self):
+        return self.session.paused
+
+    @paused.setter
+    def paused(self, value):
+        self.session.pause() if value else self.session.resume()
 
     @property
     def store(self):
-        return SnapshotStore(self.cache_path.with_suffix(".json"))
+        return self.session.store
 
     @property
     def connection_identity(self):
-        return connection_identity(self.options["url"], self.options["api_key"])
+        return self.session.connection
+
+    async def _async_setup(self) -> None:
+        self.data = await self.session.restore()
 
     async def _async_update_data(self) -> FrameSnapshot:
-        if self.paused and self.data:
-            return self.data
         try:
-            snapshot = await self.api.snapshot(self.options, self.generation + 1, self.history.recent_ids)
+            result = await self.session.refresh()
         except ImmichApiError as exc:
-            if self.data:
-                status = "no_matching_photos" if isinstance(exc, NoMatchingPhotos) else "invalid_api_key" if exc.status in (401, 403) else "upstream_unavailable"
-                return replace(self.data, connected=isinstance(exc, NoMatchingPhotos), using_cache=True, status=status)
+            if exc.status in (401, 403):
+                raise ConfigEntryAuthFailed(str(exc)) from exc
             raise UpdateFailed(str(exc)) from exc
-        self.generation = snapshot.generation
-        self.history.append(snapshot)
-        await self._save_cache(snapshot)
-        return snapshot
-
-    async def _save_cache(self, snapshot: FrameSnapshot) -> None:
-        try:
-            await finish_write(self.hass.async_add_executor_job(self._write_cache, snapshot))
-        except OSError:
-            LOGGER.warning("Could not save the frame cache", exc_info=True)
-
-    def _write_cache(self, snapshot: FrameSnapshot) -> None:
-        self.store.write(snapshot, self.options, self.connection_identity)
+        if self.session.last_error and self.session.last_error.status in (401, 403):
+            # Keep the compatible cached picture visible while HA prompts for a key.
+            self.entry.async_start_reauth(self.hass)
+        if result is None:
+            # A settings save invalidated this coordinator while it was awaiting I/O.
+            raise UpdateFailed("Frame settings changed; waiting for reload")
+        return result
 
     @callback
     def async_update_settings(self, changes: dict[str, Any]) -> None:
-        """Persist device settings together, then rebuild with compatible cache only."""
+        data = {
+            **self.entry.data,
+            CONF_PHOTO_FIT: photo_fit(self.entry.data),
+            **changes,
+        }
+        settings = FrameSettings.from_options(data)
         if all(self.entry.data.get(key) == value for key, value in changes.items()):
             return
-        # Preserve the displayed fit when changing mode on a legacy frame whose
-        # fit was previously inferred from its mode rather than explicitly saved.
-        data = {**self.entry.data, CONF_PHOTO_FIT: photo_fit(self.entry.data), **changes}
-        FrameSettings.from_options(data)
+        timer_only = all(
+            key in SETTING_BY_KEY and SETTING_BY_KEY[key].effect == "timer"
+            for key in changes
+        )
+        self.session.configure(settings, self.connection_identity)
         if self.hass.config_entries.async_update_entry(self.entry, data=data):
-            self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
+            if timer_only:
+                self.update_interval = timedelta(seconds=settings.interval)
+            else:
+                self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
     async def async_next(self) -> None:
-        self.paused = False
+        self.session.resume()
         await self.async_refresh()
 
     async def async_previous(self) -> None:
-        if len(self.history) > 1:
-            self.async_set_updated_data(self.history.previous())
+        if (result := self.session.previous()) is not None:
+            self.async_set_updated_data(result)
 
     async def async_clear_cache(self) -> None:
-        await self.hass.async_add_executor_job(self._clear_cache)
-
-    def _clear_cache(self) -> None:
-        self.store.clear()
+        await self.session.clear_cache()
 
     async def async_close(self) -> None:
+        await self.session.close()
         await self.api.close()

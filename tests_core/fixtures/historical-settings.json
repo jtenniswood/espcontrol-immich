@@ -1,0 +1,7 @@
+[
+  {"name":"native portrait preset", "host":"native", "saved":{"screen_shape":"jc4880p443","source":"album","album_id":"family","mode":"pairs","original_aspect_ratio":false}, "expected":{"screen_shape":"portrait","album_ids":["family"],"photo_fit":"crop","mode":"pairs","interval":30}},
+  {"name":"native inactive filter", "host":"native", "saved":{"source":"all","filter":{"rating":{"gte":4}}}, "expected":{"filter":{},"photo_fit":"show_full","screen_shape":"landscape"}},
+  {"name":"native active filter", "host":"native", "saved":{"source":"smart","smart_query":"beach","filter":{"visibility":{"eq":"archive"}}}, "expected":{"filter":{"visibility":{"eq":"timeline"}},"smart_query":"beach"}},
+  {"name":"container cover", "host":"container", "saved":{"frame_id":"old","name":"Hall","source":"album","album_id":"family","fit":"cover","output_width":2000,"output_height":1000}, "expected":{"screen_shape":"landscape","album_ids":["family"],"photo_fit":"crop"}},
+  {"name":"container contain", "host":"container", "saved":{"frame_id":"old","name":"Hall","fit":"contain","filter":{"rating":{"gte":4}}}, "expected":{"screen_shape":"landscape","photo_fit":"show_full","filter":{"rating":{"gte":4}}}}
+]

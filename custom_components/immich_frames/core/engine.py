@@ -3,25 +3,7 @@ import asyncio
 import calendar
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
-from .settings import (
-    CONF_ALBUM_ID,
-    CONF_ALBUM_IDS,
-    CONF_SOURCE,
-    CONF_TIME_RANGE,
-    DEFAULT_TIME_RANGE,
-    TIME_RANGE_MONTHS,
-    CONF_SMART_QUERY,
-    CONF_MEMORY_WINDOW,
-    CONF_FALLBACK,
-    CONF_ORIENTATION,
-    CONF_MODE,
-    CONF_PAIR_WINDOW,
-    DEFAULT_PAIR_WINDOW,
-    CONF_SCREEN_SHAPE,
-    DEFAULT_SCREEN_SHAPE,
-    FrameSettings,
-    slide_photo_fit,
-)
+from .settings import FrameSettings, TIME_RANGE_MONTHS, CONF_ALBUM_IDS, CONF_ALBUM_ID
 from .models import FrameSnapshot
 from .rendering import render
 from .filtering import safe_filter
@@ -93,25 +75,26 @@ def _datetime(value: str | None) -> datetime | None:
         return None
 
 
-async def select_candidates(client, options, *, now=None, today=None, size=200):
-    options = FrameSettings.from_options(options).options()
-    source = options.get(CONF_SOURCE, "all")
-    filter_value = safe_filter(dict(options.get("filter") or {}))
+async def select_candidates(
+    client, options: FrameSettings, *, now=None, today=None, size=200
+):
+    source = options.source
+    filter_value = safe_filter(dict(options.filter or {}))
     filter_value = _with_time_range(
         filter_value,
-        options.get(CONF_TIME_RANGE, DEFAULT_TIME_RANGE),
+        options.time_range,
         now or datetime.now(timezone.utc),
     )
     search_options = {
         "size": size,
-        "order_field": options["order_field"],
-        "order_direction": options["order_direction"]
-        if options["order_direction"] != "random"
+        "order_field": options.order_field,
+        "order_direction": options.order_direction
+        if options.order_direction != "random"
         else "desc",
     }
-    random_order = options["order_direction"] == "random"
+    random_order = options.order_direction == "random"
     if source == "album":
-        album_ids = selected_album_ids(options)
+        album_ids = list(options.album_ids)
         if not album_ids:
             raise ImmichApiError("Choose at least one album")
         candidates = await client.search(
@@ -121,17 +104,17 @@ async def select_candidates(client, options, *, now=None, today=None, size=200):
         )
     elif source == "smart":
         candidates = await client.smart_search(
-            options.get(CONF_SMART_QUERY, ""),
+            options.smart_query,
             filter_value,
             size=size,
-            reference_asset_id=options.get("smart_reference_asset_id"),
+            reference_asset_id=options.smart_reference_asset_id,
         )
     elif source == "memories":
         anchor = today or date.today()
         assets: list[dict[str, Any]] = []
         for offset in range(
-            -int(options.get(CONF_MEMORY_WINDOW, 2)),
-            int(options.get(CONF_MEMORY_WINDOW, 2)) + 1,
+            -options.memory_window_days,
+            options.memory_window_days + 1,
         ):
             assets.extend(
                 await client.memories((anchor + timedelta(days=offset)).isoformat())
@@ -150,7 +133,7 @@ async def select_candidates(client, options, *, now=None, today=None, size=200):
             if memory_filter
             else []
         )
-        if not candidates and options.get(CONF_FALLBACK):
+        if not candidates and options.fallback_to_all:
             candidates = await client.search(
                 filter_value, random=random_order, **search_options
             )
@@ -158,7 +141,7 @@ async def select_candidates(client, options, *, now=None, today=None, size=200):
         candidates = await client.search(
             filter_value, random=random_order, **search_options
         )
-    orientation = options.get(CONF_ORIENTATION, "any")
+    orientation = options.orientation
     candidates = [
         item
         for item in candidates
@@ -168,11 +151,16 @@ async def select_candidates(client, options, *, now=None, today=None, size=200):
 
 
 async def snapshot(
-    client, options: dict[str, Any], generation: int, recent_ids: set[str]
+    client,
+    options: FrameSettings,
+    generation: int,
+    recent_ids: set[str],
+    *,
+    now=None,
+    today=None,
 ) -> FrameSnapshot:
-    options = FrameSettings.from_options(options).options()
-    candidates = await select_candidates(client, options)
-    if options.get(CONF_MODE) == "pairs_only":
+    candidates = await select_candidates(client, options, now=now, today=today)
+    if options.mode == "pairs_only":
         # This setting controls portraits; landscapes and squares still
         # follow the independent orientation filter.
         candidates = [
@@ -182,7 +170,7 @@ async def snapshot(
             or companion(
                 item,
                 [other for other in candidates if other["id"] != item["id"]],
-                int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)),
+                options.pair_window_days,
             )
         ]
     if not candidates:
@@ -191,17 +179,17 @@ async def snapshot(
         (item for item in candidates if item["id"] not in recent_ids), candidates[0]
     )
     photos = [primary]
-    if options.get(CONF_MODE) in ("pairs", "pairs_only"):
+    if options.mode in ("pairs", "pairs_only"):
         partner = companion(
             primary,
             [item for item in candidates if item["id"] != primary["id"]],
-            int(options.get(CONF_PAIR_WINDOW, DEFAULT_PAIR_WINDOW)),
+            options.pair_window_days,
         )
         if partner:
             photos.append(partner)
     try:
-        shape = options.get(CONF_SCREEN_SHAPE, DEFAULT_SCREEN_SHAPE)
-        fit = slide_photo_fit(options, photos)
+        shape = options.screen_shape
+        fit = options.fit_for(photos)
         image_data = await asyncio.gather(
             *(client.photo_image(item["id"]) for item in photos)
         )
@@ -220,7 +208,7 @@ async def snapshot(
         generation,
         tuple(photos),
         layout,
-        datetime.now(timezone.utc),
+        now or datetime.now(timezone.utc),
         len(candidates),
     )
 
