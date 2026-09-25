@@ -78,7 +78,7 @@ jobs:
           outputs: type=docker,dest=${{ runner.temp }}/candidate-${{ matrix.name }}/image.tar
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.14'
       - name: Test and record the exact image archive
         env:
           CANDIDATE: ${{ runner.temp }}/candidate-${{ matrix.name }}/image.tar
