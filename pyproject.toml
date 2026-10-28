@@ -9,7 +9,7 @@ description = "Home Assistant app for Immich photo frames"
 requires-python = ">=3.12"
 dependencies = [
   "aiohttp>=3.9,<4",
-  "Pillow>=10,<13",
+  "Pillow>=13,<14",
 ]
 
 [project.optional-dependencies]
