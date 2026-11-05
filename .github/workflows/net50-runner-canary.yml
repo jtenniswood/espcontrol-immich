@@ -21,7 +21,7 @@ jobs:
           ACTUAL_RUNNER_NAME: ${{ runner.name }}
         run: |
           set -euo pipefail
-          test "$ACTUAL_RUNNER_NAME" = "espcontrol-immich-runner-runner"
+          test "$ACTUAL_RUNNER_NAME" = "github-runner-espcontrol-immich"
           test -z "${ACCESS_TOKEN:-}"
           marker="${GITHUB_WORKSPACE}/.net50-canary-${GITHUB_RUN_ID}"
           printf '%s\n' "${GITHUB_RUN_ID}" > "$marker"
