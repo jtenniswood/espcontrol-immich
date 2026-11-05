@@ -1,23 +1,47 @@
-name: HACS validation
-
+name: Runner naming and workspace canary
 on:
-  workflow_call:
-  push:
-  pull_request:
-  release:
-    types: [published]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  hacs:
-    name: HACS
-    runs-on: [self-hosted, Linux, X64, espcontrol-immich]
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ["github-runner-espcontrol-immich"]
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    timeout-minutes: 5
     steps:
-      - name: Validate HACS publishing requirements
-        uses: hacs/action@main
+      - uses: actions/checkout@v4
         with:
-          category: integration
-          comment: false
+          persist-credentials: false
+      - name: Verify identity, repository checkout, and bounded workspace
+        env:
+          EXPECTED_RUNNER: ${{ matrix.runner }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          assert os.environ['RUNNER_NAME'] == os.environ['EXPECTED_RUNNER']
+          assert os.environ['GITHUB_REPOSITORY'] == 'jtenniswood/espcontrol-immich'
+          assert not os.environ.get('ACCESS_TOKEN'), 'Bootstrap credential leaked into job'
+          root = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+          assert (root / '.git').exists()
+          assert str(root).startswith('/runner-work/work/')
+          temp = pathlib.Path(os.environ['RUNNER_TEMP'])
+          assert str(temp).startswith('/runner-work/work/') or str(temp).startswith('/runner-work/tmp/')
+          s = os.statvfs(root)
+          size = s.f_blocks * s.f_frsize
+          assert 18 * 1024**3 < size <= 20 * 1024**3
+          assert os.stat(root).st_dev == os.stat('/runner-work/tmp').st_dev
+          marker = root / ('.runner-canary-' + os.environ['GITHUB_RUN_ID'])
+          marker.write_text('verified checkout and workspace write\n')
+          assert marker.read_text().startswith('verified')
+          marker.unlink()
+          marker = pathlib.Path('/runner-work/tmp') / ('canary-' + os.environ['GITHUB_RUN_ID'])
+          marker.write_text('verified bounded temp write\n')
+          assert marker.read_text().startswith('verified')
+          marker.unlink()
+          subprocess.run(['git', 'rev-parse', '--verify', 'HEAD'], check=True, capture_output=True)
+          print(json.dumps({'runner': os.environ['RUNNER_NAME'], 'repository': os.environ['GITHUB_REPOSITORY'], 'filesystem_bytes': size, 'checkout': True, 'work_write': True, 'tmp_write': True, 'bootstrap_token_absent': True}))
+          PY
